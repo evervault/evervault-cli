@@ -1,11 +1,11 @@
 use crate::docker::parse::{DecodeError, Directive, DockerfileDecoder, Mode};
 use crate::docker::utils::verify_docker_is_running;
 use crate::enclave;
+use crate::common::resolve_output_path;
 use atty::Stream;
 use clap::Parser;
 use std::io::Write;
 use std::path::Path;
-use tempfile::TempDir;
 use tokio::fs::File;
 use tokio::io::AsyncRead;
 
@@ -47,32 +47,13 @@ pub async fn run(build_args: BuildArgs) {
 
     // temporary directory must remain in scope for the whole
     // function so it isn't deleted until all the builds are finished.
-    let (output_dir_path, _tmp_output_dir) =
-        if let Some(output_dir) = build_args.output_dir.as_ref() {
-            let path = Path::new(output_dir);
-            if !path.exists() {
-                log::error!("The directory {} does not exist.", output_dir);
-                return;
-            }
-            match path.canonicalize() {
-                Ok(absolute_path) => (absolute_path.as_path().to_str().unwrap().to_string(), None),
-                Err(err) => {
-                    log::error!("Failed to get absolute path of directory, error: {:?}", err);
-                    return;
-                }
-            }
-        } else {
-            match TempDir::new() {
-                Ok(tmp_dir) => (tmp_dir.path().to_str().unwrap().to_string(), Some(tmp_dir)),
-                Err(err) => {
-                    log::error!(
-                    "Failed to create temporary directory for storing generated files, error: {:?}",
-                    err
-                );
-                    return;
-                }
-            }
-        };
+    let output_path = match resolve_output_path(build_args.output_dir.as_ref()) {
+        Ok(output_path) => output_path,
+        Err(e) => {
+            log::error!("{}", e);
+            return;
+        }
+    };
 
     match verify_docker_is_running() {
         Ok(false) => {
@@ -119,14 +100,14 @@ pub async fn run(build_args: BuildArgs) {
     };
 
     // write new dockerfile to fs
-    let ev_user_dockerfile_path = format!("{}/{}", output_dir_path, EV_USER_DOCKERFILE_PATH);
+    let ev_user_dockerfile_path = output_path.path().join(Path::new(EV_USER_DOCKERFILE_PATH));
     let mut ev_user_dockerfile = std::fs::File::create(&ev_user_dockerfile_path).unwrap();
 
     processed_dockerfile.iter().for_each(|instruction| {
         writeln!(ev_user_dockerfile, "{}", instruction).unwrap();
     });
 
-    log::debug!("Processed dockerfile saved at {}.", ev_user_dockerfile_path);
+    log::debug!("Processed dockerfile saved at {}.", ev_user_dockerfile_path.display());
 
     let command_config = enclave::CommandConfig::new(build_args.verbose);
     log::info!("Building docker image…");
@@ -140,13 +121,13 @@ pub async fn run(build_args: BuildArgs) {
     }
 
     log::debug!("Building Nitro CLI image…");
-    if let Err(e) = enclave::build_nitro_cli_image(&command_config, &output_dir_path) {
+    if let Err(e) = enclave::build_nitro_cli_image(&command_config, output_path.path()) {
         log::debug!("An error occurred while building the enclave image. {}", e);
         return;
     }
 
     log::info!("Converting docker image to EIF…");
-    let built_enclave = match enclave::run_conversion_to_enclave(&command_config, &output_dir_path)
+    let built_enclave = match enclave::run_conversion_to_enclave(&command_config, output_path.path())
     {
         Ok(built_enclave) => built_enclave,
         Err(e) => {

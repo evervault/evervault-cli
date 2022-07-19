@@ -1,3 +1,5 @@
+use std::ffi::OsStr;
+use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use std::process::{Command, Stdio};
 
@@ -20,9 +22,9 @@ impl CommandConfig {
         }
     }
 
-    pub fn extra_build_args(&self) -> Vec<&str> {
+    pub fn extra_build_args(&self) -> Vec<&OsStr> {
         match self.architecture {
-            "aarch64" | "arm" => vec!["--platform", "linux/amd64"],
+            "aarch64" | "arm" => vec!["--platform".as_ref(), "linux/amd64".as_ref()],
             _ => vec![],
         }
     }
@@ -37,20 +39,20 @@ impl CommandConfig {
 }
 
 pub fn build_user_image(
-    user_dockerfile_path: &str,
+    user_dockerfile_path: &std::path::PathBuf,
     user_context_path: &str,
     command_config: &CommandConfig,
 ) -> Result<(), String> {
-    let build_image_args = [
+    let build_image_args: Vec<&OsStr> = [
         vec![
-            "build",
-            "-f",
-            user_dockerfile_path,
-            "-t",
-            EV_USER_IMAGE_NAME,
+            "build".as_ref(),
+            "-f".as_ref(),
+            user_dockerfile_path.as_os_str(),
+            "-t".as_ref(),
+            EV_USER_IMAGE_NAME.as_ref(),
         ],
         command_config.extra_build_args(),
-        vec![user_context_path],
+        vec![user_context_path.as_ref()],
     ]
     .concat();
 
@@ -70,22 +72,22 @@ pub fn build_user_image(
 
 pub fn build_nitro_cli_image(
     command_config: &CommandConfig,
-    output_dir: &String,
+    output_dir: &std::path::PathBuf,
 ) -> Result<(), String> {
     let nitro_cli_dockerfile_contents = include_bytes!("nitro-cli-image.Dockerfile");
-    let nitro_cli_dockerfile_path = format!("{}/{}", output_dir, NITRO_CLI_IMAGE_FILENAME);
+    let nitro_cli_dockerfile_path = output_dir.join(NITRO_CLI_IMAGE_FILENAME);
     std::fs::write(&nitro_cli_dockerfile_path, nitro_cli_dockerfile_contents).unwrap();
 
-    let build_nitro_cli_image_args = [
+    let build_nitro_cli_image_args: Vec<&OsStr> = [
         vec![
-            "build",
-            "-f",
-            nitro_cli_dockerfile_path.as_str(),
-            "-t",
-            NITRO_CLI_IMAGE_NAME,
+            "build".as_ref(),
+            "-f".as_ref(),
+            nitro_cli_dockerfile_path.as_ref(),
+            "-t".as_ref(),
+            NITRO_CLI_IMAGE_NAME.as_ref(),
         ],
         command_config.extra_build_args(),
-        vec![output_dir],
+        vec![output_dir.as_ref()],
     ]
     .concat();
 
@@ -126,7 +128,7 @@ pub struct EnclaveBuildOutput {
 #[derive(Debug)]
 pub struct BuiltEnclave {
     measurements: EIFMeasurements,
-    location: String,
+    location: PathBuf,
 }
 
 impl BuiltEnclave {
@@ -134,29 +136,32 @@ impl BuiltEnclave {
         &self.measurements
     }
 
-    pub fn location(&self) -> &String {
+    pub fn location(&self) -> &PathBuf {
         &self.location
     }
 }
 
 pub fn run_conversion_to_enclave(
     command_config: &CommandConfig,
-    output_dir: &String,
+    output_dir: &PathBuf,
 ) -> Result<BuiltEnclave, String> {
+    let mounted_volume = format!("{}:{}", output_dir.display(), IN_CONTAINER_VOLUME_DIR);
+    let output_location = format!("{}/{}", IN_CONTAINER_VOLUME_DIR, ENCLAVE_FILENAME);
+    let run_conversion_args: Vec<&OsStr> = vec![
+        "run".as_ref(),
+        "--rm".as_ref(),
+        "-v".as_ref(),
+        "/var/run/docker.sock:/var/run/docker.sock".as_ref(),
+        "-v".as_ref(),
+        mounted_volume.as_str().as_ref(),
+        NITRO_CLI_IMAGE_NAME.as_ref(),
+        "--output-file".as_ref(),
+        output_location.as_str().as_ref(),
+        "--docker-uri".as_ref(),
+        EV_USER_IMAGE_NAME.as_ref(),
+    ];
     let run_conversion_status = Command::new("docker")
-        .args(vec![
-            "run",
-            "--rm",
-            "-v",
-            "/var/run/docker.sock:/var/run/docker.sock",
-            "-v",
-            format!("{}:{}", output_dir, IN_CONTAINER_VOLUME_DIR).as_str(),
-            NITRO_CLI_IMAGE_NAME,
-            "--output-file",
-            &format!("{}/{}", IN_CONTAINER_VOLUME_DIR, ENCLAVE_FILENAME),
-            "--docker-uri",
-            EV_USER_IMAGE_NAME,
-        ])
+        .args(run_conversion_args)
         .stdout(Stdio::piped()) // Write stdout to a buffer so we can parse the EIF meaasures
         .stderr(command_config.output_setting())
         .output()
