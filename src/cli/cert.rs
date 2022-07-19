@@ -184,8 +184,8 @@ where
     fn from(value: &'a str) -> Self {
         let mut builder = DnBuilder::default();
         value
-            .split("/")
-            .for_each(|term| match term.split("=").collect_tuple() {
+            .split('/')
+            .for_each(|term| match term.split('=').collect_tuple() {
                 Some(("C", country)) => builder.country = Some(country),
                 Some(("CN", common)) => builder.common_name = Some(common),
                 Some(("L", local)) => builder.locality = Some(local),

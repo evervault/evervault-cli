@@ -39,7 +39,7 @@ impl CommandConfig {
 }
 
 pub fn build_user_image(
-    user_dockerfile_path: &std::path::PathBuf,
+    user_dockerfile_path: &std::path::Path,
     user_context_path: &str,
     command_config: &CommandConfig,
 ) -> Result<(), String> {
@@ -136,14 +136,14 @@ impl BuiltEnclave {
         &self.measurements
     }
 
-    pub fn location(&self) -> &PathBuf {
+    pub fn location(&self) -> &std::path::Path {
         &self.location
     }
 }
 
 pub fn run_conversion_to_enclave(
     command_config: &CommandConfig,
-    output_dir: &PathBuf,
+    output_dir: &std::path::Path,
 ) -> Result<BuiltEnclave, String> {
     let mounted_volume = format!("{}:{}", output_dir.display(), IN_CONTAINER_VOLUME_DIR);
     let output_location = format!("{}/{}", IN_CONTAINER_VOLUME_DIR, ENCLAVE_FILENAME);
@@ -171,7 +171,7 @@ pub fn run_conversion_to_enclave(
             serde_json::from_slice(run_conversion_status.stdout.as_slice()).unwrap();
         Ok(BuiltEnclave {
             measurements: build_output.measurements,
-            location: output_dir.clone(),
+            location: output_dir.to_path_buf(),
         })
     } else {
         Err("Failed to Nitro CLI image.".to_string())

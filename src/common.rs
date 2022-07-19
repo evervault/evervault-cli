@@ -1,4 +1,3 @@
-use crate::common::OutputPathError::FailedToCreateTempDir;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -52,11 +51,10 @@ pub fn resolve_output_path(
 ) -> Result<OutputPath, OutputPathError> {
     if let Some(output_dir) = supplied_path {
         let path = std::path::Path::new(&output_dir);
-        let absolute_path = path.canonicalize().map(|path| OutputPath::from(path))?;
+        let absolute_path = path.canonicalize().map(OutputPath::from)?;
         Ok(absolute_path)
     } else {
-        let temp_dir =
-            tempfile::TempDir::new().map_err(|temp_dir_err| FailedToCreateTempDir(temp_dir_err))?;
+        let temp_dir = tempfile::TempDir::new().map_err(OutputPathError::FailedToCreateTempDir)?;
         Ok(OutputPath::from(temp_dir))
     }
 }
