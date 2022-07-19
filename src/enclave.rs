@@ -1,6 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 use std::process::{Command, Stdio};
 
 const IN_CONTAINER_VOLUME_DIR: &str = "/output";
