@@ -147,21 +147,20 @@ pub fn run_conversion_to_enclave(
 ) -> Result<BuiltEnclave, String> {
     let mounted_volume = format!("{}:{}", output_dir.display(), IN_CONTAINER_VOLUME_DIR);
     let output_location = format!("{}/{}", IN_CONTAINER_VOLUME_DIR, ENCLAVE_FILENAME);
-    let run_conversion_args: Vec<&OsStr> = vec![
-        "run".as_ref(),
-        "--rm".as_ref(),
-        "-v".as_ref(),
-        "/var/run/docker.sock:/var/run/docker.sock".as_ref(),
-        "-v".as_ref(),
-        mounted_volume.as_str().as_ref(),
-        NITRO_CLI_IMAGE_NAME.as_ref(),
-        "--output-file".as_ref(),
-        output_location.as_str().as_ref(),
-        "--docker-uri".as_ref(),
-        EV_USER_IMAGE_NAME.as_ref(),
-    ];
     let run_conversion_status = Command::new("docker")
-        .args(run_conversion_args)
+        .args(vec![
+            "run",
+            "--rm",
+            "-v",
+            "/var/run/docker.sock:/var/run/docker.sock",
+            "-v",
+            mounted_volume.as_str(),
+            NITRO_CLI_IMAGE_NAME,
+            "--output-file",
+            output_location.as_str(),
+            "--docker-uri",
+            EV_USER_IMAGE_NAME,
+        ])
         .stdout(Stdio::piped()) // Write stdout to a buffer so we can parse the EIF meaasures
         .stderr(command_config.output_setting())
         .output()
