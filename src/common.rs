@@ -1,7 +1,7 @@
+use crate::common::OutputPathError::FailedToCreateTempDir;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use thiserror::Error;
-use crate::common::OutputPathError::FailedToCreateTempDir;
 
 pub struct OutputPath {
     _tmp_dir: Option<tempfile::TempDir>,
@@ -44,20 +44,39 @@ pub enum OutputPathError {
     #[error("Failed to get absolute path — {0:?}")]
     FailedToGetAbsolutePath(#[from] std::io::Error),
     #[error("Failed to create temp dir — {0:?}")]
-    FailedToCreateTempDir(std::io::Error)
+    FailedToCreateTempDir(std::io::Error),
 }
 
-pub fn resolve_output_path(supplied_path: Option<impl AsRef<OsStr>>) -> Result<OutputPath, OutputPathError> {
+pub fn resolve_output_path(
+    supplied_path: Option<impl AsRef<OsStr>>,
+) -> Result<OutputPath, OutputPathError> {
     if let Some(output_dir) = supplied_path {
         let path = std::path::Path::new(&output_dir);
-        if !path.exists() {
-            return Err(OutputPathError::PathDoesNotExist);
-        }
-        let absolute_path = path.canonicalize()
-            .map(|path| OutputPath::from(path))?;
+        let absolute_path = path.canonicalize().map(|path| OutputPath::from(path))?;
         Ok(absolute_path)
     } else {
-        let temp_dir = tempfile::TempDir::new().map_err(|temp_dir_err| FailedToCreateTempDir(temp_dir_err))?;
+        let temp_dir =
+            tempfile::TempDir::new().map_err(|temp_dir_err| FailedToCreateTempDir(temp_dir_err))?;
         Ok(OutputPath::from(temp_dir))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_resolve_output_path_with_no_path_given() {
+        let path: Option<&str> = None;
+        let output_path = resolve_output_path(path).expect("Failed to generate temp file");
+        assert!(output_path._tmp_dir.is_some());
+    }
+
+    #[test]
+    fn test_resolve_output_path_with_path_given() {
+        let output_path =
+            resolve_output_path(Some("./src")).expect("Failed to resolve canonical path");
+        assert!(output_path._tmp_dir.is_none());
+        assert!(output_path.file_path.as_path().ends_with("src"));
     }
 }

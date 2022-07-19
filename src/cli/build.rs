@@ -1,7 +1,7 @@
+use crate::common::resolve_output_path;
 use crate::docker::parse::{DecodeError, Directive, DockerfileDecoder, Mode};
 use crate::docker::utils::verify_docker_is_running;
 use crate::enclave;
-use crate::common::resolve_output_path;
 use atty::Stream;
 use clap::Parser;
 use std::io::Write;
@@ -107,7 +107,10 @@ pub async fn run(build_args: BuildArgs) {
         writeln!(ev_user_dockerfile, "{}", instruction).unwrap();
     });
 
-    log::debug!("Processed dockerfile saved at {}.", ev_user_dockerfile_path.display());
+    log::debug!(
+        "Processed dockerfile saved at {}.",
+        ev_user_dockerfile_path.display()
+    );
 
     let command_config = enclave::CommandConfig::new(build_args.verbose);
     log::info!("Building docker image…");
@@ -127,17 +130,17 @@ pub async fn run(build_args: BuildArgs) {
     }
 
     log::info!("Converting docker image to EIF…");
-    let built_enclave = match enclave::run_conversion_to_enclave(&command_config, output_path.path())
-    {
-        Ok(built_enclave) => built_enclave,
-        Err(e) => {
-            log::error!(
-                "An error occurred while converting your docker image to an enclave. {:?}",
-                e
-            );
-            return;
-        }
-    };
+    let built_enclave =
+        match enclave::run_conversion_to_enclave(&command_config, output_path.path()) {
+            Ok(built_enclave) => built_enclave,
+            Err(e) => {
+                log::error!(
+                    "An error occurred while converting your docker image to an enclave. {:?}",
+                    e
+                );
+                return;
+            }
+        };
 
     // Write enclave measures to stdout
     let success_msg = serde_json::json!({
