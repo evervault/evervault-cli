@@ -5,6 +5,7 @@ use std::ops::Add;
 use thiserror::Error;
 
 use clap::{Parser, Subcommand};
+use itertools::Itertools;
 use rcgen::CertificateParams;
 
 /// Manage Cage signing certificates
@@ -28,6 +29,10 @@ pub struct NewCertArgs {
     /// Path to directory where the signing cert will be saved
     #[clap(short = 'o', long = "output", default_value = ".")]
     pub output_dir: String,
+
+    /// Defining the certificate distinguished name e.g. "/CN=EV/C=IE/ST=LEI/L=DUB/O=Evervault/OU=Eng"
+    #[clap(long = "subj")]
+    pub subject: String,
 }
 
 #[derive(Debug, Error)]
@@ -38,6 +43,8 @@ enum CertError {
     FileWriteError(#[from] std::io::Error),
     #[error("An error occurred while serializing your cert - {0:?}")]
     CertSerializationError(#[from] rcgen::RcgenError),
+    #[error("Failed to parse the subject provided")]
+    InvalidCertSubjectProvided,
 }
 
 pub fn run(cert_args: CertArgs) {
@@ -49,24 +56,16 @@ pub fn run(cert_args: CertArgs) {
 pub fn create_new_cert(new_cert_args: NewCertArgs) {
     let mut cert_params = CertificateParams::new(vec![]);
     cert_params.alg = &rcgen::PKCS_ECDSA_P384_SHA384;
-    cert_params
-        .distinguished_name
-        .push(rcgen::DnType::CommonName, "Evervault");
-    cert_params
-        .distinguished_name
-        .push(rcgen::DnType::CountryName, "US");
-    cert_params
-        .distinguished_name
-        .push(rcgen::DnType::StateOrProvinceName, "CA");
-    cert_params
-        .distinguished_name
-        .push(rcgen::DnType::LocalityName, "SF");
-    cert_params
-        .distinguished_name
-        .push(rcgen::DnType::OrganizationName, "Evervault");
-    cert_params
-        .distinguished_name
-        .push(rcgen::DnType::OrganizationalUnitName, "Engineering");
+    let subject_str = new_cert_args.subject.as_str();
+    let distinguished_name: DistinguishedName = match DnBuilder::from(subject_str).try_into() {
+        Ok(dn_record) => dn_record,
+        Err(e) => {
+            log::error!("{}", e);
+            return;
+        }
+    };
+
+    add_distinguished_name_to_cert_params(&mut cert_params, distinguished_name);
 
     let today = chrono::Utc::today();
     cert_params.not_before =
@@ -111,6 +110,31 @@ pub fn create_new_cert(new_cert_args: NewCertArgs) {
     }
 }
 
+fn add_distinguished_name_to_cert_params(
+    cert_params: &mut CertificateParams,
+    distinguished_name: DistinguishedName,
+) {
+    cert_params
+        .distinguished_name
+        .push(rcgen::DnType::CommonName, distinguished_name.common_name);
+    cert_params
+        .distinguished_name
+        .push(rcgen::DnType::CountryName, distinguished_name.country);
+    cert_params
+        .distinguished_name
+        .push(rcgen::DnType::OrganizationName, distinguished_name.org);
+    cert_params.distinguished_name.push(
+        rcgen::DnType::OrganizationalUnitName,
+        distinguished_name.org_unit,
+    );
+    cert_params
+        .distinguished_name
+        .push(rcgen::DnType::LocalityName, distinguished_name.locality);
+    cert_params
+        .distinguished_name
+        .push(rcgen::DnType::StateOrProvinceName, distinguished_name.state);
+}
+
 fn write_cert_to_fs(
     output_path: &str,
     cert: rcgen::Certificate,
@@ -131,4 +155,65 @@ fn write_cert_to_fs(
     key_file.write_all(serialized_key.as_bytes())?;
 
     Ok((cert_path, key_path))
+}
+
+#[derive(Debug)]
+struct DistinguishedName<'a> {
+    country: &'a str,
+    common_name: &'a str,
+    locality: &'a str,
+    org: &'a str,
+    org_unit: &'a str,
+    state: &'a str,
+}
+
+#[derive(Debug, Default)]
+struct DnBuilder<'a> {
+    country: Option<&'a str>,
+    common_name: Option<&'a str>,
+    locality: Option<&'a str>,
+    org: Option<&'a str>,
+    org_unit: Option<&'a str>,
+    state: Option<&'a str>,
+}
+
+impl<'a, 'b> std::convert::From<&'a str> for DnBuilder<'b>
+where
+    'a: 'b, // can convert a str slice into a DnBuilder so long as the slice outlives the builder
+{
+    fn from(value: &'a str) -> Self {
+        let mut builder = DnBuilder::default();
+        value
+            .split("/")
+            .for_each(|term| match term.split("=").collect_tuple() {
+                Some(("C", country)) => builder.country = Some(country),
+                Some(("CN", common)) => builder.common_name = Some(common),
+                Some(("L", local)) => builder.locality = Some(local),
+                Some(("O", org)) => builder.org = Some(org),
+                Some(("OU", org_unit)) => builder.org_unit = Some(org_unit),
+                Some(("ST", state)) => builder.state = Some(state),
+                Some((unknown_key, _)) => {
+                    log::debug!("Unknown key found in subject string - {}", unknown_key);
+                }
+                None => {}
+            });
+        builder
+    }
+}
+
+impl<'a> std::convert::TryInto<DistinguishedName<'a>> for DnBuilder<'a> {
+    type Error = CertError;
+
+    fn try_into(self) -> Result<DistinguishedName<'a>, Self::Error> {
+        Ok(DistinguishedName {
+            country: self.country.ok_or(CertError::InvalidCertSubjectProvided)?,
+            common_name: self
+                .common_name
+                .ok_or(CertError::InvalidCertSubjectProvided)?,
+            locality: self.locality.ok_or(CertError::InvalidCertSubjectProvided)?,
+            org: self.org.ok_or(CertError::InvalidCertSubjectProvided)?,
+            org_unit: self.org_unit.ok_or(CertError::InvalidCertSubjectProvided)?,
+            state: self.state.ok_or(CertError::InvalidCertSubjectProvided)?,
+        })
+    }
 }
