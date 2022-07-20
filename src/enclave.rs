@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 const IN_CONTAINER_VOLUME_DIR: &str = "/output";
@@ -73,10 +73,27 @@ pub fn build_user_image(
 pub fn build_nitro_cli_image(
     command_config: &CommandConfig,
     output_dir: &std::path::PathBuf,
+    signing_info: Option<&EnclaveSigningInfo>,
 ) -> Result<(), String> {
     let nitro_cli_dockerfile_contents = include_bytes!("nitro-cli-image.Dockerfile");
     let nitro_cli_dockerfile_path = output_dir.join(NITRO_CLI_IMAGE_FILENAME);
     std::fs::write(&nitro_cli_dockerfile_path, nitro_cli_dockerfile_contents).unwrap();
+
+    // This directory has to exist — docker has no support for conditional COPYs.
+    // If signing credentials are not given, this will be an empty directory
+    if let Err(e) = std::fs::create_dir(output_dir.join("sign")) {
+        return Err(format!(
+            "Failed to create directory for signing cert — {:?}",
+            e
+        ));
+    }
+
+    if let Some(signing_info) = signing_info.as_ref() {
+        let cert_dest = output_dir.join("sign/cert.pem");
+        std::fs::copy(signing_info.cert(), cert_dest).unwrap();
+        let key_dest = output_dir.join("sign/key.pem");
+        std::fs::copy(signing_info.key(), key_dest).unwrap();
+    }
 
     let build_nitro_cli_image_args: Vec<&OsStr> = [
         vec![
@@ -90,6 +107,8 @@ pub fn build_nitro_cli_image(
         vec![output_dir.as_ref()],
     ]
     .concat();
+
+    log::info!("{:?}", build_nitro_cli_image_args);
 
     let build_image_status = Command::new("docker")
         .args(build_nitro_cli_image_args)
@@ -144,23 +163,37 @@ impl BuiltEnclave {
 pub fn run_conversion_to_enclave(
     command_config: &CommandConfig,
     output_dir: &std::path::Path,
+    sign_eif: bool,
 ) -> Result<BuiltEnclave, String> {
     let mounted_volume = format!("{}:{}", output_dir.display(), IN_CONTAINER_VOLUME_DIR);
     let output_location = format!("{}/{}", IN_CONTAINER_VOLUME_DIR, ENCLAVE_FILENAME);
+
+    let mut nitro_build_args = vec![
+        "run",
+        "--rm",
+        "-v",
+        "/var/run/docker.sock:/var/run/docker.sock",
+        "-v",
+        mounted_volume.as_str(),
+        NITRO_CLI_IMAGE_NAME,
+        "--output-file",
+        output_location.as_str(),
+        "--docker-uri",
+        EV_USER_IMAGE_NAME,
+    ];
+
+    if sign_eif {
+        let mut signing_args = vec![
+            "--signing-certificate",
+            "/sign/cert.pem",
+            "--private-key",
+            "/sign/key.pem",
+        ];
+        nitro_build_args.append(&mut signing_args);
+    }
+
     let run_conversion_status = Command::new("docker")
-        .args(vec![
-            "run",
-            "--rm",
-            "-v",
-            "/var/run/docker.sock:/var/run/docker.sock",
-            "-v",
-            mounted_volume.as_str(),
-            NITRO_CLI_IMAGE_NAME,
-            "--output-file",
-            output_location.as_str(),
-            "--docker-uri",
-            EV_USER_IMAGE_NAME,
-        ])
+        .args(nitro_build_args)
         .stdout(Stdio::piped()) // Write stdout to a buffer so we can parse the EIF meaasures
         .stderr(command_config.output_setting())
         .output()
@@ -175,5 +208,27 @@ pub fn run_conversion_to_enclave(
         })
     } else {
         Err("Failed to Nitro CLI image.".to_string())
+    }
+}
+
+pub struct EnclaveSigningInfo {
+    cert: PathBuf,
+    key: PathBuf,
+}
+
+impl EnclaveSigningInfo {
+    pub fn new(cert_path: PathBuf, key_path: PathBuf) -> Self {
+        Self {
+            cert: cert_path,
+            key: key_path,
+        }
+    }
+
+    pub fn cert(&self) -> &std::path::Path {
+        self.cert.as_path()
+    }
+
+    pub fn key(&self) -> &std::path::Path {
+        self.key.as_path()
     }
 }
