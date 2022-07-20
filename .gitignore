@@ -1,6 +1,3 @@
 .idea
 target
 */target
-tests/node_modules
-tests/customer-process/node_modules
-data-plane/*.pem
