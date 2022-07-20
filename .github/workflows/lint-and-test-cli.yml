@@ -1,7 +1,7 @@
 on:
   push:
     paths:
-      - cage-cli/**
+      - src/**
       - .github/workflows/lint-and-test-cli.yml
 name: Lint and Test CLI
 jobs:
