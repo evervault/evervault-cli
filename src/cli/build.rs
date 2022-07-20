@@ -77,14 +77,14 @@ pub async fn run(build_args: BuildArgs) {
     let cert_path = build_args
         .certificate
         .as_ref()
-        .map(|cert_str| std::path::Path::new(cert_str))
+        .map(std::path::Path::new)
         .map(|cert_path| cert_path.canonicalize())
         .transpose();
 
     let key_path = build_args
         .private_key
         .as_ref()
-        .map(|key_str| std::path::Path::new(key_str))
+        .map(std::path::Path::new)
         .map(|key_path| key_path.canonicalize())
         .transpose();
 
@@ -339,6 +339,8 @@ ENTRYPOINT ["runsvdir", "/etc/service"]
             json: false,
             output_dir: Some(output_dir.path().to_str().unwrap().to_string()),
             context_path: ".".to_string(),
+            certificate: None,
+            private_key: None,
         };
 
         println!(
