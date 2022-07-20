@@ -100,7 +100,7 @@ pub async fn run(build_args: BuildArgs) {
     };
 
     // write new dockerfile to fs
-    let ev_user_dockerfile_path = output_path.path().join(Path::new(EV_USER_DOCKERFILE_PATH));
+    let ev_user_dockerfile_path = output_path.join(Path::new(EV_USER_DOCKERFILE_PATH));
     let mut ev_user_dockerfile = std::fs::File::create(&ev_user_dockerfile_path).unwrap();
 
     processed_dockerfile.iter().for_each(|instruction| {
