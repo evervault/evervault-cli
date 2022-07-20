@@ -1,3 +1,0 @@
-#!/bin/sh
-
-exec $CONTROL_PLANE_EXECUTABLE_PATH
