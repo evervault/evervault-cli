@@ -108,8 +108,6 @@ pub fn build_nitro_cli_image(
     ]
     .concat();
 
-    log::info!("{:?}", build_nitro_cli_image_args);
-
     let build_image_status = Command::new("docker")
         .args(build_nitro_cli_image_args)
         .stdout(command_config.output_setting())
