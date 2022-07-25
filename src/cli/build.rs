@@ -11,6 +11,7 @@ use tokio::io::AsyncRead;
 
 const EV_USER_DOCKERFILE_PATH: &str = "ev-user.Dockerfile";
 const USER_ENTRYPOINT_SERVICE_PATH: &str = "/etc/service/user-entrypoint";
+const DATA_PLANE_SERVICE_PATH: &str = "/etc/service/data-plane";
 
 /// Build a Cage from a Dockerfile
 #[derive(Parser, Debug)]
@@ -240,7 +241,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .filter(remove_unwanted_directives)
         .collect();
 
-    let (user_service_builder, user_service_location) =
+    let user_service_builder =
         crate::docker::utils::create_combined_docker_entrypoint(last_entrypoint, last_cmd).map(
             |entrypoint| {
                 let user_service_runner = format!("{USER_ENTRYPOINT_SERVICE_PATH}/run");
@@ -248,10 +249,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
                     entrypoint.as_str(),
                     user_service_runner.as_str(),
                 );
-                (
-                    Directive::new_run(user_service_builder_script),
-                    user_service_runner,
-                )
+                Directive::new_run(user_service_builder_script)
             },
         )?;
 
@@ -266,8 +264,12 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         Directive::new_run(format!("mkdir {USER_ENTRYPOINT_SERVICE_PATH}")),
         // add user service runner
         user_service_builder,
-        // give execute permissions on runner
-        Directive::new_run(format!("chmod +x {user_service_location}")),
+        // add data-plane executable
+        Directive::new_run("wget https://cage-build-assets.evervault.com/runtime/latest/data-plane -O /data-plane && chmod +x /data-plane"),
+        // add data-plane service directory
+        Directive::new_run(format!("mkdir {DATA_PLANE_SERVICE_PATH}")),
+        // add data-plane service runner
+        Directive::new_run(crate::docker::utils::write_command_to_script("exec /data-plane", format!("{DATA_PLANE_SERVICE_PATH}/run").as_str())),
         // add entrypoint which starts the runit services
         Directive::new_entrypoint(
             Mode::Exec,
@@ -306,10 +308,13 @@ RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
 RUN apk update ; apk add runit ; rm -rf /var/cache/apk/*
 RUN mkdir /etc/service/user-entrypoint
-RUN /bin/sh -c "echo -e '"'#!/bin/sh\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run"
-RUN chmod +x /etc/service/user-entrypoint/run
+RUN /bin/sh -c "echo -e '"'#!/bin/sh\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
+RUN wget https://cage-build-assets.evervault.com/runtime/latest/data-plane -O /data-plane && chmod +x /data-plane
+RUN mkdir /etc/service/data-plane
+RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec /data-plane\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
 ENTRYPOINT ["runsvdir", "/etc/service"]
 "#;
+
         let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
             expected_output_contents.as_bytes(),
         )
@@ -326,8 +331,6 @@ ENTRYPOINT ["runsvdir", "/etc/service"]
             );
         }
     }
-
-    // Commented out until self-hosted actions runner with Docker is up and running.
 
     #[tokio::test]
     async fn test_choose_output_dir() {
