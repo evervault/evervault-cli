@@ -54,6 +54,10 @@ pub struct BuildArgs {
     /// Private key used to sign the enclave image file
     #[clap(long = "private-key")]
     pub private_key: Option<String>,
+
+    /// Allow your Cage to make requests to the internet
+    #[clap(long)]
+    pub enable_egress: bool,
 }
 
 pub async fn run(build_args: BuildArgs) {
@@ -137,7 +141,8 @@ pub async fn run(build_args: BuildArgs) {
         }
     };
 
-    let processed_dockerfile = match process_dockerfile(dockerfile).await {
+    let processed_dockerfile = match process_dockerfile(dockerfile, build_args.enable_egress).await
+    {
         Ok(directives) => directives,
         Err(e) => {
             log::error!(
@@ -214,6 +219,7 @@ pub async fn run(build_args: BuildArgs) {
 
 async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     dockerfile_src: R,
+    enable_egress: bool,
 ) -> Result<Vec<Directive>, DecodeError> {
     // Decode dockerfile from file
     let instruction_set = DockerfileDecoder::decode_dockerfile_from_src(dockerfile_src).await?;
@@ -257,6 +263,14 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         log::debug!("Customer service will listen on port: {}", port);
     }
 
+    let data_plane_feature_label = if enable_egress {
+        "egress-enabled"
+    } else {
+        "egress-disabled"
+    };
+
+    let data_plane_url = format!("https://cage-build-assets.evervault.com/runtime/latest/data-plane/{data_plane_feature_label}");
+
     let injected_directives = vec![
         // install dependencies
         Directive::new_run("apk update ; apk add runit ; rm -rf /var/cache/apk/*"),
@@ -265,11 +279,16 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         // add user service runner
         user_service_builder,
         // add data-plane executable
-        Directive::new_run("wget https://cage-build-assets.evervault.com/runtime/latest/data-plane -O /data-plane && chmod +x /data-plane"),
+        Directive::new_run(format!(
+            "wget {data_plane_url} -O /data-plane && chmod +x /data-plane"
+        )),
         // add data-plane service directory
         Directive::new_run(format!("mkdir {DATA_PLANE_SERVICE_PATH}")),
         // add data-plane service runner
-        Directive::new_run(crate::docker::utils::write_command_to_script("exec /data-plane", format!("{DATA_PLANE_SERVICE_PATH}/run").as_str())),
+        Directive::new_run(crate::docker::utils::write_command_to_script(
+            "exec /data-plane",
+            format!("{DATA_PLANE_SERVICE_PATH}/run").as_str(),
+        )),
         // add entrypoint which starts the runit services
         Directive::new_entrypoint(
             Mode::Exec,
@@ -299,7 +318,7 @@ RUN touch /hello-script;\
 ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut readable_contents = sample_dockerfile_contents.as_bytes();
 
-        let processed_file = process_dockerfile(&mut readable_contents).await;
+        let processed_file = process_dockerfile(&mut readable_contents, false).await;
         assert_eq!(processed_file.is_ok(), true);
         let processed_file = processed_file.unwrap();
 
@@ -309,7 +328,7 @@ RUN touch /hello-script;\
 RUN apk update ; apk add runit ; rm -rf /var/cache/apk/*
 RUN mkdir /etc/service/user-entrypoint
 RUN /bin/sh -c "echo -e '"'#!/bin/sh\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
-RUN wget https://cage-build-assets.evervault.com/runtime/latest/data-plane -O /data-plane && chmod +x /data-plane
+RUN wget https://cage-build-assets.evervault.com/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
 RUN mkdir /etc/service/data-plane
 RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec /data-plane\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
 ENTRYPOINT ["runsvdir", "/etc/service"]
@@ -344,6 +363,7 @@ ENTRYPOINT ["runsvdir", "/etc/service"]
             context_path: ".".to_string(),
             certificate: None,
             private_key: None,
+            enable_egress: false,
         };
 
         println!(
