@@ -130,7 +130,7 @@ pub fn build_nitro_cli_image(
     let mut required_clean_up = CleanUpMode::None;
     // This directory has to exist — docker has no support for conditional COPYs.
     // If signing credentials are not given, this will be an empty directory
-    let signing_info_path = output_dir.join("sign");
+    let signing_info_path = output_dir.join("ev_sign");
     if !signing_info_path.exists() {
         if let Err(e) = std::fs::create_dir(signing_info_path.as_path()) {
             return Err(format!(
@@ -142,7 +142,7 @@ pub fn build_nitro_cli_image(
         }
     }
 
-    let cert_dest = output_dir.join("sign/cert.pem");
+    let cert_dest = output_dir.join("ev_sign/cert.pem");
     if cert_dest != signing_info.cert() {
         if let Err(e) = std::fs::copy(signing_info.cert(), cert_dest.as_path()) {
             return Err(format!(
@@ -152,7 +152,7 @@ pub fn build_nitro_cli_image(
             required_clean_up.enable_cert();
         }
     }
-    let key_dest = output_dir.join("sign/key.pem");
+    let key_dest = output_dir.join("ev_sign/key.pem");
     if key_dest != signing_info.key() {
         if let Err(e) = std::fs::copy(signing_info.key(), key_dest.as_path()) {
             return Err(format!(
