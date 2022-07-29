@@ -158,7 +158,7 @@ pub async fn run(build_args: BuildArgs) {
     if let Err(e) =
         enclave::build_nitro_cli_image(&command_config, output_path.path(), &signing_info)
     {
-        log::debug!("An error occurred while building the enclave image. {}", e);
+        log::error!("An error occurred while building the enclave image. {}", e);
         return;
     }
 
@@ -334,8 +334,8 @@ ENTRYPOINT ["runsvdir", "/etc/service"]
             json: false,
             output_dir: Some(output_dir.path().to_str().unwrap().to_string()),
             context_path: ".".to_string(),
-            certificate: None,
-            private_key: None,
+            certificate: "./cert.pem".into(),
+            private_key: "./key.pem".into(),
             enable_egress: false,
         };
 
