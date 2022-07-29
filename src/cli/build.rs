@@ -328,6 +328,11 @@ ENTRYPOINT ["runsvdir", "/etc/service"]
     async fn test_choose_output_dir() {
         let output_dir = TempDir::new().unwrap();
 
+        crate::cli::cert::create_new_cert(crate::cli::cert::NewCertArgs {
+            subject: "/CN=EV/C=IE/ST=LEI/L=DUB/O=Evervault/OU=Eng".into(),
+            output_dir: ".".into(),
+        });
+
         let build_args = BuildArgs {
             dockerfile: "./sample-user.Dockerfile".to_string(),
             verbose: false,
