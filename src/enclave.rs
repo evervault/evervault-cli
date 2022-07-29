@@ -153,6 +153,7 @@ pub fn build_nitro_cli_image(
         }
     }
     let key_dest = output_dir.join("ev_sign/key.pem");
+    // TODO: use more distinct path name to avoid conflicts
     if key_dest != signing_info.key() {
         if let Err(e) = std::fs::copy(signing_info.key(), key_dest.as_path()) {
             return Err(format!(
