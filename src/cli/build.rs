@@ -10,7 +10,7 @@ use tokio::fs::File;
 use tokio::io::AsyncRead;
 
 const EV_USER_DOCKERFILE_PATH: &str = "ev-user.Dockerfile";
-const USER_ENTRYPOINT_SERVICE_PATH: &str = "/etc/service/user-entrypoint";
+const USER_ENTRYPOINT_SERVIC&E_PATH: &str = "/etc/service/user-entrypoint";
 const DATA_PLANE_SERVICE_PATH: &str = "/etc/service/data-plane";
 
 /// Build a Cage from a Dockerfile
@@ -259,7 +259,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             },
         )?;
 
-    if let Some(port) = exposed_port {
+    if let Some(is_restricted_port) = exposed_port.map(|port| port == 443) {
         log::debug!("Customer service will listen on port: {}", port);
     }
 
@@ -270,6 +270,11 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     };
 
     let data_plane_url = format!("https://cage-build-assets.evervault.com/runtime/latest/data-plane/{data_plane_feature_label}");
+
+    let mut data_plane_run_script = "exec /data-plane".to_string();
+    if let Some(port) = exposed_port {
+        data_plane_run_script = format!("{data_plane_run_script} -p {port}");
+    }
 
     let injected_directives = vec![
         // install dependencies
@@ -286,7 +291,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         Directive::new_run(format!("mkdir {DATA_PLANE_SERVICE_PATH}")),
         // add data-plane service runner
         Directive::new_run(crate::docker::utils::write_command_to_script(
-            "exec /data-plane",
+            data_plane_run_script.as_str(),
             format!("{DATA_PLANE_SERVICE_PATH}/run").as_str(),
         )),
         // add entrypoint which starts the runit services
