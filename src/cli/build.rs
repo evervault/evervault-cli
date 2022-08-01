@@ -3,7 +3,7 @@ use crate::docker::parse::{DecodeError, Directive, DockerfileDecoder, Mode};
 use crate::docker::utils::verify_docker_is_running;
 use crate::enclave;
 use atty::Stream;
-use clap::{ArgGroup, Parser};
+use clap::Parser;
 use std::io::Write;
 use std::path::Path;
 use tokio::fs::File;
@@ -16,17 +16,6 @@ const DATA_PLANE_SERVICE_PATH: &str = "/etc/service/data-plane";
 /// Build a Cage from a Dockerfile
 #[derive(Parser, Debug)]
 #[clap(name = "build", about)]
-// force cert and private key to be mutually dependent
-#[clap(group(
-    ArgGroup::new("cert-key")
-        .arg("certificate")
-        .requires("private-key")
-))]
-#[clap(group(
-    ArgGroup::new("key-cert")
-        .arg("private-key")
-        .requires("certificate")
-))]
 pub struct BuildArgs {
     /// The dockerfile to convert into a cage
     #[clap(short = 'f', long = "file", default_value = "Dockerfile")]
@@ -49,11 +38,11 @@ pub struct BuildArgs {
 
     /// Certificate used to sign the enclave image file
     #[clap(long = "signing-cert")]
-    pub certificate: Option<String>,
+    pub certificate: String,
 
     /// Private key used to sign the enclave image file
     #[clap(long = "private-key")]
-    pub private_key: Option<String>,
+    pub private_key: String,
 
     /// Allow your Cage to make requests to the internet
     #[clap(long)]
@@ -79,33 +68,20 @@ pub async fn run(build_args: BuildArgs) {
         }
     };
 
-    let cert_path = build_args
-        .certificate
-        .as_ref()
-        .map(std::path::Path::new)
-        .map(|cert_path| cert_path.canonicalize())
-        .transpose();
+    let cert_path = std::path::Path::new(&build_args.certificate).canonicalize();
 
-    let key_path = build_args
-        .private_key
-        .as_ref()
-        .map(std::path::Path::new)
-        .map(|key_path| key_path.canonicalize())
-        .transpose();
+    let key_path = std::path::Path::new(&build_args.private_key).canonicalize();
 
     let signing_info = match (cert_path, key_path) {
-        (Ok(Some(cert_path)), Ok(Some(key_path))) => {
-            Some(enclave::EnclaveSigningInfo::new(cert_path, key_path))
-        }
+        (Ok(cert_path), Ok(key_path)) => enclave::EnclaveSigningInfo::new(cert_path, key_path),
         (Err(_), _) => {
-            log::error!("Failed to find cert at {}", build_args.certificate.unwrap());
+            log::error!("Failed to find cert at {}", build_args.certificate);
             return;
         }
         (_, Err(_)) => {
-            log::error!("Failed to find key at {}", build_args.private_key.unwrap());
+            log::error!("Failed to find key at {}", build_args.private_key);
             return;
         }
-        _ => None,
     };
 
     match verify_docker_is_running() {
@@ -180,27 +156,24 @@ pub async fn run(build_args: BuildArgs) {
     log::debug!("Building Nitro CLI image…");
 
     if let Err(e) =
-        enclave::build_nitro_cli_image(&command_config, output_path.path(), signing_info.as_ref())
+        enclave::build_nitro_cli_image(&command_config, output_path.path(), &signing_info)
     {
-        log::debug!("An error occurred while building the enclave image. {}", e);
+        log::error!("An error occurred while building the enclave image. {}", e);
         return;
     }
 
     log::info!("Converting docker image to EIF…");
-    let built_enclave = match enclave::run_conversion_to_enclave(
-        &command_config,
-        output_path.path(),
-        signing_info.is_some(),
-    ) {
-        Ok(built_enclave) => built_enclave,
-        Err(e) => {
-            log::error!(
-                "An error occurred while converting your docker image to an enclave. {:?}",
-                e
-            );
-            return;
-        }
-    };
+    let built_enclave =
+        match enclave::run_conversion_to_enclave(&command_config, output_path.path()) {
+            Ok(built_enclave) => built_enclave,
+            Err(e) => {
+                log::error!(
+                    "An error occurred while converting your docker image to an enclave. {:?}",
+                    e
+                );
+                return;
+            }
+        };
 
     // Write enclave measures to stdout
     let success_msg = serde_json::json!({
@@ -355,14 +328,19 @@ ENTRYPOINT ["runsvdir", "/etc/service"]
     async fn test_choose_output_dir() {
         let output_dir = TempDir::new().unwrap();
 
+        crate::cli::cert::create_new_cert(crate::cli::cert::NewCertArgs {
+            subject: "/CN=EV/C=IE/ST=LEI/L=DUB/O=Evervault/OU=Eng".into(),
+            output_dir: ".".into(),
+        });
+
         let build_args = BuildArgs {
             dockerfile: "./sample-user.Dockerfile".to_string(),
             verbose: false,
             json: false,
             output_dir: Some(output_dir.path().to_str().unwrap().to_string()),
             context_path: ".".to_string(),
-            certificate: None,
-            private_key: None,
+            certificate: "./cert.pem".into(),
+            private_key: "./key.pem".into(),
             enable_egress: false,
         };
 
