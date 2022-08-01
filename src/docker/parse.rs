@@ -365,6 +365,8 @@ pub enum DecodeError {
     IncompleteInstruction,
     #[error("Failed to parse the exposed port")]
     InvalidExposedPort(ParseIntError),
+    #[error("Restricted port exposed. Cannot forward traffic to :{0}, address is already in use.")]
+    RestrictedPortExposed(u16),
 }
 
 impl std::convert::TryFrom<u8> for DecoderState {

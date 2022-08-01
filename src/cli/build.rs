@@ -232,8 +232,8 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             },
         )?;
 
-    if let Some(port) = exposed_port {
-        log::debug!("Customer service will listen on port: {}", port);
+    if let Some(true) = exposed_port.map(|port| port == 443) {
+        return Err(DecodeError::RestrictedPortExposed(exposed_port.unwrap()));
     }
 
     let data_plane_feature_label = if enable_egress {
@@ -243,6 +243,11 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     };
 
     let data_plane_url = format!("https://cage-build-assets.evervault.com/runtime/latest/data-plane/{data_plane_feature_label}");
+
+    let mut data_plane_run_script = "exec /data-plane".to_string();
+    if let Some(port) = exposed_port {
+        data_plane_run_script = format!("{data_plane_run_script} -p {port}");
+    }
 
     let injected_directives = vec![
         // install dependencies
@@ -259,7 +264,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         Directive::new_run(format!("mkdir {DATA_PLANE_SERVICE_PATH}")),
         // add data-plane service runner
         Directive::new_run(crate::docker::utils::write_command_to_script(
-            "exec /data-plane",
+            data_plane_run_script.as_str(),
             format!("{DATA_PLANE_SERVICE_PATH}/run").as_str(),
         )),
         // add entrypoint which starts the runit services
@@ -304,6 +309,68 @@ RUN /bin/sh -c "echo -e '"'#!/bin/sh\nsh /hello-script\n'"' > /etc/service/user-
 RUN wget https://cage-build-assets.evervault.com/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
 RUN mkdir /etc/service/data-plane
 RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec /data-plane\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
+ENTRYPOINT ["runsvdir", "/etc/service"]
+"#;
+
+        let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
+            expected_output_contents.as_bytes(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(expected_directives.len(), processed_file.len());
+        for (expected_directive, processed_directive) in
+            zip(expected_directives.iter(), processed_file.iter())
+        {
+            assert_eq!(
+                expected_directive.to_string(),
+                processed_directive.to_string()
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_process_dockerfile_with_restricted_reserved_port() {
+        let sample_dockerfile_contents = r#"FROM alpine
+
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+EXPOSE 443
+ENTRYPOINT ["sh", "/hello-script"]"#;
+        let mut readable_contents = sample_dockerfile_contents.as_bytes();
+
+        let processed_file = process_dockerfile(&mut readable_contents, false).await;
+        assert_eq!(processed_file.is_err(), true);
+
+        assert!(matches!(
+            processed_file,
+            Err(super::DecodeError::RestrictedPortExposed(443))
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_process_dockerfile_with_valid_reserved_port() {
+        let sample_dockerfile_contents = r#"FROM alpine
+
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+EXPOSE 3443
+ENTRYPOINT ["sh", "/hello-script"]"#;
+        let mut readable_contents = sample_dockerfile_contents.as_bytes();
+
+        let processed_file = process_dockerfile(&mut readable_contents, false).await;
+        assert_eq!(processed_file.is_ok(), true);
+        let processed_file = processed_file.unwrap();
+
+        let expected_output_contents = r#"FROM alpine
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+RUN apk update ; apk add runit ; rm -rf /var/cache/apk/*
+RUN mkdir /etc/service/user-entrypoint
+RUN /bin/sh -c "echo -e '"'#!/bin/sh\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
+RUN wget https://cage-build-assets.evervault.com/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
+RUN mkdir /etc/service/data-plane
+RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec /data-plane -p 3443\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
 ENTRYPOINT ["runsvdir", "/etc/service"]
 "#;
 
