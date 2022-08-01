@@ -10,7 +10,7 @@ use tokio::fs::File;
 use tokio::io::AsyncRead;
 
 const EV_USER_DOCKERFILE_PATH: &str = "ev-user.Dockerfile";
-const USER_ENTRYPOINT_SERVIC&E_PATH: &str = "/etc/service/user-entrypoint";
+const USER_ENTRYPOINT_SERVICE_PATH: &str = "/etc/service/user-entrypoint";
 const DATA_PLANE_SERVICE_PATH: &str = "/etc/service/data-plane";
 
 /// Build a Cage from a Dockerfile
