@@ -259,8 +259,8 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             },
         )?;
 
-    if let Some(is_restricted_port) = exposed_port.map(|port| port == 443) {
-        log::debug!("Customer service will listen on port: {}", port);
+    if let Some(true) = exposed_port.map(|port| port == 443) {
+        return Err(DecodeError::RestrictedPortExposed(exposed_port.unwrap()));
     }
 
     let data_plane_feature_label = if enable_egress {
