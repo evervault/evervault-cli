@@ -242,12 +242,21 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         "egress-disabled"
     };
 
+    #[cfg(not(debug_assertions))]
     let data_plane_url = format!("https://cage-build-assets.evervault.com/runtime/latest/data-plane/{data_plane_feature_label}");
+    #[cfg(debug_assertions)]
+    let data_plane_url = format!("https://cage-build-assets.evervault.io/runtime/latest/data-plane/{data_plane_feature_label}");
 
     let mut data_plane_run_script = "exec /data-plane".to_string();
     if let Some(port) = exposed_port {
         data_plane_run_script = format!("{data_plane_run_script} -p {port}");
     }
+
+    let bootstrap_script_content = if enable_egress {
+        "ifconfig lo 127.0.0.1\\nexec runsvdir /etc/service"
+    } else {
+        "exec runsvdir /etc/service"
+    };
 
     let injected_directives = vec![
         // install dependencies
@@ -267,11 +276,13 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             data_plane_run_script.as_str(),
             format!("{DATA_PLANE_SERVICE_PATH}/run").as_str(),
         )),
+        // Add bootstrap script to configure enclave before starting services
+        Directive::new_run(crate::docker::utils::write_command_to_script(
+            bootstrap_script_content,
+            "/bootstrap",
+        )),
         // add entrypoint which starts the runit services
-        Directive::new_entrypoint(
-            Mode::Exec,
-            vec!["runsvdir".to_string(), "/etc/service".to_string()],
-        ),
+        Directive::new_entrypoint(Mode::Exec, vec!["/bootstrap".to_string()]),
     ];
 
     // add custom directives to end of dockerfile
