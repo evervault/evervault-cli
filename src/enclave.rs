@@ -191,12 +191,18 @@ pub fn build_nitro_cli_image(
     };
 
     // clean up copied cert and key path
-    let _ = match required_clean_up {
-        CleanUpMode::Directory => std::fs::remove_dir(signing_info_path),
-        CleanUpMode::AllContents => {
+    let remove_contents =
+        |cert_dest: &std::path::Path, key_dest: &std::path::Path| -> Result<(), std::io::Error> {
             let _ = std::fs::remove_file(cert_dest);
             std::fs::remove_file(key_dest)
+        };
+
+    let _ = match required_clean_up {
+        CleanUpMode::Directory => {
+            let _ = remove_contents(&cert_dest, &key_dest);
+            std::fs::remove_dir(signing_info_path)
         }
+        CleanUpMode::AllContents => remove_contents(&cert_dest, &key_dest),
         CleanUpMode::Cert => std::fs::remove_file(cert_dest),
         CleanUpMode::Key => std::fs::remove_file(key_dest),
         CleanUpMode::None => return build_result,
