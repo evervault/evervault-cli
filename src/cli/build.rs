@@ -317,10 +317,11 @@ RUN touch /hello-script;\
 RUN apk update ; apk add runit ; rm -rf /var/cache/apk/*
 RUN mkdir /etc/service/user-entrypoint
 RUN /bin/sh -c "echo -e '"'#!/bin/sh\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
-RUN wget https://cage-build-assets.evervault.com/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
+RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
 RUN mkdir /etc/service/data-plane
 RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec /data-plane\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
-ENTRYPOINT ["runsvdir", "/etc/service"]
+RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
+ENTRYPOINT ["/bootstrap"]
 "#;
 
         let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
@@ -379,10 +380,11 @@ RUN touch /hello-script;\
 RUN apk update ; apk add runit ; rm -rf /var/cache/apk/*
 RUN mkdir /etc/service/user-entrypoint
 RUN /bin/sh -c "echo -e '"'#!/bin/sh\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
-RUN wget https://cage-build-assets.evervault.com/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
+RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
 RUN mkdir /etc/service/data-plane
 RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec /data-plane -p 3443\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
-ENTRYPOINT ["runsvdir", "/etc/service"]
+RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
+ENTRYPOINT ["/bootstrap"]
 "#;
 
         let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
