@@ -697,8 +697,8 @@ impl Decoder for DockerfileDecoder {
 mod tests {
     use super::*;
 
-    fn assert_directive_has_been_parsed(
-        parsed_directive: Result<Option<Directive>, DecodeError>,
+    fn assert_directive_has_been_parsed<E: std::error::Error>(
+        parsed_directive: Result<Option<Directive>, E>,
     ) -> Directive {
         assert_eq!(parsed_directive.is_ok(), true);
         let directive = parsed_directive.unwrap();
@@ -706,8 +706,8 @@ mod tests {
         directive.unwrap()
     }
 
-    fn assert_directive_has_not_been_parsed(
-        parsed_directive: Result<Option<Directive>, DecodeError>,
+    fn assert_directive_has_not_been_parsed<E: std::error::Error>(
+        parsed_directive: Result<Option<Directive>, E>,
     ) {
         assert_eq!(parsed_directive.is_ok(), true);
         let directive = parsed_directive.unwrap();
