@@ -95,7 +95,7 @@ pub enum CageConfigError {
     MissingConfigFile(String),
     #[error("Failed to read config file — {0:?}")]
     FailedToAccessConfig(#[from] std::io::Error),
-    #[error("Failed to parse Cage config — {0:?}")]
+    #[error("Failed to parse Cage config")]
     FailedToParseCageConfig(#[from] toml::de::Error),
     #[error("{0}. Signing credentials can be generated using the cert new command.")]
     MissingSigningInfo(#[from] SigningInfoError),
