@@ -31,11 +31,11 @@ pub struct InitArgs {
     pub dockerfile: Option<String>,
 
     /// Path to the signing cert to use for the Cage
-    #[clap(long = "certificate")]
+    #[clap(long = "signing-cert")]
     pub cert_path: Option<String>,
 
     /// Path to the signing key to use for the Cage
-    #[clap(long = "key")]
+    #[clap(long = "private-key")]
     pub key_path: Option<String>,
 }
 

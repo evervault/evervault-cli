@@ -365,8 +365,6 @@ pub enum DecodeError {
     IncompleteInstruction,
     #[error("Failed to parse the exposed port")]
     InvalidExposedPort(ParseIntError),
-    #[error("Restricted port exposed. Cannot forward traffic to :{0}, address is already in use.")]
-    RestrictedPortExposed(u16),
 }
 
 impl std::convert::TryFrom<u8> for DecoderState {
@@ -601,7 +599,7 @@ impl DockerfileDecoder {
 
     pub async fn decode_dockerfile_from_src<R: AsyncRead + std::marker::Unpin>(
         dockerfile_src: R,
-    ) -> Result<Vec<Directive>, DecodeError> {
+    ) -> Result<Vec<Directive>, super::error::DockerError> {
         let mut dockerfile_reader = FramedRead::new(dockerfile_src, Self::new());
 
         let mut directives = Vec::new();
@@ -616,7 +614,7 @@ impl DockerfileDecoder {
 
 impl Decoder for DockerfileDecoder {
     type Item = Directive;
-    type Error = DecodeError;
+    type Error = super::error::DockerError;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         let mut decode_state = if self.current_state.is_none() {
@@ -690,7 +688,7 @@ impl Decoder for DockerfileDecoder {
     fn decode_eof(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         match self.decode(buf)? {
             Some(directive) => Ok(Some(directive)),
-            None => self.flush(),
+            None => Ok(self.flush()?),
         }
     }
 }
