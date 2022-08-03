@@ -125,6 +125,7 @@ dependencies = [
  "tokio",
  "tokio-test",
  "tokio-util",
+ "toml",
 ]
 
 [[package]]
