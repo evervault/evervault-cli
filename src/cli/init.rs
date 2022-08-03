@@ -1,4 +1,4 @@
-use crate::config::{CageConfig, EgressSettings};
+use crate::config::{CageConfig, EgressSettings, SigningInfo};
 use clap::{ArgGroup, Parser};
 
 /// Initialize a Cage.toml in the current directory
@@ -25,6 +25,18 @@ pub struct InitArgs {
     /// Destinations to allow egress traffic to, comma separated e.g. api.evervault.com,httpbin.org
     #[clap(long = "destinations")]
     pub destinations: Option<String>,
+
+    /// Dockerfile to build the Cage
+    #[clap(short = 'f', long = "file")]
+    pub dockerfile: Option<String>,
+
+    /// Path to the signing cert to use for the Cage
+    #[clap(long = "certificate")]
+    pub cert_path: Option<String>,
+
+    /// Path to the signing key to use for the Cage
+    #[clap(long = "key")]
+    pub key_path: Option<String>,
 }
 
 impl std::convert::Into<CageConfig> for InitArgs {
@@ -38,6 +50,11 @@ impl std::convert::Into<CageConfig> for InitArgs {
                     .destinations
                     .map(|dest| dest.split(",").map(String::from).collect::<Vec<String>>()),
             },
+            dockerfile: self.dockerfile,
+            signing: Some(SigningInfo {
+                cert: self.cert_path,
+                key: self.key_path,
+            }),
             attestation: None,
         }
     }
