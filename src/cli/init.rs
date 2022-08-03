@@ -41,6 +41,15 @@ pub struct InitArgs {
 
 impl std::convert::Into<CageConfig> for InitArgs {
     fn into(self: Self) -> CageConfig {
+        let signing_info = if self.cert_path.is_none() && self.key_path.is_none() {
+            None
+        } else {
+            Some(SigningInfo {
+                cert: self.cert_path,
+                key: self.key_path,
+            })
+        };
+
         CageConfig {
             name: self.cage_name,
             debug: self.debug,
@@ -51,10 +60,7 @@ impl std::convert::Into<CageConfig> for InitArgs {
                     .map(|dest| dest.split(",").map(String::from).collect::<Vec<String>>()),
             },
             dockerfile: self.dockerfile,
-            signing: Some(SigningInfo {
-                cert: self.cert_path,
-                key: self.key_path,
-            }),
+            signing: signing_info,
             attestation: None,
         }
     }
