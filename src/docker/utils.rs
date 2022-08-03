@@ -18,7 +18,7 @@ use itertools::join;
 pub fn create_combined_docker_entrypoint(
     entrypoint: Option<Directive>,
     cmd: Option<Directive>,
-) -> Result<String, DecodeError> {
+) -> Result<String, super::error::DockerError> {
     let format_tokens = |tokens: &[String]| -> String { join(tokens, " ") };
     let entrypoint = match (entrypoint.as_ref(), cmd.as_ref()) {
         (Some(entrypoint), None) => format_tokens(entrypoint.tokens().unwrap()),
@@ -34,7 +34,7 @@ pub fn create_combined_docker_entrypoint(
                 )
             }
         }
-        (None, None) => return Err(DecodeError::NoEntrypoint),
+        (None, None) => return Err(DecodeError::NoEntrypoint.into()),
     };
     Ok(entrypoint)
 }
@@ -53,14 +53,18 @@ pub fn write_command_to_script(command: &str, script_path: &str) -> String {
     .join("")
 }
 
-pub fn verify_docker_is_running() -> Result<bool, std::io::Error> {
+pub fn verify_docker_is_running() -> Result<(), super::error::DockerError> {
     let exit_status = std::process::Command::new("docker")
         .args(["info"])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status()?;
 
-    Ok(exit_status.success())
+    if !exit_status.success() {
+        Err(super::error::DockerError::DaemonNotRunning)
+    } else {
+        Ok(())
+    }
 }
 
 #[cfg(test)]
