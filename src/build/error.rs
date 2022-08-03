@@ -12,7 +12,7 @@ pub enum BuildError {
     #[error("Invalid signing info provided. {0}")]
     InvalidSigningInfo(#[from] SigningInfoError),
     #[error("{0}")]
-    Docker(#[from] DockerError),
+    DockerError(#[from] DockerError),
     #[error(
         "Failed to access dockerfile at {0}. You can specify the dockerfile using the -f flag."
     )]
