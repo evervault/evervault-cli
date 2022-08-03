@@ -185,7 +185,10 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
 
 #[cfg(test)]
 mod test {
-    use super::{build_enclave_image_file, process_dockerfile, BuildArgs};
+    use super::{build_enclave_image_file, process_dockerfile, BuildError};
+    use crate::config::EgressSettings;
+    use crate::config::ValidatedCageBuildConfig;
+    use crate::config::ValidatedSigningInfo;
     use crate::docker;
     use crate::enclave;
     use itertools::zip;
@@ -250,7 +253,9 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
 
         assert!(matches!(
             processed_file,
-            Err(super::DecodeError::RestrictedPortExposed(443))
+            Err(BuildError::DockerError(
+                crate::docker::error::DockerError::RestrictedPortExposed(443)
+            ))
         ));
     }
 
@@ -307,15 +312,18 @@ ENTRYPOINT ["/bootstrap"]
             output_dir: ".".into(),
         });
 
-        let build_args = BuildArgs {
+        let build_args = ValidatedCageBuildConfig {
+            debug: false,
+            egress: EgressSettings {
+                enabled: false,
+                destinations: None,
+            },
             dockerfile: "./sample-user.Dockerfile".to_string(),
-            verbose: false,
-            json: false,
-            output_dir: Some(output_dir.path().to_str().unwrap().to_string()),
-            context_path: ".".to_string(),
-            certificate: "./cert.pem".into(),
-            private_key: "./key.pem".into(),
-            enable_egress: false,
+            signing: ValidatedSigningInfo {
+                cert: "./cert.pem".into(),
+                key: "./key.pem".into(),
+            },
+            attestation: None,
         };
 
         println!(
@@ -323,7 +331,13 @@ ENTRYPOINT ["/bootstrap"]
             output_dir.path().to_str().unwrap().to_string()
         );
 
-        build_enclave_image_file(build_args).await;
+        let _ = build_enclave_image_file(
+            build_args,
+            ".",
+            Some(output_dir.path().to_str().unwrap()),
+            false,
+        )
+        .await;
 
         let paths = std::fs::read_dir(output_dir.path().to_str().unwrap().to_string()).unwrap();
 
