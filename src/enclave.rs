@@ -250,6 +250,44 @@ impl BuiltEnclave {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct DescribeEif {
+    #[serde(flatten)]
+    measurements: EnclaveBuildOutput,
+    is_signed: bool,
+    signing_certificate: EnclaveSigningCertificate,
+    signature_check: bool,
+    metadata: EnclaveMetadata,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct EnclaveSigningCertificate {
+    issuer_name: EnclaveSigningCertificateIssuer,
+    algorithm: String,
+    not_before: String,
+    not_after: String,
+    signature: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnclaveSigningCertificateIssuer {
+    common_name: String,
+    country_name: String,
+    locality_name: String,
+    organization_name: String,
+    organizational_unit_name: String,
+    state_or_province_name: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct EnclaveMetadata {
+    build_time: String,
+}
+
 pub fn run_conversion_to_enclave(
     output_dir: &std::path::Path,
     verbose: bool,
@@ -291,7 +329,7 @@ pub fn run_conversion_to_enclave(
     }
 }
 
-pub fn describe_eif(eif_path: &std::path::Path) -> Result<EnclaveBuildOutput, String> {
+pub fn describe_eif(eif_path: &std::path::Path) -> Result<DescribeEif, String> {
     let eif_directory = eif_path.parent().unwrap();
     let eif_filename = eif_path.file_name().unwrap().to_string_lossy();
     let mounted_volume = format!("{}:{}", eif_directory.display(), IN_CONTAINER_VOLUME_DIR);
@@ -314,9 +352,7 @@ pub fn describe_eif(eif_path: &std::path::Path) -> Result<EnclaveBuildOutput, St
     .expect("Failed to run Nitro CLI image");
 
     if run_conversion_status.status.success() {
-        let output = run_conversion_status.stdout.as_slice();
-        println!("{}", std::str::from_utf8(output).unwrap());
-        let build_output: EnclaveBuildOutput =
+        let build_output: DescribeEif =
             serde_json::from_slice(run_conversion_status.stdout.as_slice()).unwrap();
         Ok(build_output)
     } else {

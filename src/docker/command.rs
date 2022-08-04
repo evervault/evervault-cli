@@ -85,13 +85,13 @@ pub fn run_image(
 
     let run_args = vec![run_image_args, command_line_args].concat();
 
-    let command_status = Command::new("docker")
+    let command_output = Command::new("docker")
         .args(run_args)
-        .stdout(command_config.output_setting())
+        .stdout(Stdio::piped())
         .stderr(command_config.output_setting())
         .output()?;
 
-    Ok(command_status)
+    Ok(command_output)
 }
 
 pub fn docker_info() -> Result<ExitStatus, CommandError> {
