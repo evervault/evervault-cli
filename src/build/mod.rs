@@ -38,7 +38,9 @@ pub async fn build_enclave_image_file(
 
     let signing_info = enclave::EnclaveSigningInfo::try_from(cage_config.signing_info())?;
 
-    verify_docker_is_running()?;
+    if !verify_docker_is_running()? {
+        return Err(DockerError::DaemonNotRunning.into());
+    }
 
     // read dockerfile
     let dockerfile_path = Path::new(cage_config.dockerfile());
@@ -69,18 +71,17 @@ pub async fn build_enclave_image_file(
         ev_user_dockerfile_path.display()
     );
 
-    let command_config = enclave::CommandConfig::new(verbose);
     log::info!("Building docker image…");
-    enclave::build_user_image(&ev_user_dockerfile_path, &context_path, &command_config)
+    enclave::build_user_image(&ev_user_dockerfile_path, &context_path, verbose)
         .map_err(|e| BuildError::DockerBuildError(e))?;
 
     log::debug!("Building Nitro CLI image…");
 
-    enclave::build_nitro_cli_image(&command_config, output_path.path(), &signing_info)
+    enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose)
         .map_err(|e| BuildError::DockerBuildError(e))?;
 
     log::info!("Converting docker image to EIF…");
-    enclave::run_conversion_to_enclave(&command_config, output_path.path())
+    enclave::run_conversion_to_enclave(output_path.path(), verbose)
         .map(|built_enc| (built_enc, output_path))
         .map_err(|e| BuildError::EnclaveConversionError(e))
 }
