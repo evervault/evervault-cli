@@ -1,6 +1,10 @@
+use crate::api;
+use crate::api::{client::ApiClient, AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::config::{CageConfig, ValidatedCageBuildConfig};
+use atty::Stream;
 use clap::Parser;
+use std::io::Write;
 
 /// Deploy a Cage from a toml file.
 #[derive(Debug, Parser)]
@@ -25,6 +29,14 @@ pub struct DeployArgs {
     /// Private key used to sign the enclave image file
     #[clap(long = "private-key")]
     pub private_key: Option<String>,
+
+    /// Write latest attestation information to cage.toml config file
+    #[clap(short = 'w', long = "write")]
+    pub write: bool,
+
+    /// API Key
+    #[clap(long = "api-key")]
+    pub api_key: String,
 }
 
 pub async fn run(deploy_args: DeployArgs) {
@@ -37,7 +49,7 @@ pub async fn run(deploy_args: DeployArgs) {
     };
 
     merge_config_with_args(&deploy_args, &mut cage_config);
-    let validated_config: ValidatedCageBuildConfig = match cage_config.try_into() {
+    let validated_config: ValidatedCageBuildConfig = match cage_config.clone().try_into() {
         Ok(validated) => validated,
         Err(e) => {
             log::error!("Failed to validate cage config — {}", e);
@@ -45,7 +57,7 @@ pub async fn run(deploy_args: DeployArgs) {
         }
     };
 
-    let _built_enclave =
+    let (built_enclave, output_path) =
         match build_enclave_image_file(validated_config, &deploy_args.context_path, None, false)
             .await
         {
@@ -56,7 +68,82 @@ pub async fn run(deploy_args: DeployArgs) {
             }
         };
 
-    // TODO: implement deployment logic
+    if deploy_args.write {
+        crate::common::update_cage_config_with_eif_measurements(
+            &mut cage_config,
+            &deploy_args.config,
+            built_enclave.measurements(),
+        );
+    }
+
+    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(deploy_args.api_key.clone()));
+
+    let zip_content = match create_zip_archive_for_eif(output_path.path()) {
+        Ok(zip_content) => zip_content,
+        Err(zip_err) => {
+            log::error!("Error creating zip — {:?}", zip_err);
+            return;
+        }
+    };
+
+    let deployment_intent = match cage_api
+        .create_cage_deployment_intent(
+            cage_config.name(),
+            built_enclave.measurements().pcrs().into(),
+        )
+        .await
+    {
+        Ok(deployment_intent) => deployment_intent,
+        Err(e) => {
+            log::error!("Failed to create Cage deployment intent — {:?}", e);
+            return;
+        }
+    };
+
+    let s3_upload_url = deployment_intent.signed_url();
+    let reqwest_client = api::Client::builder().build().unwrap();
+
+    let s3_response = match reqwest_client
+        .put(s3_upload_url)
+        .header("Content-Type", "application/zip")
+        .body(zip_content)
+        .send()
+        .await
+    {
+        Ok(response) => response,
+        Err(upload_err) => {
+            log::error!("An error occurred while uploading to S3 — {:?}", upload_err);
+            return;
+        }
+    };
+
+    let success_msg = if s3_response.status().is_success() {
+        serde_json::json!({
+            "status": "success",
+            "message": "Cage deployment initiated",
+            "deploymentInfo": {
+                "cageUuid": deployment_intent.cage_uuid(),
+                "deploymentUuid": deployment_intent.deployment_uuid(),
+                "cageVersion": deployment_intent.version()
+            }
+        })
+    } else {
+        serde_json::json!({
+            "status": "failed",
+            "message": "Failed to upload your Cage zip",
+            "error": {
+                "status": s3_response.status().as_u16(),
+                "message": s3_response.text().await.expect("Failed to serialize error message")
+            }
+        })
+    };
+
+    if atty::is(Stream::Stdout) {
+        // nicely format the JSON when printing to a TTY
+        println!("{}", serde_json::to_string_pretty(&success_msg).unwrap());
+    } else {
+        println!("{}", serde_json::to_string(&success_msg).unwrap());
+    }
 }
 
 fn merge_config_with_args(args: &DeployArgs, config: &mut CageConfig) {
@@ -71,4 +158,37 @@ fn merge_config_with_args(args: &DeployArgs, config: &mut CageConfig) {
     if args.private_key.is_some() && config.key().is_none() {
         config.set_key(args.private_key.clone().unwrap());
     }
+}
+
+fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::ZipResult<Vec<u8>> {
+    let zip_path = output_path.join("enclave.zip");
+    let zip_file = if !zip_path.exists() {
+        std::fs::File::create(&zip_path)?
+    } else {
+        std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&zip_path)?
+    };
+
+    let mut zip = zip::ZipWriter::new(zip_file);
+
+    let zip_opts =
+        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
+
+    let eif_path = output_path.join("enclave.eif");
+    zip.start_file("enclave.eif", zip_opts)?;
+    let eif = std::fs::read(eif_path)?;
+    zip.write(eif.as_slice())?;
+
+    let _ = zip.finish()?;
+    let zip_content = std::fs::read(&zip_path)?;
+    if let Err(e) = std::fs::remove_file(zip_path) {
+        log::error!(
+            "An error occurred while trying to delete the enclave zip — {:?}",
+            e
+        );
+    }
+
+    Ok(zip_content)
 }
