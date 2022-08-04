@@ -6,7 +6,8 @@ use std::path::PathBuf;
 
 const IN_CONTAINER_VOLUME_DIR: &str = "/output";
 const EV_USER_IMAGE_NAME: &str = "ev-user-image";
-const NITRO_CLI_IMAGE_NAME: &str = "nitro-cli-image";
+const NITRO_CLI_BUILDER_IMAGE_NAME: &str = "nitro-cli-builder-image";
+const NITRO_CLI_GENERIC_IMAGE_NAME: &str = "nitro-cli-generic-image";
 pub const NITRO_CLI_IMAGE_FILENAME: &str = "nitro-cli-image.Dockerfile";
 pub const ENCLAVE_FILENAME: &str = "enclave.eif";
 
@@ -160,7 +161,11 @@ pub fn build_nitro_cli_image(
 
     let build_image_status = command::build_image(
         nitro_cli_dockerfile_path.as_path(),
-        NITRO_CLI_IMAGE_NAME,
+        if signing_info.is_some() {
+            NITRO_CLI_BUILDER_IMAGE_NAME
+        } else {
+            NITRO_CLI_GENERIC_IMAGE_NAME
+        },
         vec![output_dir.as_ref()],
         verbose,
     )
@@ -307,7 +312,7 @@ pub fn run_conversion_to_enclave(
     ];
 
     let run_conversion_status = command::run_image(
-        NITRO_CLI_IMAGE_NAME,
+        NITRO_CLI_BUILDER_IMAGE_NAME,
         vec![
             "/var/run/docker.sock:/var/run/docker.sock",
             mounted_volume.as_str(),
@@ -341,7 +346,7 @@ pub fn describe_eif(eif_path: &std::path::Path) -> Result<DescribeEif, String> {
     ];
 
     let run_conversion_status = command::run_image(
-        NITRO_CLI_IMAGE_NAME,
+        NITRO_CLI_GENERIC_IMAGE_NAME,
         vec![
             "/var/run/docker.sock:/var/run/docker.sock",
             mounted_volume.as_str(),
