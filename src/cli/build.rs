@@ -1,6 +1,5 @@
 use crate::build::build_enclave_image_file;
 use crate::config::CageConfig;
-use atty::Stream;
 use clap::Parser;
 
 /// Build a Cage from a Dockerfile
@@ -93,12 +92,7 @@ pub async fn run(build_args: BuildArgs) {
         "enclaveMeasurements": built_enclave.measurements()
     });
 
-    if atty::is(Stream::Stdout) {
-        // nicely format the JSON when printing to a TTY
-        println!("{}", serde_json::to_string_pretty(&success_msg).unwrap());
-    } else {
-        println!("{}", serde_json::to_string(&success_msg).unwrap());
-    }
+    println!("{}", serde_json::to_string_pretty(&success_msg).unwrap());
 }
 
 fn merge_config_with_args(args: &BuildArgs, config: &mut CageConfig) {
