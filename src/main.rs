@@ -1,5 +1,5 @@
 use atty::Stream;
-use cage_cli::cli::{build, cert, deploy, init, Command};
+use cage_cli::cli::{build, cert, deploy, describe, init, Command};
 use clap::{AppSettings, Parser};
 use env_logger::fmt::Formatter;
 use env_logger::{Builder, Env};
@@ -43,6 +43,7 @@ async fn main() {
         Command::Build(build_args) => build::run(build_args).await,
         Command::Cert(cert_args) => cert::run(cert_args),
         Command::Deploy(deploy_args) => deploy::run(deploy_args).await,
+        Command::Describe(describe_args) => describe::run(describe_args).await,
         Command::Init(init_args) => init::run(init_args),
     }
 }
