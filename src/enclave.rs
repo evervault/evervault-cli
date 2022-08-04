@@ -204,6 +204,19 @@ pub fn build_nitro_cli_image(
 pub struct EIFMeasurements {
     #[serde(rename = "HashAlgorithm")]
     hash_algorithm: String,
+    #[serde(flatten)] // serialize as though these are attribtues on this struct
+    pcrs: PCRs,
+}
+
+impl EIFMeasurements {
+    pub fn pcrs(&self) -> &PCRs {
+        &self.pcrs
+    }
+}
+
+// Isolated PCRs from remainder of the measures to use in API requests
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PCRs {
     #[serde(rename = "PCR0")]
     pcr0: String,
     #[serde(rename = "PCR1")]
@@ -214,6 +227,7 @@ pub struct EIFMeasurements {
     pcr8: Option<String>,
 }
 
+// Struct for deserializing the output from the nitro cli
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct EnclaveBuildOutput {

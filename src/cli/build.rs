@@ -38,6 +38,10 @@ pub struct BuildArgs {
     /// Path to directory where the processed docker image and enclave will be saved
     #[clap(short = 'o', long = "output")]
     pub output_dir: Option<String>,
+
+    /// Write latest attestation information to cage.toml config file
+    #[clap(short = 'w', long = "write")]
+    pub write: bool,
 }
 
 pub async fn run(build_args: BuildArgs) {
@@ -51,7 +55,7 @@ pub async fn run(build_args: BuildArgs) {
 
     merge_config_with_args(&build_args, &mut cage_config);
 
-    let validated_config = match cage_config.try_into() {
+    let validated_config = match cage_config.clone().try_into() {
         Ok(config) => config,
         Err(e) => {
             log::error!("{}", e);
@@ -67,12 +71,20 @@ pub async fn run(build_args: BuildArgs) {
     )
     .await
     {
-        Ok(built_enclave) => built_enclave,
+        Ok((built_enclave, _)) => built_enclave,
         Err(e) => {
             log::error!("An error occurred while building your enclave — {0:?}", e);
             return;
         }
     };
+
+    if build_args.write {
+        crate::common::update_cage_config_with_eif_measurements(
+            &mut cage_config,
+            &build_args.config,
+            built_enclave.measurements(),
+        );
+    }
 
     // Write enclave measures to stdout
     let success_msg = serde_json::json!({
