@@ -156,6 +156,10 @@ impl std::convert::TryInto<ValidatedCageBuildConfig> for CageConfig {
 }
 
 impl CageConfig {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     pub fn set_dockerfile(&mut self, dockerfile: String) {
         self.dockerfile = Some(dockerfile);
     }
@@ -186,6 +190,10 @@ impl CageConfig {
         let mut info = self.signing.clone().unwrap_or(SigningInfo::default());
         info.key = Some(key);
         self.signing = Some(info);
+    }
+
+    pub fn set_attestation(&mut self, measurements: &EIFMeasurements) {
+        self.attestation = Some(measurements.clone());
     }
 
     pub fn try_from_filepath(path: &str) -> Result<Self, CageConfigError> {

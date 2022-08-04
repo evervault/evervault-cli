@@ -1,7 +1,7 @@
 mod error;
 use error::BuildError;
 
-use crate::common::resolve_output_path;
+use crate::common::{resolve_output_path, OutputPath};
 use crate::config::ValidatedCageBuildConfig;
 use crate::docker::error::DockerError;
 use crate::docker::parse::{Directive, DockerfileDecoder, Mode};
@@ -21,7 +21,7 @@ pub async fn build_enclave_image_file(
     context_path: &str,
     output_dir: Option<&str>,
     verbose: bool,
-) -> Result<enclave::BuiltEnclave, BuildError> {
+) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
     if !Path::new(&context_path).exists() {
         log::error!(
             "The build context directory {} does not exist.",
@@ -81,6 +81,7 @@ pub async fn build_enclave_image_file(
 
     log::info!("Converting docker image to EIF…");
     enclave::run_conversion_to_enclave(&command_config, output_path.path())
+        .map(|built_enc| (built_enc, output_path))
         .map_err(|e| BuildError::EnclaveConversionError(e))
 }
 
