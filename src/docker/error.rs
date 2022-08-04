@@ -1,3 +1,4 @@
+use super::command::CommandError;
 use super::parse::DecodeError;
 use thiserror::Error;
 
@@ -11,4 +12,6 @@ pub enum DockerError {
     DaemonNotRunning,
     #[error("Restricted port exposed. Cannot forward traffic to :{0}, address is already in use.")]
     RestrictedPortExposed(u16),
+    #[error("{0}")]
+    CommandError(#[from] CommandError),
 }

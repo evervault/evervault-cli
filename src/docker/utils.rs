@@ -53,18 +53,9 @@ pub fn write_command_to_script(command: &str, script_path: &str) -> String {
     .join("")
 }
 
-pub fn verify_docker_is_running() -> Result<(), super::error::DockerError> {
-    let exit_status = std::process::Command::new("docker")
-        .args(["info"])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()?;
-
-    if !exit_status.success() {
-        Err(super::error::DockerError::DaemonNotRunning)
-    } else {
-        Ok(())
-    }
+pub fn verify_docker_is_running() -> Result<bool, super::error::DockerError> {
+    let exit_status = super::command::docker_info()?;
+    Ok(exit_status.success())
 }
 
 #[cfg(test)]
