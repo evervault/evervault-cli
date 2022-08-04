@@ -2,6 +2,8 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use thiserror::Error;
 
+use crate::config::CageConfig;
+
 pub struct OutputPath {
     _tmp_dir: Option<tempfile::TempDir>,
     file_path: PathBuf,
@@ -56,6 +58,26 @@ pub fn resolve_output_path(
     } else {
         let temp_dir = tempfile::TempDir::new().map_err(OutputPathError::FailedToCreateTempDir)?;
         Ok(OutputPath::from(temp_dir))
+    }
+}
+
+pub fn update_cage_config_with_eif_measurements(
+    cage_config: &mut CageConfig,
+    config_path: &str,
+    eif_measurements: &crate::enclave::EIFMeasurements,
+) {
+    cage_config.set_attestation(eif_measurements);
+
+    if let Ok(serialized_config) = toml::ser::to_vec(&cage_config) {
+        match std::fs::write(config_path, serialized_config) {
+            Ok(_) => log::debug!("Cage config updated with enclave attestation measures"),
+            Err(e) => log::error!(
+                "Failed to write attestation measures to cage config — {:?}",
+                e
+            ),
+        };
+    } else {
+        log::error!("Failed to serialize attestation measures in cage config");
     }
 }
 
