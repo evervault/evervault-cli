@@ -1,5 +1,3 @@
-use atty::Stream;
-
 use crate::describe::describe_eif;
 use clap::Parser;
 
@@ -13,7 +11,7 @@ pub struct DescribeArgs {
 }
 
 pub async fn run(describe_args: DescribeArgs) {
-    let measurements = match describe_eif(&describe_args.eif_path) {
+    let description = match describe_eif(&describe_args.eif_path) {
         Ok(measurements) => measurements,
         Err(e) => {
             log::error!("Failed to describe eif — {}", e);
@@ -21,10 +19,5 @@ pub async fn run(describe_args: DescribeArgs) {
         }
     };
 
-    if atty::is(Stream::Stdout) {
-        // nicely format the JSON when printing to a TTY
-        println!("{}", serde_json::to_string_pretty(&measurements).unwrap());
-    } else {
-        println!("{}", serde_json::to_string(&measurements).unwrap());
-    }
+    println!("{}", serde_json::to_string_pretty(&description).unwrap());
 }

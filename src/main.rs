@@ -78,10 +78,9 @@ fn setup_logger(verbose_logging: bool) {
     builder
         .format_timestamp(None)
         .format_module_path(false)
-        .format_target(false)
-        .format(log_formatter);
+        .format_target(false);
     if verbose_logging {
         builder.filter_level(log::LevelFilter::Debug);
     }
-    builder.init();
+    builder.format(log_formatter).init();
 }
