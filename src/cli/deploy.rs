@@ -57,6 +57,7 @@ pub async fn run(deploy_args: DeployArgs) {
         }
     };
 
+    let cage_uuid = validated_config.cage_uuid().to_string();
     let (built_enclave, output_path) =
         match build_enclave_image_file(validated_config, &deploy_args.context_path, None, false)
             .await
@@ -87,10 +88,7 @@ pub async fn run(deploy_args: DeployArgs) {
     };
 
     let deployment_intent = match cage_api
-        .create_cage_deployment_intent(
-            cage_config.name(),
-            built_enclave.measurements().pcrs().into(),
-        )
+        .create_cage_deployment_intent(&cage_uuid, built_enclave.measurements().pcrs().into())
         .await
     {
         Ok(deployment_intent) => deployment_intent,
@@ -179,7 +177,7 @@ fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::Zip
     let eif_path = output_path.join("enclave.eif");
     zip.start_file("enclave.eif", zip_opts)?;
     let eif = std::fs::read(eif_path)?;
-    zip.write(eif.as_slice())?;
+    zip.write_all(eif.as_slice())?;
 
     let _ = zip.finish()?;
     let zip_content = std::fs::read(&zip_path)?;
