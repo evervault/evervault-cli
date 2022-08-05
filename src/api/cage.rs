@@ -45,10 +45,10 @@ impl CagesClient {
 
     pub async fn create_cage_deployment_intent(
         &self,
-        cage_name: &str,
+        cage_uuid: &str,
         payload: CreateCageDeploymentIntentRequest,
     ) -> ApiResult<CreateCageDeploymentIntentResponse> {
-        let deployment_intent_url = format!("{}/{}/credentials", self.base_url(), cage_name);
+        let deployment_intent_url = format!("{}/{}/credentials", self.base_url(), cage_uuid);
         self.post(&deployment_intent_url)
             .json(&payload)
             .send()
