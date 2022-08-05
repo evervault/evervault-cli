@@ -55,7 +55,7 @@ pub async fn build_enclave_image_file(
         .map_err(|_| BuildError::DockerfileAccessError(cage_config.dockerfile().to_string()))?;
 
     let processed_dockerfile =
-        process_dockerfile(dockerfile, cage_config.egress().is_enabled()).await?;
+        process_dockerfile(&cage_config, dockerfile, cage_config.egress().is_enabled()).await?;
 
     // write new dockerfile to fs
     let ev_user_dockerfile_path = output_path.join(Path::new(EV_USER_DOCKERFILE_PATH));
@@ -87,6 +87,7 @@ pub async fn build_enclave_image_file(
 }
 
 async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
+    build_config: &ValidatedCageBuildConfig,
     dockerfile_src: R,
     enable_egress: bool,
 ) -> Result<Vec<Directive>, BuildError> {
@@ -172,6 +173,9 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             data_plane_run_script.as_str(),
             format!("{DATA_PLANE_SERVICE_PATH}/run").as_str(),
         )),
+        // set cage name and app uuid as in enclave env vars
+        Directive::new_env("EV_CAGE_NAME", build_config.cage_name()),
+        Directive::new_env("EV_APP_UUID", build_config.app_uuid()),
         // Add bootstrap script to configure enclave before starting services
         Directive::new_run(crate::docker::utils::write_command_to_script(
             bootstrap_script_content,
