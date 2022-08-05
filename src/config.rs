@@ -106,11 +106,20 @@ pub enum CageConfigError {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CageConfig {
     pub name: String,
+    pub uuid: Option<String>,
+    pub app_uuid: Option<String>,
     pub debug: bool,
     pub dockerfile: Option<String>,
     pub egress: EgressSettings,
     pub signing: Option<SigningInfo>,
     pub attestation: Option<EIFMeasurements>,
+}
+
+impl CageConfig {
+    pub fn annotate(&mut self, cage: crate::api::cage::Cage) {
+        self.uuid = Some(cage.uuid().into());
+        self.app_uuid = Some(cage.app_uuid().into());
+    }
 }
 
 // Helper type to guarantee the presence of fields when combining multiple config sources

@@ -1,3 +1,5 @@
+use crate::api;
+use crate::api::{client::ApiClient, AuthMode};
 use crate::config::{CageConfig, EgressSettings, SigningInfo};
 use clap::{ArgGroup, Parser};
 
@@ -37,6 +39,10 @@ pub struct InitArgs {
     /// Path to the signing key to use for the Cage
     #[clap(long = "private-key")]
     pub key_path: Option<String>,
+
+    /// API key to be used for the api calls
+    #[clap(long = "api-key")]
+    pub api_key: String,
 }
 
 impl std::convert::Into<CageConfig> for InitArgs {
@@ -52,6 +58,8 @@ impl std::convert::Into<CageConfig> for InitArgs {
 
         CageConfig {
             name: self.cage_name,
+            uuid: None,
+            app_uuid: None,
             debug: self.debug,
             egress: EgressSettings {
                 enabled: self.egress,
@@ -66,8 +74,22 @@ impl std::convert::Into<CageConfig> for InitArgs {
     }
 }
 
-pub fn run(init_args: InitArgs) {
-    let initial_config: CageConfig = init_args.into();
+pub async fn run(init_args: InitArgs) {
+    let cages_client = api::cage::CagesClient::new(AuthMode::ApiKey(init_args.api_key.clone()));
+
+    let created_cage = match cages_client
+        .create_cage(init_args.cage_name.clone().into())
+        .await
+    {
+        Ok(cage_ref) => cage_ref,
+        Err(e) => {
+            eprintln!("Error creating Cage record — {:?}", e);
+            return;
+        }
+    };
+
+    let mut initial_config: CageConfig = init_args.into();
+    initial_config.annotate(created_cage);
 
     let config_path = std::path::Path::new("./cage.toml");
 
