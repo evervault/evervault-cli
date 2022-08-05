@@ -4,6 +4,7 @@ pub mod cert;
 pub mod deploy;
 pub mod describe;
 pub mod init;
+pub mod list;
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
@@ -12,4 +13,5 @@ pub enum Command {
     Describe(describe::DescribeArgs),
     Deploy(deploy::DeployArgs),
     Init(init::InitArgs),
+    List(list::List),
 }
