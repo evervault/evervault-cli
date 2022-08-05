@@ -9,9 +9,6 @@ pub struct List {
     /// The resource to list
     #[clap(subcommand)]
     resource: ListCommands,
-    /// The API key to use to authenticate with the API
-    #[clap(long = "api-key")]
-    pub api_key: String,
 }
 
 /// The supported list commands
@@ -20,21 +17,66 @@ pub struct List {
 pub enum ListCommands {
     /// List Cages
     #[clap()]
-    Cages,
+    Cages(CageListArgs),
+    /// List Cage Deployments
+    #[clap()]
+    Deployments(DeploymentArgs),
+}
+
+impl ListCommands {
+    fn get_api_key(&self) -> String {
+        match self {
+            Self::Cages(args) => args.api_key.clone(),
+            Self::Deployments(args) => args.api_key.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Parser)]
+pub struct CageListArgs {
+    /// The API key to use to authenticate with the API
+    #[clap(long = "api-key")]
+    pub api_key: String,
+}
+
+#[derive(Debug, Parser)]
+pub struct DeploymentArgs {
+    /// The cage uuid to get deployments for
+    #[clap(long = "cage-uuid")]
+    cage_uuid: String,
+    /// The API key to use to authenticate with the API
+    #[clap(long = "api-key")]
+    pub api_key: String,
 }
 
 pub async fn run(list_action: List) {
-    let auth = AuthMode::ApiKey(list_action.api_key.clone());
+    let auth = AuthMode::ApiKey(list_action.resource.get_api_key());
 
     let cage_client = api::cage::CagesClient::new(auth);
 
     match list_action.resource {
-        ListCommands::Cages => list_cages(&cage_client).await,
+        ListCommands::Cages(_) => list_cages(&cage_client).await,
+        ListCommands::Deployments(deployment_args) => {
+            list_deployments(&cage_client, deployment_args).await
+        }
     }
 }
 
 async fn list_cages(cage_client: &api::cage::CagesClient) {
     let cages = match cage_client.get_cages().await {
+        Ok(cages) => cages,
+        Err(e) => {
+            log::error!("An error occurred while retrieving your Cages — {:?}", e);
+            return;
+        }
+    };
+
+    let serialized_cages = serde_json::to_string_pretty(&cages).unwrap();
+    println!("{}", serialized_cages);
+}
+
+async fn list_deployments(cage_client: &api::cage::CagesClient, deployment_args: DeploymentArgs) {
+    let cages = match cage_client.get_cage(&deployment_args.cage_uuid).await {
         Ok(cages) => cages,
         Err(e) => {
             log::error!("An error occurred while retrieving your Cages — {:?}", e);
