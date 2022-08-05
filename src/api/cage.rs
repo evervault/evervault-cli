@@ -129,7 +129,7 @@ pub struct CreateCageDeploymentIntentResponse {
     signed_url: String,
     cage_uuid: String,
     deployment_uuid: String,
-    version: u32,
+    int_version: u32,
 }
 
 impl CreateCageDeploymentIntentResponse {
@@ -146,7 +146,7 @@ impl CreateCageDeploymentIntentResponse {
     }
 
     pub fn version(&self) -> u32 {
-        self.version
+        self.int_version
     }
 }
 
