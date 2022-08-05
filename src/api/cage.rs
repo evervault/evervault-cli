@@ -33,12 +33,22 @@ impl ApiClient for CagesClient {
 }
 
 impl CagesClient {
+    pub async fn create_cage(&self, cage_create_payload: CreateCageRequest) -> ApiResult<Cage> {
+        let create_cage_url = format!("{}/", self.base_url());
+        self.post(&create_cage_url)
+            .json(&cage_create_payload)
+            .send()
+            .await
+            .handle_response()
+            .await
+    }
+
     pub async fn create_cage_deployment_intent(
         &self,
-        cage_name: &str,
+        cage_uuid: &str,
         payload: CreateCageDeploymentIntentRequest,
     ) -> ApiResult<CreateCageDeploymentIntentResponse> {
-        let deployment_intent_url = format!("{}/{}/credentials", self.base_url(), cage_name);
+        let deployment_intent_url = format!("{}/{}/credentials", self.base_url(), cage_uuid);
         self.post(&deployment_intent_url)
             .json(&payload)
             .send()
@@ -103,6 +113,17 @@ impl std::convert::From<&crate::enclave::PCRs> for CreateCageDeploymentIntentReq
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CreateCageRequest {
+    name: String,
+}
+
+impl std::convert::From<String> for CreateCageRequest {
+    fn from(cage_name: String) -> Self {
+        Self { name: cage_name }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCageDeploymentIntentResponse {
     signed_url: String,
@@ -153,6 +174,18 @@ pub struct Cage {
 impl Cage {
     pub fn uuid(&self) -> &str {
         &self.uuid
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn app_uuid(&self) -> &str {
+        &self.app_uuid
+    }
+
+    pub fn team_uuid(&self) -> &str {
+        &self.team_uuid
     }
 }
 

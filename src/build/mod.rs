@@ -55,7 +55,7 @@ pub async fn build_enclave_image_file(
         .map_err(|_| BuildError::DockerfileAccessError(cage_config.dockerfile().to_string()))?;
 
     let processed_dockerfile =
-        process_dockerfile(dockerfile, cage_config.egress().is_enabled()).await?;
+        process_dockerfile(&cage_config, dockerfile, cage_config.egress().is_enabled()).await?;
 
     // write new dockerfile to fs
     let ev_user_dockerfile_path = output_path.join(Path::new(EV_USER_DOCKERFILE_PATH));
@@ -87,6 +87,7 @@ pub async fn build_enclave_image_file(
 }
 
 async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
+    build_config: &ValidatedCageBuildConfig,
     dockerfile_src: R,
     enable_egress: bool,
 ) -> Result<Vec<Directive>, BuildError> {
@@ -172,6 +173,9 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             data_plane_run_script.as_str(),
             format!("{DATA_PLANE_SERVICE_PATH}/run").as_str(),
         )),
+        // set cage name and app uuid as in enclave env vars
+        Directive::new_env("EV_CAGE_NAME", build_config.cage_name()),
+        Directive::new_env("EV_APP_UUID", build_config.app_uuid()),
         // Add bootstrap script to configure enclave before starting services
         Directive::new_run(crate::docker::utils::write_command_to_script(
             bootstrap_script_content,
@@ -196,6 +200,25 @@ mod test {
     use itertools::zip;
     use tempfile::TempDir;
 
+    fn get_config() -> ValidatedCageBuildConfig {
+        ValidatedCageBuildConfig {
+            cage_name: "test".into(),
+            cage_uuid: "1234".into(),
+            debug: false,
+            app_uuid: "3241".into(),
+            dockerfile: "".into(),
+            egress: EgressSettings {
+                enabled: false,
+                destinations: None,
+            },
+            attestation: None,
+            signing: ValidatedSigningInfo {
+                cert: "".into(),
+                key: "".into(),
+            },
+        }
+    }
+
     #[tokio::test]
     async fn test_process_dockerfile() {
         let sample_dockerfile_contents = r#"FROM alpine
@@ -206,7 +229,9 @@ RUN touch /hello-script;\
 ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut readable_contents = sample_dockerfile_contents.as_bytes();
 
-        let processed_file = process_dockerfile(&mut readable_contents, false).await;
+        let config = get_config();
+
+        let processed_file = process_dockerfile(&config, &mut readable_contents, false).await;
         assert_eq!(processed_file.is_ok(), true);
         let processed_file = processed_file.unwrap();
 
@@ -219,6 +244,8 @@ RUN /bin/sh -c "echo -e '"'#!/bin/sh\nsh /hello-script\n'"' > /etc/service/user-
 RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
 RUN mkdir /etc/service/data-plane
 RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec /data-plane\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
+ENV EV_CAGE_NAME=test
+ENV EV_APP_UUID=3241
 RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap"]
 "#;
@@ -250,7 +277,9 @@ EXPOSE 443
 ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut readable_contents = sample_dockerfile_contents.as_bytes();
 
-        let processed_file = process_dockerfile(&mut readable_contents, false).await;
+        let config = get_config();
+
+        let processed_file = process_dockerfile(&config, &mut readable_contents, false).await;
         assert_eq!(processed_file.is_err(), true);
 
         assert!(matches!(
@@ -271,7 +300,9 @@ EXPOSE 3443
 ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut readable_contents = sample_dockerfile_contents.as_bytes();
 
-        let processed_file = process_dockerfile(&mut readable_contents, false).await;
+        let config = get_config();
+
+        let processed_file = process_dockerfile(&config, &mut readable_contents, false).await;
         assert_eq!(processed_file.is_ok(), true);
         let processed_file = processed_file.unwrap();
 
@@ -284,6 +315,8 @@ RUN /bin/sh -c "echo -e '"'#!/bin/sh\nsh /hello-script\n'"' > /etc/service/user-
 RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
 RUN mkdir /etc/service/data-plane
 RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec /data-plane -p 3443\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
+ENV EV_CAGE_NAME=test
+ENV EV_APP_UUID=3241
 RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap"]
 "#;
@@ -315,6 +348,9 @@ ENTRYPOINT ["/bootstrap"]
         });
 
         let build_args = ValidatedCageBuildConfig {
+            cage_name: "test-cage".into(),
+            cage_uuid: "1234".into(),
+            app_uuid: "4321".into(),
             debug: false,
             egress: EgressSettings {
                 enabled: false,

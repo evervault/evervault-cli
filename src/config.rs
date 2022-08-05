@@ -101,11 +101,17 @@ pub enum CageConfigError {
     MissingSigningInfo(#[from] SigningInfoError),
     #[error("Dockerfile is required and was not given.")]
     MissingDockerfile,
+    #[error("Cage uuid was not set in the toml.")]
+    MissingCageUuid,
+    #[error("App uuid was not set in the toml.")]
+    MissingAppUuid,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CageConfig {
     pub name: String,
+    pub uuid: Option<String>,
+    pub app_uuid: Option<String>,
     pub debug: bool,
     pub dockerfile: Option<String>,
     pub egress: EgressSettings,
@@ -113,9 +119,19 @@ pub struct CageConfig {
     pub attestation: Option<EIFMeasurements>,
 }
 
+impl CageConfig {
+    pub fn annotate(&mut self, cage: crate::api::cage::Cage) {
+        self.uuid = Some(cage.uuid().into());
+        self.app_uuid = Some(cage.app_uuid().into());
+    }
+}
+
 // Helper type to guarantee the presence of fields when combining multiple config sources
 #[derive(Clone, Debug)]
 pub struct ValidatedCageBuildConfig {
+    pub cage_name: String,
+    pub cage_uuid: String,
+    pub app_uuid: String,
     pub debug: bool,
     pub dockerfile: String,
     pub egress: EgressSettings,
@@ -135,6 +151,18 @@ impl ValidatedCageBuildConfig {
     pub fn egress(&self) -> &EgressSettings {
         &self.egress
     }
+
+    pub fn cage_name(&self) -> &str {
+        &self.cage_name
+    }
+
+    pub fn cage_uuid(&self) -> &str {
+        &self.cage_uuid
+    }
+
+    pub fn app_uuid(&self) -> &str {
+        &self.app_uuid
+    }
 }
 
 impl std::convert::TryInto<ValidatedCageBuildConfig> for CageConfig {
@@ -145,7 +173,13 @@ impl std::convert::TryInto<ValidatedCageBuildConfig> for CageConfig {
 
         let dockerfile = self.dockerfile.ok_or(CageConfigError::MissingDockerfile)?;
 
+        let app_uuid = self.app_uuid.ok_or(CageConfigError::MissingAppUuid)?;
+        let cage_uuid = self.uuid.ok_or(CageConfigError::MissingCageUuid)?;
+
         Ok(ValidatedCageBuildConfig {
+            cage_uuid,
+            cage_name: self.name,
+            app_uuid,
             debug: self.debug,
             dockerfile,
             egress: self.egress,

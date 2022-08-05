@@ -44,7 +44,7 @@ async fn main() {
         Command::Cert(cert_args) => cert::run(cert_args),
         Command::Deploy(deploy_args) => deploy::run(deploy_args).await,
         Command::Describe(describe_args) => describe::run(describe_args).await,
-        Command::Init(init_args) => init::run(init_args),
+        Command::Init(init_args) => init::run(init_args).await,
         Command::List(list_args) => list::run(list_args).await,
     }
 }
