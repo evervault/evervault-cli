@@ -177,7 +177,7 @@ fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::Zip
     let eif_path = output_path.join("enclave.eif");
     zip.start_file("enclave.eif", zip_opts)?;
     let eif = std::fs::read(eif_path)?;
-    zip.write(eif.as_slice())?;
+    zip.write_all(eif.as_slice())?;
 
     let _ = zip.finish()?;
     let zip_content = std::fs::read(&zip_path)?;
