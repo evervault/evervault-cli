@@ -185,9 +185,16 @@ impl Directive {
         }
     }
 
-    #[allow(dead_code)]
     pub fn new_run<B: Into<Bytes>>(arguments: B) -> Self {
         Self::Run(arguments.into())
+    }
+
+    pub fn new_env(key: &str, val: &str) -> Self {
+        let env_string = format!("{}={}", key, val);
+        Self::Other {
+            directive: "ENV".into(),
+            arguments: env_string.into(),
+        }
     }
 }
 
