@@ -85,6 +85,10 @@ pub async fn run(build_args: BuildArgs) {
         );
     }
 
+    if cage_config.debug {
+        crate::common::log_debug_mode_attestation_warning();
+    }
+
     // Write enclave measures to stdout
     let success_msg = serde_json::json!({
         "status": "success",
