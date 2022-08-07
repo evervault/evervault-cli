@@ -1,5 +1,5 @@
 use crate::api;
-use crate::api::{client::ApiClient, AuthMode};
+use crate::api::{cage::CreateCageDeploymentIntentRequest, client::ApiClient, AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::config::{CageConfig, ValidatedCageBuildConfig};
 use atty::Stream;
@@ -59,7 +59,7 @@ pub async fn run(deploy_args: DeployArgs) {
 
     let cage_uuid = validated_config.cage_uuid().to_string();
     let (built_enclave, output_path) =
-        match build_enclave_image_file(validated_config, &deploy_args.context_path, None, false)
+        match build_enclave_image_file(&validated_config, &deploy_args.context_path, None, false)
             .await
         {
             Ok(enclave_info) => enclave_info,
@@ -87,8 +87,12 @@ pub async fn run(deploy_args: DeployArgs) {
         }
     };
 
+    let cage_deployment_intent_payload = CreateCageDeploymentIntentRequest::new(
+        built_enclave.measurements().pcrs(),
+        validated_config.debug,
+    );
     let deployment_intent = match cage_api
-        .create_cage_deployment_intent(&cage_uuid, built_enclave.measurements().pcrs().into())
+        .create_cage_deployment_intent(&cage_uuid, cage_deployment_intent_payload)
         .await
     {
         Ok(deployment_intent) => deployment_intent,

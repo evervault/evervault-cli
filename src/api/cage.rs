@@ -104,11 +104,16 @@ impl CagesClient {
 pub struct CreateCageDeploymentIntentRequest {
     #[serde(flatten)]
     pcrs: crate::enclave::PCRs,
+    #[serde(rename = "camelCase")]
+    debug_mode: bool,
 }
 
-impl std::convert::From<&crate::enclave::PCRs> for CreateCageDeploymentIntentRequest {
-    fn from(pcrs: &crate::enclave::PCRs) -> Self {
-        Self { pcrs: pcrs.clone() }
+impl CreateCageDeploymentIntentRequest {
+    pub fn new(pcrs: &crate::enclave::PCRs, debug_mode: bool) -> Self {
+        Self {
+            pcrs: pcrs.clone(),
+            debug_mode: debug_mode,
+        }
     }
 }
 
@@ -129,7 +134,7 @@ pub struct CreateCageDeploymentIntentResponse {
     signed_url: String,
     cage_uuid: String,
     deployment_uuid: String,
-    int_version: u32,
+    version: u32,
 }
 
 impl CreateCageDeploymentIntentResponse {
@@ -146,7 +151,7 @@ impl CreateCageDeploymentIntentResponse {
     }
 
     pub fn version(&self) -> u32 {
-        self.int_version
+        self.version
     }
 }
 

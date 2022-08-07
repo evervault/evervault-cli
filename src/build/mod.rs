@@ -17,7 +17,7 @@ const USER_ENTRYPOINT_SERVICE_PATH: &str = "/etc/service/user-entrypoint";
 const DATA_PLANE_SERVICE_PATH: &str = "/etc/service/data-plane";
 
 pub async fn build_enclave_image_file(
-    cage_config: ValidatedCageBuildConfig,
+    cage_config: &ValidatedCageBuildConfig,
     context_path: &str,
     output_dir: Option<&str>,
     verbose: bool,
@@ -370,7 +370,7 @@ ENTRYPOINT ["/bootstrap"]
         );
 
         let _ = build_enclave_image_file(
-            build_args,
+            &build_args,
             ".",
             Some(output_dir.path().to_str().unwrap()),
             false,
