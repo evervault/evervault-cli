@@ -81,6 +81,11 @@ pub fn update_cage_config_with_eif_measurements(
     }
 }
 
+pub fn log_debug_mode_attestation_warning() {
+    log::warn!("When running your Cage in debug mode, every value in the attestation document returned will be 0.");
+    log::warn!("The measurements below will only be returned when running in non-debug mode.");
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
