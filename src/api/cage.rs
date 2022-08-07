@@ -101,10 +101,10 @@ impl CagesClient {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateCageDeploymentIntentRequest {
     #[serde(flatten)]
     pcrs: crate::enclave::PCRs,
-    #[serde(rename = "camelCase")]
     debug_mode: bool,
 }
 
@@ -219,7 +219,7 @@ pub enum BuildStatus {
 #[serde(rename_all = "camelCase")]
 pub struct CageVersion {
     uuid: String,
-    int_version: u16,
+    version: u16,
     control_plane_img_url: String,
     control_plane_version: Option<String>,
     data_plane_version: Option<String>,
