@@ -69,6 +69,10 @@ pub async fn run(deploy_args: DeployArgs) {
             }
         };
 
+    if validated_config.debug {
+        crate::common::log_debug_mode_attestation_warning();
+    }
+
     if deploy_args.write {
         crate::common::update_cage_config_with_eif_measurements(
             &mut cage_config,
