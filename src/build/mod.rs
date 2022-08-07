@@ -120,9 +120,10 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let user_service_builder =
         crate::docker::utils::create_combined_docker_entrypoint(last_entrypoint, last_cmd).map(
             |entrypoint| {
+                let entrypoint_script = format!("Booting user service...\\n{}", entrypoint);
                 let user_service_runner = format!("{USER_ENTRYPOINT_SERVICE_PATH}/run");
                 let user_service_builder_script = crate::docker::utils::write_command_to_script(
-                    entrypoint.as_str(),
+                    entrypoint_script.as_str(),
                     user_service_runner.as_str(),
                 );
                 Directive::new_run(user_service_builder_script)
@@ -144,15 +145,16 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     #[cfg(debug_assertions)]
   let data_plane_url = format!("https://cage-build-assets.evervault.io/runtime/latest/data-plane/{data_plane_feature_label}");
 
-    let mut data_plane_run_script = "exec /data-plane".to_string();
+    let mut data_plane_run_script =
+        r#"echo "Booting Evervault data plane..."\nexec /data-plane"#.to_string();
     if let Some(port) = exposed_port {
         data_plane_run_script = format!("{data_plane_run_script} -p {port}");
     }
 
     let bootstrap_script_content = if enable_egress {
-        "ifconfig lo 127.0.0.1\\nexec runsvdir /etc/service"
+        r#"ifconfig lo 127.0.0.1\necho "Booting enclave..."\nexec runsvdir /etc/service"#
     } else {
-        "exec runsvdir /etc/service"
+        r#"echo "Booting enclave..."\nexec runsvdir /etc/service"#
     };
 
     let injected_directives = vec![
@@ -182,7 +184,10 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             "/bootstrap",
         )),
         // add entrypoint which starts the runit services
-        Directive::new_entrypoint(Mode::Exec, vec!["/bootstrap".to_string()]),
+        Directive::new_entrypoint(
+            Mode::Exec,
+            vec!["/bootstrap".to_string(), "1>&2".to_string()],
+        ),
     ];
 
     // add custom directives to end of dockerfile
