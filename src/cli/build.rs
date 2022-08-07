@@ -63,7 +63,7 @@ pub async fn run(build_args: BuildArgs) {
     };
 
     let built_enclave = match build_enclave_image_file(
-        validated_config,
+        &validated_config,
         &build_args.context_path,
         build_args.output_dir.as_deref(),
         build_args.verbose,
@@ -83,6 +83,10 @@ pub async fn run(build_args: BuildArgs) {
             &build_args.config,
             built_enclave.measurements(),
         );
+    }
+
+    if cage_config.debug {
+        crate::common::log_debug_mode_attestation_warning();
     }
 
     // Write enclave measures to stdout
