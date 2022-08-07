@@ -117,18 +117,19 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .filter(remove_unwanted_directives)
         .collect();
 
-    let user_service_builder =
-        crate::docker::utils::create_combined_docker_entrypoint(last_entrypoint, last_cmd).map(
-            |entrypoint| {
-                let entrypoint_script = format!("Booting user service...\\n{}", entrypoint);
-                let user_service_runner = format!("{USER_ENTRYPOINT_SERVICE_PATH}/run");
-                let user_service_builder_script = crate::docker::utils::write_command_to_script(
-                    entrypoint_script.as_str(),
-                    user_service_runner.as_str(),
-                );
-                Directive::new_run(user_service_builder_script)
-            },
-        )?;
+    let user_service_builder = crate::docker::utils::create_combined_docker_entrypoint(
+        last_entrypoint,
+        last_cmd,
+    )
+    .map(|entrypoint| {
+        let entrypoint_script = format!("echo \"Booting user service...\"\\n{}", entrypoint);
+        let user_service_runner = format!("{USER_ENTRYPOINT_SERVICE_PATH}/run");
+        let user_service_builder_script = crate::docker::utils::write_command_to_script(
+            entrypoint_script.as_str(),
+            user_service_runner.as_str(),
+        );
+        Directive::new_run(user_service_builder_script)
+    })?;
 
     if let Some(true) = exposed_port.map(|port| port == 443) {
         return Err(DockerError::RestrictedPortExposed(exposed_port.unwrap()).into());
@@ -245,14 +246,14 @@ RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
 RUN apk update ; apk add runit ; rm -rf /var/cache/apk/*
 RUN mkdir /etc/service/user-entrypoint
-RUN /bin/sh -c "echo -e '"'#!/bin/sh\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
+RUN /bin/sh -c "echo -e '"'#!/bin/sh\necho "Booting user service..."\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
 RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
 RUN mkdir /etc/service/data-plane
-RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec /data-plane\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
+RUN /bin/sh -c "echo -e '"'#!/bin/sh\necho "Booting Evervault data plane..."\nexec /data-plane\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
 ENV EV_APP_UUID=3241
-RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
-ENTRYPOINT ["/bootstrap"]
+RUN /bin/sh -c "echo -e '"'#!/bin/sh\necho "Booting enclave..."\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
+ENTRYPOINT ["/bootstrap", "1>&2"]
 "#;
 
         let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
@@ -316,14 +317,14 @@ RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
 RUN apk update ; apk add runit ; rm -rf /var/cache/apk/*
 RUN mkdir /etc/service/user-entrypoint
-RUN /bin/sh -c "echo -e '"'#!/bin/sh\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
+RUN /bin/sh -c "echo -e '"'#!/bin/sh\necho "Booting user service..."\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
 RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
 RUN mkdir /etc/service/data-plane
-RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec /data-plane -p 3443\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
+RUN /bin/sh -c "echo -e '"'#!/bin/sh\necho "Booting Evervault data plane..."\nexec /data-plane -p 3443\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
 ENV EV_APP_UUID=3241
-RUN /bin/sh -c "echo -e '"'#!/bin/sh\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
-ENTRYPOINT ["/bootstrap"]
+RUN /bin/sh -c "echo -e '"'#!/bin/sh\necho "Booting enclave..."\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
+ENTRYPOINT ["/bootstrap", "1>&2"]
 "#;
 
         let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
