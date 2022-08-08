@@ -38,7 +38,8 @@ jobs:
           sh ./scripts/insert-cli-version.sh ${{ needs.get-version.outputs.version }}
 
       - name: Build and Compress cli
-        uses: evervault/cargo-static-build@v2
+        # todo use evervault action with added 7zip
+        uses: lfarrel6/cargo-static-build@master
         with:
           cmd: mkdir ${{ env.BIN_DIR }} ; mkdir ${{ env.RELEASE_DIR }} ; cargo build --release --target ${{ env.LINUX_TARGET }} ; mv ./target/${{ env.LINUX_TARGET }}/release/cage-cli ./${{ env.BIN_DIR }}/cage-cli ; 7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/cage-cli-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
@@ -91,63 +92,63 @@ jobs:
           name: macos
           path: ./${{ env.RELEASE_DIR }}
 
-  compile-windows:
-    runs-on: windows-latest
-    needs: get-version
-    env:
-      VCPKGRS_DYNAMIC: 1
-    steps:
-      - uses: actions/checkout@v2
+  # compile-windows:
+  #   runs-on: windows-latest
+  #   needs: get-version
+  #   env:
+  #     VCPKGRS_DYNAMIC: 1
+  #   steps:
+  #     - uses: actions/checkout@v2
 
-      - name: Setup Perl
-        uses: shogo82148/actions-setup-perl@v1
-        with:
-          distribution: strawberry
+  #     - name: Setup Perl
+  #       uses: shogo82148/actions-setup-perl@v1
+  #       with:
+  #         distribution: strawberry
 
-      - name: Inject Version with Perl
-        run: |
-          perl -p -i -e's/0.0.0-dev/${{ needs.get-version.outputs.version }}/' ./Cargo.toml
+  #     - name: Inject Version with Perl
+  #       run: |
+  #         perl -p -i -e's/0.0.0-dev/${{ needs.get-version.outputs.version }}/' ./Cargo.toml
 
-      - name: Install Rust
-        run: rustup update --no-self-update stable && rustup default stable
+  #     - name: Install Rust
+  #       run: rustup update --no-self-update stable && rustup default stable
 
-      - name: Set vcpkg root
-        run: echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
+  #     - name: Set vcpkg root
+  #       run: echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      - name: Install OpenSSL
-        run: vcpkg install openssl:x64-windows
+  #     - name: Install OpenSSL
+  #       run: vcpkg install openssl:x64-windows
 
-      - name: Fetch dependencies
-        run: cargo fetch
+  #     - name: Fetch dependencies
+  #       run: cargo fetch
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: ${{ env.WINDOWS_TARGET }}
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: stable
+  #         target: ${{ env.WINDOWS_TARGET }}
 
-      - name: Build CLI for Windows
-        run: cargo build --release --target ${{ env.WINDOWS_TARGET }}
+  #     - name: Build CLI for Windows
+  #       run: cargo build --release --target ${{ env.WINDOWS_TARGET }}
 
-      - name: Setup directories
-        shell: bash
-        run: |
-          mkdir ${{ env.BIN_DIR }}
-          mkdir ${{ env.RELEASE_DIR }}
+  #     - name: Setup directories
+  #       shell: bash
+  #       run: |
+  #         mkdir ${{ env.BIN_DIR }}
+  #         mkdir ${{ env.RELEASE_DIR }}
 
-      - name: Compress
-        shell: bash
-        run: |
-          mv target/${{ env.WINDOWS_TARGET }}/release/cage-cli.exe ${{ env.BIN_DIR }}/cage-cli.exe
-          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+      # - name: Compress
+      #   shell: bash
+      #   run: |
+      #     mv target/${{ env.WINDOWS_TARGET }}/release/cage-cli.exe ${{ env.BIN_DIR }}/cage-cli.exe
+      #     7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
-      - name: Upload as artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: windows
-          path: ./${{ env.RELEASE_DIR }}
+      # - name: Upload as artifact
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: windows
+      #     path: ./${{ env.RELEASE_DIR }}
 
   release-cli-version:
-    needs: [ get-version, compile-ubuntu, compile-macos, compile-windows ]
+    needs: [ get-version, compile-ubuntu, compile-macos] #, compile-windows ]
     runs-on: ubuntu-latest
     steps:
 
@@ -170,10 +171,10 @@ jobs:
         with:
           name: linux
 
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v1
-        with:
-          name: windows
+      # - name: Download Windows Artifacts
+      #   uses: actions/download-artifact@v1
+      #   with:
+      #     name: windows
 
       - name: Upload Linux Release
         uses: actions/upload-release-asset@v1
@@ -195,15 +196,15 @@ jobs:
           asset_content_type: application/gzip
           asset_name: cage-cli-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
-      - name: Upload Windows Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./windows/cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
-          asset_content_type: application/gzip
-          asset_name: cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+      # - name: Upload Windows Release
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create-release.outputs.upload_url }}
+      #     asset_path: ./windows/cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+      #     asset_content_type: application/gzip
+      #     asset_name: cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
   upload-artifacts-to-s3:
     needs: [ get-version, compile-ubuntu, compile-macos, compile-windows ]
@@ -234,14 +235,14 @@ jobs:
         with:
           name: linux
 
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v1
-        with:
-          name: windows
+      # - name: Download Windows Artifacts
+      #   uses: actions/download-artifact@v1
+      #   with:
+      #     name: windows
 
-      - name: Upload Windows CLI to S3
-        run: |
-          aws s3 cp ./windows/cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.WINDOWS_TARGET }}/cage-cli.tar.gz
+      # - name: Upload Windows CLI to S3
+      #   run: |
+      #     aws s3 cp ./windows/cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.WINDOWS_TARGET }}/cage-cli.tar.gz
 
       - name: Upload MacOS CLI to S3
         run: |
