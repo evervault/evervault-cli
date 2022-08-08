@@ -152,11 +152,8 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         data_plane_run_script = format!("{data_plane_run_script} -p {port}");
     }
 
-    let bootstrap_script_content = if enable_egress {
-        r#"ifconfig lo 127.0.0.1\necho "Booting enclave..."\nexec runsvdir /etc/service"#
-    } else {
-        r#"echo "Booting enclave..."\nexec runsvdir /etc/service"#
-    };
+    let bootstrap_script_content =
+        r#"ifconfig lo 127.0.0.1\necho "Booting enclave..."\nexec runsvdir /etc/service"#;
 
     let injected_directives = vec![
         // install dependencies
