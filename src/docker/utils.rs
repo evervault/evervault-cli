@@ -67,7 +67,7 @@ mod tests {
         let script_command = write_command_to_script("echo hello", "hello-script.sh");
         assert_eq!(
             script_command,
-            r#"/bin/sh -c "echo -e '"'#!/bin/sh\necho hello\n'"' > hello-script.sh" && chmod +x hello-script.sh"#
+            r#"/bin/sh -c "printf '"'#!/bin/sh\necho hello\n'"' > hello-script.sh" && chmod +x hello-script.sh"#
         )
     }
 }
