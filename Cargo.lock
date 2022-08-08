@@ -121,34 +121,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0b3de4a0c5e67e16066a0715723abd91edc2f9001d09c46e1dca929351e130e"
 
 [[package]]
-name = "cage-cli"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "atty",
- "bytes",
- "chrono",
- "clap",
- "env_logger",
- "futures",
- "futures-core",
- "human-panic",
- "itertools",
- "log",
- "rcgen",
- "reqwest",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror",
- "tokio",
- "tokio-test",
- "tokio-util 0.6.10",
- "toml",
- "zip",
-]
-
-[[package]]
 name = "cc"
 version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -273,6 +245,34 @@ dependencies = [
  "log",
  "regex",
  "termcolor",
+]
+
+[[package]]
+name = "ev-cage"
+version = "0.0.0-dev"
+dependencies = [
+ "async-trait",
+ "atty",
+ "bytes",
+ "chrono",
+ "clap",
+ "env_logger",
+ "futures",
+ "futures-core",
+ "human-panic",
+ "itertools",
+ "log",
+ "rcgen",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tokio-test",
+ "tokio-util 0.6.10",
+ "toml",
+ "zip",
 ]
 
 [[package]]

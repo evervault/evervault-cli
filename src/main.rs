@@ -1,5 +1,5 @@
 use atty::Stream;
-use cage_cli::cli::{build, cert, deploy, describe, init, list, Command};
+use ev_cage::cli::{build, cert, deploy, describe, init, list, Command};
 use clap::{AppSettings, Parser};
 use env_logger::fmt::Formatter;
 use env_logger::{Builder, Env};
@@ -9,7 +9,7 @@ use std::io::Write;
 
 #[derive(Debug, Parser)]
 #[clap(
-    name = "cage cli",
+    name = "Evervault Cage CLI",
     author = "engineering@evervault.com",
     setting = AppSettings::ArgRequiredElseHelp,
     setting = AppSettings::DeriveDisplayOrder
