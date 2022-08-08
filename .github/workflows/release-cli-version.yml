@@ -260,7 +260,7 @@ jobs:
           aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/install
           aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/${{needs.get-version.outputs.version}}/version
           aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/version
-        # aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }} --paths "/cli/install"
-        # aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }} --paths "/cli/version"
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }} --paths "/cli/install"
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }} --paths "/cli/version"
 
 # TODO add cloudfront distribution secret prod
