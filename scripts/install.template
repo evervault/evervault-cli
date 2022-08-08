@@ -44,7 +44,7 @@ if [ -z ${INSTALL_PATH+x} ]; then
     INSTALL_PATH="${INSTALL_DIR}/cage-cli"
   fi
 fi
-DOWNLOAD_URL_LOOKUP="CAGE_CLI_DOWNLOAD_${PLATFORM}_${ARCH}"
+DOWNLOAD_URL_LOOKUP="EV_DOWNLOAD_${PLATFORM}_${ARCH}"
 
 ensure_supported_platform() {
   local x
