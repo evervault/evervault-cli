@@ -43,9 +43,9 @@ pub fn create_combined_docker_entrypoint(
 // Useful for creating scripts within in Dockerfiles
 pub fn write_command_to_script(command: &str, script_path: &str) -> String {
     [
-        r#"/bin/sh -c "echo -e '"'#!/bin/sh\n"#,
+        r#"/bin/sh -c "echo '"'#!/bin/sh\n"#,
         command,
-        r#"\n'"' > "#,
+        r#"\n'"' -e > "#,
         script_path,
         r#"""#,
         format!(" && chmod +x {script_path}").as_str(),

@@ -153,7 +153,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     }
 
     let bootstrap_script_content = if enable_egress {
-        r#"ifconfig lo 127.0.0.1\necho "Booting enclave..."\nexec runsvdir /etc/service"#
+        r#"ip addr add 127.0.0.1 dev lo\necho "Booting enclave..."\nexec runsvdir /etc/service"#
     } else {
         r#"echo "Booting enclave..."\nexec runsvdir /etc/service"#
     };
@@ -162,7 +162,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         // install dependencies
         Directive::new_run("apk update ; apk add runit ; rm -rf /var/cache/apk/*"),
         // create user service directory
-        Directive::new_run(format!("mkdir {USER_ENTRYPOINT_SERVICE_PATH}")),
+        Directive::new_run(format!("mkdir -p {USER_ENTRYPOINT_SERVICE_PATH}")),
         // add user service runner
         user_service_builder,
         // add data-plane executable
@@ -170,7 +170,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             "wget {data_plane_url} -O /data-plane && chmod +x /data-plane"
         )),
         // add data-plane service directory
-        Directive::new_run(format!("mkdir {DATA_PLANE_SERVICE_PATH}")),
+        Directive::new_run(format!("mkdir -p {DATA_PLANE_SERVICE_PATH}")),
         // add data-plane service runner
         Directive::new_run(crate::docker::utils::write_command_to_script(
             data_plane_run_script.as_str(),
