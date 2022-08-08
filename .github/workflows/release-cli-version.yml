@@ -1,0 +1,265 @@
+name: Release Cage CLI version
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  RUST_BACKTRACE: 1
+  WINDOWS_TARGET: x86_64-pc-windows-msvc
+  MACOS_TARGET: x86_64-apple-darwin
+  LINUX_TARGET: x86_64-unknown-linux-musl
+  STAGE: staging
+
+  # Directories to target during release
+  BIN_DIR: bin
+  RELEASE_DIR: release
+
+jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+      - id: get-version
+        run: |
+          echo "using version tag ${GITHUB_REF:11}"
+          echo ::set-output name=version::${GITHUB_REF:11}
+
+  compile-ubuntu:
+    runs-on: ubuntu-latest
+    needs: get-version
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Inject Version
+        run: |
+          sh ./scripts/insert-cli-version.sh ${{ needs.get-version.outputs.version }}
+
+      - name: Build and Compress cli
+        uses: evervault/cargo-static-build@v2
+        with:
+          cmd: mkdir ${{ env.BIN_DIR }} ; mkdir ${{ env.RELEASE_DIR }} ; cargo build --release --target ${{ env.LINUX_TARGET }} ; mv ./target/${{ env.LINUX_TARGET }}/release/cage-cli ./${{ env.BIN_DIR }}/cage-cli ; 7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/cage-cli-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+
+      - name: Upload as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux
+          path: ./${{ env.RELEASE_DIR }}
+
+  compile-macos:
+    runs-on: macos-latest
+    needs: get-version
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Inject Version
+        run: |
+          sh ./scripts/insert-cli-version.sh ${{ needs.get-version.outputs.version }}
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ env.MACOS_TARGET }}
+
+      - run: cargo build --release --target ${{ env.MACOS_TARGET }}
+
+      - name: Compress macos binary
+        uses: svenstaro/upx-action@v2
+        with:
+          file: target/${{env.MACOS_TARGET}}/release/cage-cli
+          args: --best --lzma
+          strip: true
+
+      - name: Install 7z cli
+        run: brew install p7zip
+
+      - name: Setup directories
+        run: |
+          mkdir ${{ env.BIN_DIR }}
+          mkdir ${{ env.RELEASE_DIR }}
+
+      - name: Compress binary
+        run: |
+          mv target/${{env.MACOS_TARGET}}/release/cage-cli ${{ env.BIN_DIR }}/cage-cli
+          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ${{ env.RELEASE_DIR }}/cage-cli-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+
+      - name: Upload as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: macos
+          path: ./${{ env.RELEASE_DIR }}
+
+  compile-windows:
+    runs-on: windows-latest
+    needs: get-version
+    env:
+      VCPKGRS_DYNAMIC: 1
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          distribution: strawberry
+
+      - name: Inject Version with Perl
+        run: |
+          perl -p -i -e's/0.0.0-dev/${{ needs.get-version.outputs.version }}/' ./Cargo.toml
+
+      - name: Install Rust
+        run: rustup update --no-self-update stable && rustup default stable
+
+      - name: Set vcpkg root
+        run: echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Install OpenSSL
+        run: vcpkg install openssl:x64-windows
+
+      - name: Fetch dependencies
+        run: cargo fetch
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ env.WINDOWS_TARGET }}
+
+      - name: Build CLI for Windows
+        run: cargo build --release --target ${{ env.WINDOWS_TARGET }}
+
+      - name: Setup directories
+        shell: bash
+        run: |
+          mkdir ${{ env.BIN_DIR }}
+          mkdir ${{ env.RELEASE_DIR }}
+
+      - name: Compress
+        shell: bash
+        run: |
+          mv target/${{ env.WINDOWS_TARGET }}/release/cage-cli.exe ${{ env.BIN_DIR }}/cage-cli.exe
+          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+
+      - name: Upload as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows
+          path: ./${{ env.RELEASE_DIR }}
+
+  release-cli-version:
+    needs: [ get-version, compile-ubuntu, compile-macos, compile-windows ]
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Create Release
+        id: create-release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.get-version.outputs.version }}
+          release_name: ${{ needs.get-version.outputs.version }}
+
+      - name: Download MacOS Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: macos
+
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: linux
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: windows
+
+      - name: Upload Linux Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: ./linux/cage-cli-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          asset_content_type: application/gzip
+          asset_name: cage-cli-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+
+      - name: Upload MacOS Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: ./macos/cage-cli-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          asset_content_type: application/gzip
+          asset_name: cage-cli-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+
+      - name: Upload Windows Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: ./windows/cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          asset_content_type: application/gzip
+          asset_name: cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+
+  upload-artifacts-to-s3:
+    needs: [ get-version, compile-ubuntu, compile-macos, compile-windows ]
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Configure Staging AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}
+          aws-region: us-east-1
+
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v1
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: us-east-1
+
+      - name: Download MacOS Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: macos
+
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: linux
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: windows
+
+      - name: Upload Windows CLI to S3
+        run: |
+          aws s3 cp ./windows/cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.WINDOWS_TARGET }}/cage-cli.tar.gz
+
+      - name: Upload MacOS CLI to S3
+        run: |
+          aws s3 cp ./macos/cage-cli-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.MACOS_TARGET }}/cage-cli.tar.gz
+
+      - name: Upload Ubuntu CLI to S3
+        run: |
+          aws s3 cp ./linux/cage-cli-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.LINUX_TARGET }}/cage-cli.tar.gz
+
+      - uses: actions/checkout@v2
+      - name: Update install script in S3
+        run: |
+          sh ./scripts/generate-installer.sh ${{ needs.get-version.outputs.version }}
+          aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/${{needs.get-version.outputs.version}}/install
+          aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/install
+          aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/${{needs.get-version.outputs.version}}/version
+          aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/version
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }} --paths "/cli/install"
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }} --paths "/cli/version"
+
+# TODO add cloudfront distribution secret prod
