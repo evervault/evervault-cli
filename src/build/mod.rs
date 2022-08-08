@@ -245,7 +245,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
         let expected_output_contents = r#"FROM alpine
 RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
-RUN /bin/sh -c "printf '"'#!/bin/sh\nif command -v apk &> /dev/null\nthen\necho "Installing using apk"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif\ncommand -v apt-get &>/dev/null\nthen\necho "Installing using apt-get"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho "No suitable installer found. Please contact support: support@evervault.com"\nexit 1\nfi\n'"' > /runtime-installer" && chmod +x /runtime-installer
+RUN /bin/sh -c "printf '"'#!/bin/sh\nif [ "$( command -v apk )" ]; then\necho "Installing using apk"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ "$( command -v apt-get )" ]; then\necho "Installing using apt-get"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho "No suitable installer found. Please contact support: support@evervault.com"\nexit 1\nfi\n'"' > /runtime-installer" && chmod +x /runtime-installer
 RUN sh /runtime-installer ; rm /runtime-installer
 RUN mkdir -p /etc/service/user-entrypoint
 RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting user service..."\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
@@ -317,7 +317,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
         let expected_output_contents = r#"FROM alpine
 RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
-RUN /bin/sh -c "printf '"'#!/bin/sh\nif command -v apk &> /dev/null\nthen\necho "Installing using apk"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif\ncommand -v apt-get &>/dev/null\nthen\necho "Installing using apt-get"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho "No suitable installer found. Please contact support: support@evervault.com"\nexit 1\nfi\n'"' > /runtime-installer" && chmod +x /runtime-installer
+RUN /bin/sh -c "printf '"'#!/bin/sh\nif [ "$( command -v apk )" ]; then\necho "Installing using apk"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ "$( command -v apt-get )" ]; then\necho "Installing using apt-get"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho "No suitable installer found. Please contact support: support@evervault.com"\nexit 1\nfi\n'"' > /runtime-installer" && chmod +x /runtime-installer
 RUN sh /runtime-installer ; rm /runtime-installer
 RUN mkdir -p /etc/service/user-entrypoint
 RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting user service..."\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
