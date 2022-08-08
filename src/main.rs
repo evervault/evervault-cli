@@ -1,8 +1,8 @@
 use atty::Stream;
-use ev_cage::cli::{build, cert, deploy, describe, init, list, Command};
 use clap::{AppSettings, Parser};
 use env_logger::fmt::Formatter;
 use env_logger::{Builder, Env};
+use ev_cage::cli::{build, cert, deploy, describe, init, list, Command};
 use human_panic::setup_panic;
 use log::Record;
 use std::io::Write;
