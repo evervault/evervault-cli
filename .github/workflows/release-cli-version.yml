@@ -39,7 +39,7 @@ jobs:
 
       - name: Build and Compress cli
         # todo use evervault action with added 7zip
-        uses: lfarrel6/cargo-static-build@master
+        uses: davidnugent2425/cargo-static-build@master
         with:
           cmd: mkdir ${{ env.BIN_DIR }} ; mkdir ${{ env.RELEASE_DIR }} ; cargo build --release --target ${{ env.LINUX_TARGET }} ; mv ./target/${{ env.LINUX_TARGET }}/release/cage-cli ./${{ env.BIN_DIR }}/cage-cli ; 7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/cage-cli-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
