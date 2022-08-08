@@ -1,5 +1,5 @@
 [package]
-name = "cage-cli"
+name = "ev-cage"
 version = "0.0.0-dev"
 edition = "2021"
 
