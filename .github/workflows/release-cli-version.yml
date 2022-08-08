@@ -41,7 +41,7 @@ jobs:
         # todo use evervault action with added 7zip
         uses: davidnugent2425/cargo-static-build@master
         with:
-          cmd: mkdir ${{ env.BIN_DIR }} ; mkdir ${{ env.RELEASE_DIR }} ; cargo build --release --target ${{ env.LINUX_TARGET }} ; mv ./target/${{ env.LINUX_TARGET }}/release/cage-cli ./${{ env.BIN_DIR }}/cage-cli ; 7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/cage-cli-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          cmd: mkdir ${{ env.BIN_DIR }} ; mkdir ${{ env.RELEASE_DIR }} ; cargo build --release --target ${{ env.LINUX_TARGET }} ; mv ./target/${{ env.LINUX_TARGET }}/release/ev-cage ./${{ env.BIN_DIR }}/ev-cage ; 7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
       - name: Upload as artifact
         uses: actions/upload-artifact@v2
@@ -69,7 +69,7 @@ jobs:
       - name: Compress macos binary
         uses: svenstaro/upx-action@v2
         with:
-          file: target/${{env.MACOS_TARGET}}/release/cage-cli
+          file: target/${{env.MACOS_TARGET}}/release/ev-cage
           args: --best --lzma
           strip: true
 
@@ -83,8 +83,8 @@ jobs:
 
       - name: Compress binary
         run: |
-          mv target/${{env.MACOS_TARGET}}/release/cage-cli ${{ env.BIN_DIR }}/cage-cli
-          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ${{ env.RELEASE_DIR }}/cage-cli-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          mv target/${{env.MACOS_TARGET}}/release/ev-cage ${{ env.BIN_DIR }}/ev-cage
+          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ${{ env.RELEASE_DIR }}/ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
       - name: Upload as artifact
         uses: actions/upload-artifact@v2
@@ -138,8 +138,8 @@ jobs:
       - name: Compress
         shell: bash
         run: |
-          mv target/${{ env.WINDOWS_TARGET }}/release/cage-cli.exe ${{ env.BIN_DIR }}/cage-cli.exe
-          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          mv target/${{ env.WINDOWS_TARGET }}/release/ev-cage.exe ${{ env.BIN_DIR }}/ev-cage.exe
+          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
       - name: Upload as artifact
         uses: actions/upload-artifact@v2
@@ -182,9 +182,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./linux/cage-cli-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          asset_path: ./linux/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
           asset_content_type: application/gzip
-          asset_name: cage-cli-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          asset_name: ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
       - name: Upload MacOS Release
         uses: actions/upload-release-asset@v1
@@ -192,9 +192,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./macos/cage-cli-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          asset_path: ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
           asset_content_type: application/gzip
-          asset_name: cage-cli-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          asset_name: ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
       - name: Upload Windows Release
         uses: actions/upload-release-asset@v1
@@ -202,9 +202,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./windows/cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          asset_path: ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
           asset_content_type: application/gzip
-          asset_name: cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          asset_name: ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
   upload-artifacts-to-s3:
     needs: [ get-version , compile-ubuntu, compile-macos, compile-windows ]
@@ -235,15 +235,15 @@ jobs:
 
       - name: Upload Windows CLI to S3
         run: |
-          aws s3 cp ./windows/cage-cli-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.WINDOWS_TARGET }}/cage-cli.tar.gz
+          aws s3 cp ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.WINDOWS_TARGET }}/ev-cage.tar.gz
 
       - name: Upload MacOS CLI to S3
         run: |
-          aws s3 cp ./macos/cage-cli-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.MACOS_TARGET }}/cage-cli.tar.gz
+          aws s3 cp ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.MACOS_TARGET }}/ev-cage.tar.gz
 
       - name: Upload Ubuntu CLI to S3
         run: |
-          aws s3 cp ./linux/cage-cli-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.LINUX_TARGET }}/cage-cli.tar.gz
+          aws s3 cp ./linux/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.LINUX_TARGET }}/ev-cage.tar.gz
 
       - uses: actions/checkout@v2
       - name: Update install script in S3
