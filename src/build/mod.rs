@@ -160,7 +160,11 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
 
     let injected_directives = vec![
         // install dependencies
-        Directive::new_run("apk update ; apk add runit ; rm -rf /var/cache/apk/*"),
+        Directive::new_run(crate::docker::utils::write_command_to_script(
+            r#"#!/bin/sh\nif command -v apk &> /dev/null\nthen\necho "Installing using apk"\napk update ; apk add runit ; rm -rf /var/cache/apk/*\nelif\ncommand -v apt-get &>/dev/null\nthen\necho "Installing using apt-get"\napt-get update ; apt-get install runit ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho "No suitable installer found. Please contact support: support@evervault.com"\nexit 1\nfi"#,
+            "/runtime-installer",
+        )),
+        Directive::new_run("sh /runtime-installer ; rm /runtime-installer"),
         // create user service directory
         Directive::new_run(format!("mkdir -p {USER_ENTRYPOINT_SERVICE_PATH}")),
         // add user service runner
