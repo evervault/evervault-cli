@@ -254,7 +254,7 @@ RUN mkdir -p /etc/service/data-plane
 RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting Evervault data plane..."\nexec /data-plane\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
 ENV EV_APP_UUID=3241
-RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting enclave..."\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
+RUN /bin/sh -c "printf '"'#!/bin/sh\nifconfig lo 127.0.0.1\necho "Booting enclave..."\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "#;
 
@@ -326,7 +326,7 @@ RUN mkdir -p /etc/service/data-plane
 RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting Evervault data plane..."\nexec /data-plane -p 3443\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
 ENV EV_APP_UUID=3241
-RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting enclave..."\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
+RUN /bin/sh -c "printf '"'#!/bin/sh\nifconfig lo 127.0.0.1\necho "Booting enclave..."\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "#;
 
