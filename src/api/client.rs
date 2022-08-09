@@ -52,15 +52,9 @@ pub trait ApiClient {
     fn auth(&self) -> &AuthMode;
     fn update_auth(&mut self, auth: AuthMode);
     fn client(&self) -> &Client;
-
-    #[cfg(debug_assertions)]
+    
     fn base_url(&self) -> String {
-        std::env::var("EV_API_URL").unwrap_or(String::from("http://localhost:3000"))
-    }
-
-    #[cfg(not(debug_assertions))]
-    fn base_url(&self) -> String {
-        String::from("https://internal-api.evervault.com")
+        std::env::var("EV_API_URL").unwrap_or(String::from("https://internal-api.evervault.com"))
     }
 
     fn user_agent(&self) -> String {
