@@ -162,7 +162,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let injected_directives = vec![
         // install dependencies
         Directive::new_run(crate::docker::utils::write_command_to_script(
-            r#"if [ "$( command -v apk )" ]; then\necho "Installing using apk"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ "$( command -v apt-get )" ]; then\necho "Installing using apt-get"\napt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho "No suitable installer found. Please contact support: support@evervault.com"\nexit 1\nfi"#,
+            r#"if [ "$( command -v apk )" ]; then\necho "Installing using apk"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ "$( command -v apt-get )" ]; then\necho "Installing using apt-get"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho "No suitable installer found. Please contact support: support@evervault.com"\nexit 1\nfi"#,
             "/runtime-installer",
         )),
         Directive::new_run("sh /runtime-installer ; rm /runtime-installer"),
