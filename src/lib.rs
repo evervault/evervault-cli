@@ -1,5 +1,6 @@
 pub mod api;
 pub mod build;
+pub mod cert;
 pub mod cli;
 pub mod common;
 pub mod config;
