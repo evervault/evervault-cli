@@ -222,7 +222,7 @@ pub enum BuildStatus {
 pub struct CageVersion {
     uuid: String,
     version: u16,
-    control_plane_img_url: String,
+    control_plane_img_url: Option<String>,
     control_plane_version: Option<String>,
     data_plane_version: Option<String>,
     build_status: BuildStatus,
