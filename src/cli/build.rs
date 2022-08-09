@@ -26,9 +26,9 @@ pub struct BuildArgs {
     #[clap(long = "private-key")]
     pub private_key: Option<String>,
 
-    /// Enable verbose output
-    #[clap(short, long, from_global)]
-    pub verbose: bool,
+    /// Disable verbose logging
+    #[clap(long)]
+    pub quiet: bool,
 
     /// Enable JSON output
     #[clap(long, from_global)]
@@ -66,7 +66,7 @@ pub async fn run(build_args: BuildArgs) {
         &validated_config,
         &build_args.context_path,
         build_args.output_dir.as_deref(),
-        build_args.verbose,
+        !build_args.quiet,
     )
     .await
     {
