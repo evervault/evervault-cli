@@ -81,7 +81,9 @@ fn setup_logger(verbose_logging: bool) {
         .format_module_path(false)
         .format_target(false);
     if verbose_logging {
-        builder.filter_level(log::LevelFilter::Debug);
+        builder.filter(Some("ev-cage"), log::LevelFilter::Debug);
+    } else {
+        builder.filter(Some("ev-cage"), log::LevelFilter::Info);
     }
     builder.format(log_formatter).init();
 }
