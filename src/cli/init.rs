@@ -12,6 +12,10 @@ use clap::{ArgGroup, Parser};
     .requires("egress")
 ))]
 pub struct InitArgs {
+    /// Directory to write the Cage toml to. Defaults to the current directory.
+    #[clap(short = 'o', long = "output", default_value = ".")]
+    pub output_dir: String,
+
     /// Name of Cage to deploy
     #[clap(long = "name")]
     pub cage_name: String,
@@ -43,6 +47,10 @@ pub struct InitArgs {
     /// API key to be used for the api calls
     #[clap(long = "api-key")]
     pub api_key: String,
+
+    /// Flag to enable cert generation during init. This will use the default certificate.
+    #[clap(long = "generate-signing")]
+    pub gen_signing_credentials: bool,
 }
 
 impl std::convert::Into<CageConfig> for InitArgs {
@@ -88,10 +96,30 @@ pub async fn run(init_args: InitArgs) {
         }
     };
 
+    let output_path = std::path::Path::new(init_args.output_dir.as_str());
+    let config_path = output_path.join("cage.toml");
+
+    let gen_signing_credentials = init_args.gen_signing_credentials;
+    let output_dir = init_args.output_dir.clone();
+
     let mut initial_config: CageConfig = init_args.into();
     initial_config.annotate(created_cage);
 
-    let config_path = std::path::Path::new("./cage.toml");
+    if gen_signing_credentials && initial_config.signing.is_none() {
+        log::info!("Generating signing credentials for cage");
+        match crate::cert::create_new_cert(
+            output_dir.as_str(),
+            crate::cert::DistinguishedName::default(),
+        ) {
+            Ok((cert_path, key_path)) => {
+                initial_config.set_cert(format!("{}", cert_path.display()));
+                initial_config.set_key(format!("{}", key_path.display()));
+            }
+            Err(e) => {
+                log::error!("Failed to generate cage signing credentials - {}", e);
+            }
+        }
+    }
 
     let serialized_config = match toml::ser::to_vec(&initial_config) {
         Ok(bytes) => bytes,
@@ -103,5 +131,7 @@ pub async fn run(init_args: InitArgs) {
 
     if let Err(e) = std::fs::write(config_path, serialized_config) {
         eprintln!("Error writing cage.toml — {:?}", e);
+    } else {
+        log::info!("Cage.toml initialized successfully. You can now deploy a Cage using the deploy command");
     }
 }
