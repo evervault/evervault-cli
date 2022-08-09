@@ -141,10 +141,14 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         "egress-disabled"
     };
 
+    let epoch = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("System time is before the unix epoch")
+        .as_secs();
     #[cfg(not(debug_assertions))]
-  let data_plane_url = format!("https://cage-build-assets.evervault.com/runtime/latest/data-plane/{data_plane_feature_label}");
+    let data_plane_url = format!("https://cage-build-assets.evervault.com/runtime/latest/data-plane/{data_plane_feature_label}?t={epoch}");
     #[cfg(debug_assertions)]
-  let data_plane_url = format!("https://cage-build-assets.evervault.io/runtime/latest/data-plane/{data_plane_feature_label}");
+    let data_plane_url = format!("https://cage-build-assets.evervault.io/runtime/latest/data-plane/{data_plane_feature_label}?t={epoch}");
 
     let mut data_plane_run_script =
         r#"echo "Booting Evervault data plane..."\nexec /data-plane"#.to_string();
@@ -158,7 +162,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let injected_directives = vec![
         // install dependencies
         Directive::new_run(crate::docker::utils::write_command_to_script(
-            r#"if [ "$( command -v apk )" ]; then\necho "Installing using apk"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ "$( command -v apt-get )" ]; then\necho "Installing using apt-get"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho "No suitable installer found. Please contact support: support@evervault.com"\nexit 1\nfi"#,
+            r#"if [ "$( command -v apk )" ]; then\necho "Installing using apk"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ "$( command -v apt-get )" ]; then\necho "Installing using apt-get"\napt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho "No suitable installer found. Please contact support: support@evervault.com"\nexit 1\nfi"#,
             "/runtime-installer",
         )),
         Directive::new_run("sh /runtime-installer ; rm /runtime-installer"),
