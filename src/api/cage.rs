@@ -208,6 +208,12 @@ pub struct CageDeployment {
     completed_at: Option<String>,
 }
 
+impl CageDeployment {
+    pub fn is_finished(&self) -> bool {
+        self.completed_at.is_some()
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BuildStatus {
@@ -227,7 +233,7 @@ pub struct CageVersion {
     data_plane_version: Option<String>,
     build_status: BuildStatus,
     failure_reason: Option<String>,
-    started_at: String,
+    started_at: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -256,10 +262,12 @@ pub struct CageRegionalDeployment {
     deployment_uuid: String,
     deployment_order: u16,
     region: String,
-    failure_reason: String,
+    failure_reason: Option<String>,
     deploy_status: DeployStatus,
-    started_at: String,
-    completed_at: String,
+    // started_at should be required, but is being returned as null sometimes
+    // should revert this to just String after API fix
+    started_at: Option<String>,
+    completed_at: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -300,6 +308,12 @@ pub struct GetCageDeploymentResponse {
     tee_cage_version: CageVersion,
     tee_cage_signing_cert: CageSigningCert,
     tee_cage_regional_deployments: Vec<CageRegionalDeployment>,
+}
+
+impl GetCageDeploymentResponse {
+    pub fn is_finished(&self) -> bool {
+        self.deployment.is_finished()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

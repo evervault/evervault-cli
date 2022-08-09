@@ -2,8 +2,8 @@ use crate::api;
 use crate::api::{cage::CreateCageDeploymentIntentRequest, client::ApiClient, AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::config::{CageConfig, ValidatedCageBuildConfig};
-use atty::Stream;
 use clap::Parser;
+use indicatif::{ProgressBar, ProgressStyle};
 use std::io::Write;
 
 /// Deploy a Cage from a toml file.
@@ -114,6 +114,20 @@ pub async fn run(deploy_args: DeployArgs) {
     let s3_upload_url = deployment_intent.signed_url();
     let reqwest_client = api::Client::builder().build().unwrap();
 
+    let get_progress_bar = |start_msg: &str| {
+        let progress_bar = ProgressBar::new_spinner();
+        progress_bar.enable_steady_tick(80);
+        progress_bar.set_style(
+            ProgressStyle::default_spinner()
+                .tick_strings(&["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷", "[INFO]"])
+                .template("{spinner:.green} {msg}"),
+        );
+        progress_bar.set_message(start_msg);
+        progress_bar
+    };
+
+    let progress_bar = get_progress_bar("Uploading Cage to Evervault...");
+
     let s3_response = match reqwest_client
         .put(s3_upload_url)
         .header("Content-Type", "application/zip")
@@ -128,32 +142,36 @@ pub async fn run(deploy_args: DeployArgs) {
         }
     };
 
-    let success_msg = if s3_response.status().is_success() {
-        serde_json::json!({
-            "status": "success",
-            "message": "Cage deployment initiated",
-            "deploymentInfo": {
-                "cageUuid": deployment_intent.cage_uuid(),
-                "deploymentUuid": deployment_intent.deployment_uuid(),
-                "cageVersion": deployment_intent.version()
-            }
-        })
+    if s3_response.status().is_success() {
+        progress_bar.finish_with_message("Cage uploaded to Evervault.");
     } else {
-        serde_json::json!({
-            "status": "failed",
-            "message": "Failed to upload your Cage zip",
-            "error": {
-                "status": s3_response.status().as_u16(),
-                "message": s3_response.text().await.expect("Failed to serialize error message")
-            }
-        })
+        progress_bar.finish_with_message("Cage failed to upload.");
+        return;
     };
 
-    if atty::is(Stream::Stdout) {
-        // nicely format the JSON when printing to a TTY
-        println!("{}", serde_json::to_string_pretty(&success_msg).unwrap());
-    } else {
-        println!("{}", serde_json::to_string(&success_msg).unwrap());
+    let progress_bar = get_progress_bar("Deploying Cage into a Nitro Enclave...");
+
+    loop {
+        match cage_api
+            .get_cage_deployment_by_uuid(
+                deployment_intent.cage_uuid(),
+                deployment_intent.deployment_uuid(),
+            )
+            .await
+        {
+            Ok(deployment_response) => {
+                if deployment_response.is_finished() {
+                    progress_bar.finish_with_message("Cage deployed!");
+                    break;
+                }
+            }
+            Err(e) => {
+                progress_bar.finish();
+                println!("Unable to retrieve deployment status. Error: {:?}", e);
+                break;
+            }
+        };
+        tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
     }
 }
 
