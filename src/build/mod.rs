@@ -363,10 +363,8 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
     async fn test_choose_output_dir() {
         let output_dir = TempDir::new().unwrap();
 
-        crate::cli::cert::create_new_cert(crate::cli::cert::NewCertArgs {
-            subject: "/CN=EV/C=IE/ST=LEI/L=DUB/O=Evervault/OU=Eng".into(),
-            output_dir: ".".into(),
-        });
+        let dn_string = crate::cert::DistinguishedName::default();
+        crate::cert::create_new_cert(".".into(), dn_string).expect("Failed to gen cert in tests");
 
         let build_args = ValidatedCageBuildConfig {
             cage_name: "test-cage".into(),
