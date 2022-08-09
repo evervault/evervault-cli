@@ -37,6 +37,10 @@ pub struct DeployArgs {
     /// API Key
     #[clap(long = "api-key")]
     pub api_key: String,
+
+    /// Enable verbose output
+    #[clap(short, long, from_global)]
+    pub verbose: bool,
 }
 
 pub async fn run(deploy_args: DeployArgs) {
@@ -58,16 +62,20 @@ pub async fn run(deploy_args: DeployArgs) {
     };
 
     let cage_uuid = validated_config.cage_uuid().to_string();
-    let (built_enclave, output_path) =
-        match build_enclave_image_file(&validated_config, &deploy_args.context_path, None, false)
-            .await
-        {
-            Ok(enclave_info) => enclave_info,
-            Err(e) => {
-                log::error!("Failed to build an enclave from your Dockerfile — {}", e);
-                return;
-            }
-        };
+    let (built_enclave, output_path) = match build_enclave_image_file(
+        &validated_config,
+        &deploy_args.context_path,
+        None,
+        deploy_args.verbose,
+    )
+    .await
+    {
+        Ok(enclave_info) => enclave_info,
+        Err(e) => {
+            log::error!("Failed to build an enclave from your Dockerfile — {}", e);
+            return;
+        }
+    };
 
     if validated_config.debug {
         crate::common::log_debug_mode_attestation_warning();
