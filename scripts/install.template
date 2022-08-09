@@ -1,0 +1,174 @@
+#!/bin/sh
+set -eu
+
+EV_DOWNLOAD_Darwin_universal="https://cage-build-assets.evervault.com/cli/{{version}}/x86_64-apple-darwin/ev-cage.tar.gz"
+EV_DOWNLOAD_Windows_x86_64="https://cage-build-assets.evervault.com/cli/{{version}}/x86_64-pc-windows-msvc/ev-cage.tar.gz"
+EV_DOWNLOAD_Linux_x86_64="https://cage-build-assets.evervault.com/cli/{{version}}/x86_64-unknown-linux-musl/ev-cage.tar.gz"
+
+VERSION="{{version}}"
+PLATFORM=`uname -s`
+ARCH=`uname -m`
+
+if [ $# -ge 1 ]; then
+  ONBOARDING_TOKEN=$1
+else
+  ONBOARDING_TOKEN=""
+fi
+
+case $PLATFORM in (CYGWIN*|MINGW*|MSYS*)
+  PLATFORM="Windows"
+;; esac
+
+if [ "$PLATFORM" = "Darwin" ]; then
+    ARCH="universal"
+fi
+
+# If the install directory is not set, set it to a default
+if [ -z ${INSTALL_DIR+x} ]; then
+  if [ "$PLATFORM" = "Windows" ]; then
+    INSTALL_DIR=/usr/bin
+  else
+    INSTALL_DIR=/usr/local/bin
+  fi
+fi
+if [ ! -d "$INSTALL_DIR" ]; then
+  if ! mkdir "$INSTALL_DIR" 2> /dev/null; then
+    sudo -k mkdir "$INSTALL_DIR"
+  fi
+fi
+if [ -z ${INSTALL_PATH+x} ]; then
+  if [ "$PLATFORM" = "Windows" ]; then
+    INSTALL_PATH="${INSTALL_DIR}/ev-cage.exe"
+  else
+    INSTALL_PATH="${INSTALL_DIR}/ev-cage"
+  fi
+fi
+DOWNLOAD_URL_LOOKUP="EV_DOWNLOAD_${PLATFORM}_${ARCH}"
+
+ensure_supported_platform() {
+  local x
+  eval x='\${$DOWNLOAD_URL_LOOKUP-}'
+  eval "if [ -n \"$(echo $x)\" ]; then is_supported=true; else is_supported=false; fi"
+}
+ensure_supported_platform
+
+echo "This script will automatically install the Evervault Cage CLI@${VERSION} for you."
+echo "Installation path: ${INSTALL_PATH}"
+if [ "x$(id -u)" = "x0" ]; then
+  echo "Warning: this script is currently running as root. This is dangerous. "
+  echo "         Instead run it as normal user. We will sudo as needed."
+fi
+
+if [ -f "$INSTALL_PATH" ]; then
+  if [ -z ${CAGE_CLI_FORCE_INSTALL+x} ]; then
+    echo "Looks like you already have the Evervault Cage CLI installed. Would you like to update? (y/n)"
+    # read in 2 characters to get a response + return char, check if leading char is y/n
+    y=$(dd bs=1 count=2 2>/dev/null)
+    response=`echo $y | cut -c1-1`
+    if [ "$response" = "y" ]; then
+      echo "Proceeding with update..."
+      PERFORM_INSTALL=true
+    elif [ -n "$ONBOARDING_TOKEN" ]; then
+      echo "Continuing without update..."
+      PERFORM_INSTALL=false
+    else
+      echo "Exiting..."
+      exit 1
+    fi
+  else
+    echo "Proceeding with update..."
+    PERFORM_INSTALL=true
+  fi
+else
+  PERFORM_INSTALL=true
+fi
+
+if [ "$is_supported" = false ]; then
+  echo "error: your platform and architecture (${PLATFORM}-${ARCH}) is unsupported."
+  exit 2
+fi
+
+eval DOWNLOAD_URL=\$$DOWNLOAD_URL_LOOKUP
+
+if [ "$PERFORM_INSTALL" = true ]; then
+  TEMP_FILE=`mktemp "${TMPDIR:-/tmp}.ev-cage.XXXXXXXX"`
+fi
+
+cleanup() {
+  rm -f "$TEMP_FILE"
+  rm -rf "$TARGET_DIR"
+}
+
+if [ "$PERFORM_INSTALL" = true ]; then
+  trap cleanup EXIT
+fi
+
+install_via_wget() {
+  wget -q "$DOWNLOAD_URL" -O "$TEMP_FILE"
+}
+
+install_via_curl() {
+  curl -SL --progress-bar "$DOWNLOAD_URL" > "$TEMP_FILE"
+}
+
+if [ "$PERFORM_INSTALL" = true ]; then
+  if hash curl 2> /dev/null; then
+    install_via_curl
+  elif hash wget 2> /dev/null; then
+    install_via_wget
+  else
+    echo "You do not have curl or wget installed, which are required for this script."
+    exit 3
+  fi
+  chmod 0755 "$TEMP_FILE"
+fi
+
+extract_via_7zip() {
+   TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}.ev-cage.XXXXXX"`
+   7z x "$TEMP_FILE" -so | 7z x -aoa -si -ttar -o"$TARGET_DIR"
+}
+
+extract_via_tar() {
+  TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}.ev-cage.XXXXXX"`
+  tar xzf "$TEMP_FILE" -C "$TARGET_DIR"
+}
+
+if [ "$PERFORM_INSTALL" = true ]; then
+  if hash tar 2> /dev/null; then
+    extract_via_tar
+  elif hash 7z 2> /dev/null; then
+    extract_via_7zip
+  fi
+fi
+
+get_file_location() {
+  if [ "$PLATFORM" = "Darwin" ]; then
+    EV_BINARY="${TARGET_DIR}/bin/ev-cage"
+  elif [ "$PLATFORM" = "Windows" ]; then
+    EV_BINARY="${TARGET_DIR}/bin/ev-cage.exe"
+  else
+    EV_BINARY="${TARGET_DIR}/bin/ev-cage"
+  fi
+  chmod 0755 "$EV_BINARY"
+}
+
+move_file_windows() {
+  mv "$EV_BINARY" "$INSTALL_PATH"
+}
+
+move_file_general() {
+  if ! mv "$EV_BINARY" "$INSTALL_PATH" 2> /dev/null; then
+    sudo -k mv "$EV_BINARY" "$INSTALL_PATH"
+  fi
+}
+
+if [ "$PERFORM_INSTALL" = true ]; then
+  get_file_location
+  if [ "$PLATFORM" = "Windows" ]; then
+    move_file_windows
+  else
+    move_file_general
+  fi
+fi
+
+echo 'Done!'
