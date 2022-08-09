@@ -17,8 +17,8 @@ jobs:
           toolchain: stable
           components: rustfmt
       - name: Compile project
-        run: cargo build --all-features  -p cage-cli
+        run: cargo build --all-features  -p ev-cage
       - name: Test project
-        run: cargo test -p cage-cli
+        run: cargo test -p ev-cage
       - name: Format project
         run: cargo fmt --check
