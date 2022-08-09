@@ -106,13 +106,15 @@ pub struct CreateCageDeploymentIntentRequest {
     #[serde(flatten)]
     pcrs: crate::enclave::PCRs,
     debug_mode: bool,
+    egress_enabled: bool,
 }
 
 impl CreateCageDeploymentIntentRequest {
-    pub fn new(pcrs: &crate::enclave::PCRs, debug_mode: bool) -> Self {
+    pub fn new(pcrs: &crate::enclave::PCRs, debug_mode: bool, egress_enabled: bool) -> Self {
         Self {
             pcrs: pcrs.clone(),
-            debug_mode: debug_mode,
+            debug_mode,
+            egress_enabled,
         }
     }
 }
