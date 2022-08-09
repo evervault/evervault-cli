@@ -102,6 +102,7 @@ pub async fn run(deploy_args: DeployArgs) {
     let cage_deployment_intent_payload = CreateCageDeploymentIntentRequest::new(
         built_enclave.measurements().pcrs(),
         validated_config.debug,
+        validated_config.egress().is_enabled(),
     );
     let deployment_intent = match cage_api
         .create_cage_deployment_intent(&cage_uuid, cage_deployment_intent_payload)
