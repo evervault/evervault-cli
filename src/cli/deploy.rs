@@ -38,9 +38,9 @@ pub struct DeployArgs {
     #[clap(long = "api-key")]
     pub api_key: String,
 
-    /// Enable verbose output
-    #[clap(short, long, from_global)]
-    pub verbose: bool,
+    /// Disable verbose output
+    #[clap(long)]
+    pub quiet: bool,
 }
 
 pub async fn run(deploy_args: DeployArgs) {
@@ -66,7 +66,7 @@ pub async fn run(deploy_args: DeployArgs) {
         &validated_config,
         &deploy_args.context_path,
         None,
-        deploy_args.verbose,
+        !deploy_args.quiet,
     )
     .await
     {
@@ -76,10 +76,6 @@ pub async fn run(deploy_args: DeployArgs) {
             return;
         }
     };
-
-    if validated_config.debug {
-        crate::common::log_debug_mode_attestation_warning();
-    }
 
     if deploy_args.write {
         crate::common::update_cage_config_with_eif_measurements(
