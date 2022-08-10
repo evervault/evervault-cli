@@ -16,10 +16,7 @@ impl CommandConfig {
     }
 
     pub fn extra_build_args(&self) -> Vec<&OsStr> {
-        match self.architecture {
-            "aarch64" | "arm" => vec!["--platform".as_ref(), "linux/amd64".as_ref()],
-            _ => vec![],
-        }
+        vec!["--platform".as_ref(), "linux/amd64".as_ref()]
     }
 
     pub fn output_setting(&self) -> Stdio {
