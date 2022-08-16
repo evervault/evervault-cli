@@ -1,9 +1,12 @@
 use crate::api;
 use crate::api::{cage::CreateCageDeploymentIntentRequest, client::ApiClient, AuthMode};
 use crate::build::build_enclave_image_file;
+use crate::common::resolve_output_path;
 use crate::config::{CageConfig, ValidatedCageBuildConfig};
+use crate::describe::describe_eif;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
+use std::fs;
 use std::io::Write;
 
 /// Deploy a Cage from a toml file.
@@ -17,6 +20,10 @@ pub struct DeployArgs {
     /// Path to Dockerfile for Cage. Will override any dockerfile specified in the .toml file.
     #[clap(short = 'f', long = "file", default_value = "./Dockerfile")]
     pub dockerfile: String,
+
+    /// Path to EIF for Cage. Will not build if EIF is provided.
+    #[clap(long = "eif-path")]
+    pub eif_path: Option<String>,
 
     /// Path to use for docker context
     #[clap(default_value = ".")]
@@ -62,18 +69,33 @@ pub async fn run(deploy_args: DeployArgs) {
     };
 
     let cage_uuid = validated_config.cage_uuid().to_string();
-    let (built_enclave, output_path) = match build_enclave_image_file(
-        &validated_config,
-        &deploy_args.context_path,
-        None,
-        !deploy_args.quiet,
-    )
-    .await
-    {
-        Ok(enclave_info) => enclave_info,
-        Err(e) => {
-            log::error!("Failed to build an enclave from your Dockerfile — {}", e);
-            return;
+
+    let (eif_measurements, output_path) = match deploy_args.eif_path {
+        Some(eif_path) => {
+            let ans = describe_eif(&eif_path).unwrap();
+            let output_path = resolve_output_path(None::<&str>).unwrap();
+            let output_p = format!("{}/enclave.eif", output_path.path().to_str().unwrap());
+            fs::copy(&eif_path, output_p).unwrap();
+            (ans.measurements.measurements, output_path)
+        }
+        None => {
+            match build_enclave_image_file(
+                &validated_config,
+                &deploy_args.context_path,
+                None,
+                !deploy_args.quiet,
+            )
+            .await
+            {
+                Ok(enclave_info) => {
+                    let (built_enclave, output_path) = enclave_info;
+                    (built_enclave.measurements().clone(), output_path)
+                }
+                Err(e) => {
+                    log::error!("Failed to build an enclave from your Dockerfile — {}", e);
+                    return;
+                }
+            }
         }
     };
 
@@ -81,7 +103,7 @@ pub async fn run(deploy_args: DeployArgs) {
         crate::common::update_cage_config_with_eif_measurements(
             &mut cage_config,
             &deploy_args.config,
-            built_enclave.measurements(),
+            &eif_measurements,
         );
     }
 
@@ -96,7 +118,7 @@ pub async fn run(deploy_args: DeployArgs) {
     };
 
     let cage_deployment_intent_payload = CreateCageDeploymentIntentRequest::new(
-        built_enclave.measurements().pcrs(),
+        eif_measurements.pcrs(),
         validated_config.debug,
         validated_config.egress().is_enabled(),
     );
