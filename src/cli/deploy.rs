@@ -26,8 +26,6 @@ pub struct DeployArgs {
     #[clap(long = "signing-cert")]
     pub certificate: Option<String>,
 
-    // ev:RFVC:YDwKbU3vc7h4aAMQ:Ahq5PXu4Ph2iX2uw6urzm7LHUxLmf72Bdu43BsPFHD31:O1+dmMh23SF333WAQxfP/lvjAEFUIcLriw:$
-    // cages-demo.app_ba433d59e26b
     /// Private key used to sign the enclave image file
     #[clap(long = "private-key")]
     pub private_key: Option<String>,
