@@ -101,10 +101,8 @@ pub enum CageConfigError {
     MissingSigningInfo(#[from] SigningInfoError),
     #[error("Dockerfile is required and was not given.")]
     MissingDockerfile,
-    #[error("Cage uuid was not set in the toml.")]
-    MissingCageUuid,
-    #[error("App uuid was not set in the toml.")]
-    MissingAppUuid,
+    #[error("{0} was not set in the toml.")]
+    MissingField(String),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -112,6 +110,7 @@ pub struct CageConfig {
     pub name: String,
     pub uuid: Option<String>,
     pub app_uuid: Option<String>,
+    pub team_uuid: Option<String>,
     pub debug: bool,
     pub dockerfile: Option<String>,
     pub egress: EgressSettings,
@@ -123,6 +122,7 @@ impl CageConfig {
     pub fn annotate(&mut self, cage: crate::api::cage::Cage) {
         self.uuid = Some(cage.uuid().into());
         self.app_uuid = Some(cage.app_uuid().into());
+        self.team_uuid = Some(cage.team_uuid().into());
     }
 }
 
@@ -132,6 +132,7 @@ pub struct ValidatedCageBuildConfig {
     pub cage_name: String,
     pub cage_uuid: String,
     pub app_uuid: String,
+    pub team_uuid: String,
     pub debug: bool,
     pub dockerfile: String,
     pub egress: EgressSettings,
@@ -163,6 +164,10 @@ impl ValidatedCageBuildConfig {
     pub fn app_uuid(&self) -> &str {
         &self.app_uuid
     }
+
+    pub fn team_uuid(&self) -> &str {
+        &self.team_uuid
+    }
 }
 
 impl std::convert::TryInto<ValidatedCageBuildConfig> for CageConfig {
@@ -173,13 +178,21 @@ impl std::convert::TryInto<ValidatedCageBuildConfig> for CageConfig {
 
         let dockerfile = self.dockerfile.ok_or(CageConfigError::MissingDockerfile)?;
 
-        let app_uuid = self.app_uuid.ok_or(CageConfigError::MissingAppUuid)?;
-        let cage_uuid = self.uuid.ok_or(CageConfigError::MissingCageUuid)?;
+        let app_uuid = self
+            .app_uuid
+            .ok_or(CageConfigError::MissingField("App uuid".into()))?;
+        let cage_uuid = self
+            .uuid
+            .ok_or(CageConfigError::MissingField("Cage uuid".into()))?;
+        let team_uuid = self
+            .team_uuid
+            .ok_or(CageConfigError::MissingField("Team uuid".into()))?;
 
         Ok(ValidatedCageBuildConfig {
             cage_uuid,
-            cage_name: self.name,
             app_uuid,
+            team_uuid,
+            cage_name: self.name,
             debug: self.debug,
             dockerfile,
             egress: self.egress,
