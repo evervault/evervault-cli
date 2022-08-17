@@ -7,3 +7,4 @@ pub mod config;
 pub mod describe;
 pub mod docker;
 pub mod enclave;
+pub mod deploy;

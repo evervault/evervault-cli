@@ -1,4 +1,4 @@
-mod error;
+pub mod error;
 
 use crate::docker::{error::DockerError, utils::verify_docker_is_running};
 use crate::enclave;
