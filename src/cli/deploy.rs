@@ -45,6 +45,6 @@ pub struct DeployArgs {
 pub async fn run(deploy_args: DeployArgs) {
     match deploy_eif(deploy_args).await {
         Ok(_) => println!("Deployment was successful"),
-        Err(e) => print!("{}", e)
+        Err(e) => print!("{}", e),
     };
 }
