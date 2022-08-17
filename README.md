@@ -2,15 +2,14 @@
 
 Build, deploy and manage Cages
 
-## Run Locally against staging
+## Run Locally
 
 ```
-> export EV_API_URL=https://internal-api.evervault.io
 > cargo build 
 > ln -s /<PATH-TO-CAGE-CLI-DIR>/cage-cli/target/debug/ev-cage /usr/local/bin/ev-cage 
 > ev-cage init --name <name> --generate-signing -f <dockerfile_path> --api-key <API_KEY> # can also pass --enable-egress here
 > ev-cage deploy --api-key <API_KEY>
 ```
 
-When you deploy your cage it will be available at `<cageName>.<appUuid>.cages.evervault.dev`. The cert it will serve is untrusted so use `-k` with curl, or `NODE_TLS_REJECT_UNAUTHORIZED=0`
+When you deploy your cage it will be available at `<cageName>.<appUuid>.cages.evervault.com`. The cert it will serve is untrusted so use `-k` with curl, or `NODE_TLS_REJECT_UNAUTHORIZED=0`
 
