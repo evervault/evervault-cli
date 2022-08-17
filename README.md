@@ -8,8 +8,7 @@ Build, deploy and manage Cages
 > export EV_API_URL=https://internal-api.evervault.io
 > cargo build 
 > ln -s /<PATH-TO-CAGE-CLI-DIR>/cage-cli/target/debug/ev-cage /usr/local/bin/ev-cage 
-> ev-cage cert new --subj "/CN=EV/C=IE/ST=LEI/L=DUB/O=Evervault/OU=Eng"
-> ev-cage init --name <name> --signing-cert ./cert.pem --private-key ./key.pem -f <dockerfile_path> --api-key <API_KEY> # can also pass --enable-egress here
+> ev-cage init --name <name> --generate-signing -f <dockerfile_path> --api-key <API_KEY> # can also pass --enable-egress here
 > ev-cage deploy --api-key <API_KEY>
 ```
 
