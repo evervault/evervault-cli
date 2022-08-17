@@ -55,8 +55,7 @@ pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
     );
     let deployment_intent = cage_api
         .create_cage_deployment_intent(&cage_uuid, cage_deployment_intent_payload)
-        .await
-        .unwrap(); //todo remove
+        .await?;
 
     let s3_upload_url = deployment_intent.signed_url();
     let reqwest_client = api::Client::builder().build().unwrap();
