@@ -1,66 +1,39 @@
 use crate::api;
+use crate::api::cage::CagesClient;
 use crate::api::{cage::CreateCageDeploymentIntentRequest, client::ApiClient, AuthMode};
 use crate::build::build_enclave_image_file;
+use crate::cli::deploy::DeployArgs;
 use crate::common::{resolve_output_path, OutputPath};
 use crate::config::{CageConfig, ValidatedCageBuildConfig};
 use crate::describe::describe_eif;
 use crate::enclave::EIFMeasurements;
 use std::fs;
 use std::io::Write;
-use crate::cli::deploy::DeployArgs;
 mod error;
 use error::DeployError;
-use indicatif::{ProgressStyle, ProgressBar};
+use indicatif::{ProgressBar, ProgressStyle};
 
-pub async fn deploy_eif(deploy_args: DeployArgs) {
-    let mut cage_config = match CageConfig::try_from_filepath(&deploy_args.config) {
-        Ok(cage_config) => cage_config,
-        Err(e) => {
-            log::error!("An error occurred while reading the cage config — {:?}", e);
-            return;
-        }
-    };
+pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
+    let mut cage_config = CageConfig::try_from_filepath(&deploy_args.config)?;
 
     merge_config_with_args(&deploy_args, &mut cage_config);
-    let validated_config: ValidatedCageBuildConfig = match cage_config.clone().try_into() {
-        Ok(validated) => validated,
-        Err(e) => {
-            log::error!("Failed to validate cage config — {}", e);
-            return;
-        }
-    };
+    let validated_config: ValidatedCageBuildConfig = cage_config.clone().try_into()?;
 
     let cage_uuid = validated_config.cage_uuid().to_string();
 
     let (eif_measurements, output_path) = match deploy_args.eif_path {
-        Some(eif_path) => {
-            match get_eif(eif_path) {
-                Ok(eif) => eif,
-                Err(e) => {
-                    log::error!("Failed to get measurements from your EIF — {}", e);
-                    return;
-                }
-            }
-        }
-        None => {
-            match build_enclave_image_file(
-                &validated_config,
-                &deploy_args.context_path,
-                None,
-                !deploy_args.quiet,
-            )
-            .await
-            {
-                Ok(enclave_info) => {
-                    let (built_enclave, output_path) = enclave_info;
-                    (built_enclave.measurements().clone(), output_path)
-                }
-                Err(e) => {
-                    log::error!("Failed to build an enclave from your Dockerfile — {}", e);
-                    return;
-                }
-            }
-        }
+        Some(eif_path) => get_eif(eif_path)?,
+        None => build_enclave_image_file(
+            &validated_config,
+            &deploy_args.context_path,
+            None,
+            !deploy_args.quiet,
+        )
+        .await
+        .map(|enclave_info| {
+            let (built_enclave, output_path) = enclave_info;
+            (built_enclave.measurements().clone(), output_path)
+        })?,
     };
 
     if deploy_args.write {
@@ -73,29 +46,17 @@ pub async fn deploy_eif(deploy_args: DeployArgs) {
 
     let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(deploy_args.api_key.clone()));
 
-    let zip_content = match create_zip_archive_for_eif(output_path.path()) {
-        Ok(zip_content) => zip_content,
-        Err(zip_err) => {
-            log::error!("Error creating zip — {:?}", zip_err);
-            return;
-        }
-    };
+    let zip_content = create_zip_archive_for_eif(output_path.path())?;
 
     let cage_deployment_intent_payload = CreateCageDeploymentIntentRequest::new(
         eif_measurements.pcrs(),
         validated_config.debug,
         validated_config.egress().is_enabled(),
     );
-    let deployment_intent = match cage_api
+    let deployment_intent = cage_api
         .create_cage_deployment_intent(&cage_uuid, cage_deployment_intent_payload)
         .await
-    {
-        Ok(deployment_intent) => deployment_intent,
-        Err(e) => {
-            log::error!("Failed to create Cage deployment intent — {:?}", e);
-            return;
-        }
-    };
+        .unwrap(); //todo remove
 
     let s3_upload_url = deployment_intent.signed_url();
     let reqwest_client = api::Client::builder().build().unwrap();
@@ -114,35 +75,37 @@ pub async fn deploy_eif(deploy_args: DeployArgs) {
 
     let progress_bar = get_progress_bar("Uploading Cage to Evervault...");
 
-    let s3_response = match reqwest_client
+    reqwest_client
         .put(s3_upload_url)
         .header("Content-Type", "application/zip")
         .body(zip_content)
         .send()
         .await
-    {
-        Ok(response) => response,
-        Err(upload_err) => {
-            log::error!("An error occurred while uploading to S3 — {:?}", upload_err);
-            return;
-        }
-    };
-
-    if s3_response.status().is_success() {
-        progress_bar.finish_with_message("Cage uploaded to Evervault.");
-    } else {
-        progress_bar.finish_with_message("Cage failed to upload.");
-        return;
-    };
+        .map(|_| progress_bar.finish_with_message("Cage uploaded to Evervault."))
+        .map_err(|_| progress_bar.finish_with_message("Cage failed to upload."))
+        .unwrap();
 
     let progress_bar = get_progress_bar("Deploying Cage into a Nitro Enclave...");
 
+    watch_deployment(
+        cage_api,
+        deployment_intent.cage_uuid(),
+        deployment_intent.deployment_uuid(),
+        progress_bar,
+    )
+    .await;
+    Ok(())
+}
+
+async fn watch_deployment(
+    cage_api: CagesClient,
+    cage_uuid: &str,
+    deployment_uuid: &str,
+    progress_bar: ProgressBar,
+) {
     loop {
         match cage_api
-            .get_cage_deployment_by_uuid(
-                deployment_intent.cage_uuid(),
-                deployment_intent.deployment_uuid(),
-            )
+            .get_cage_deployment_by_uuid(cage_uuid, deployment_uuid)
             .await
         {
             Ok(deployment_response) => {
@@ -208,11 +171,10 @@ fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::Zip
     Ok(zip_content)
 }
 
-
 fn get_eif(eif_path: String) -> Result<(EIFMeasurements, OutputPath), DeployError> {
     let eif = describe_eif(&eif_path)?;
     let output_path = resolve_output_path(None::<&str>)?;
     let output_p = format!("{}/enclave.eif", output_path.path().to_str().unwrap());
     fs::copy(&eif_path, output_p)?;
-    Ok((eif.measurements.measurements, output_path)) 
+    Ok((eif.measurements.measurements, output_path))
 }
