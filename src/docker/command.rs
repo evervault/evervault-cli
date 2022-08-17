@@ -4,15 +4,11 @@ use thiserror::Error;
 
 pub struct CommandConfig {
     verbose: bool,
-    architecture: &'static str,
 }
 
 impl CommandConfig {
     pub fn new(verbose: bool) -> Self {
-        Self {
-            verbose,
-            architecture: std::env::consts::ARCH,
-        }
+        Self { verbose }
     }
 
     pub fn extra_build_args(&self) -> Vec<&OsStr> {

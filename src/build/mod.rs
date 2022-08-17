@@ -184,6 +184,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         // set cage name and app uuid as in enclave env vars
         Directive::new_env("EV_CAGE_NAME", build_config.cage_name()),
         Directive::new_env("EV_APP_UUID", build_config.app_uuid()),
+        Directive::new_env("EV_TEAM_UUID", build_config.team_uuid()),
         // Add bootstrap script to configure enclave before starting services
         Directive::new_run(crate::docker::utils::write_command_to_script(
             bootstrap_script_content,
@@ -215,6 +216,7 @@ mod test {
         ValidatedCageBuildConfig {
             cage_name: "test".into(),
             cage_uuid: "1234".into(),
+            team_uuid: "teamid".into(),
             debug: false,
             app_uuid: "3241".into(),
             dockerfile: "".into(),
@@ -258,6 +260,7 @@ RUN mkdir -p /etc/service/data-plane
 RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting Evervault data plane..."\nexec /data-plane\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
 ENV EV_APP_UUID=3241
+ENV EV_TEAM_UUID=teamid
 RUN /bin/sh -c "printf '"'#!/bin/sh\nifconfig lo 127.0.0.1\necho "Booting enclave..."\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "#;
@@ -334,6 +337,7 @@ RUN mkdir -p /etc/service/data-plane
 RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting Evervault data plane..."\nexec /data-plane -p 3443\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
 ENV EV_APP_UUID=3241
+ENV EV_TEAM_UUID=teamid
 RUN /bin/sh -c "printf '"'#!/bin/sh\nifconfig lo 127.0.0.1\necho "Booting enclave..."\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "#;
@@ -370,6 +374,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
             cage_name: "test-cage".into(),
             cage_uuid: "1234".into(),
             app_uuid: "4321".into(),
+            team_uuid: "teamid".into(),
             debug: false,
             egress: EgressSettings {
                 enabled: false,

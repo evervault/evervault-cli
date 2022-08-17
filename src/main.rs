@@ -11,6 +11,7 @@ use std::io::Write;
 #[clap(
     name = "Evervault Cage CLI",
     author = "engineering@evervault.com",
+    version,
     setting = AppSettings::ArgRequiredElseHelp,
     setting = AppSettings::DeriveDisplayOrder
 )]

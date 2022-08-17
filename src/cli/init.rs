@@ -68,6 +68,7 @@ impl std::convert::Into<CageConfig> for InitArgs {
             name: self.cage_name,
             uuid: None,
             app_uuid: None,
+            team_uuid: None,
             debug: self.debug,
             egress: EgressSettings {
                 enabled: self.egress,
