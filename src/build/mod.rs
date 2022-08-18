@@ -1,4 +1,4 @@
-mod error;
+pub mod error;
 use error::BuildError;
 
 use crate::common::{resolve_output_path, OutputPath};

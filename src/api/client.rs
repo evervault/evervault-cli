@@ -3,7 +3,9 @@ use async_trait::async_trait;
 use reqwest::{Client, RequestBuilder, Response};
 use reqwest::{Error, Result};
 use serde::de::DeserializeOwned;
+use std::fmt::Formatter;
 use std::time::Duration;
+use thiserror::Error;
 
 #[derive(Clone)]
 pub struct GenericApiClient {
@@ -119,7 +121,7 @@ impl HandleResponse for Result<Response> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum ApiError {
     BadRequest,
     NotFound,
@@ -132,6 +134,12 @@ pub enum ApiError {
 }
 
 pub type ApiResult<T> = core::result::Result<T, ApiError>;
+
+impl std::fmt::Display for ApiError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.to_msg())
+    }
+}
 
 impl ApiError {
     pub fn get_error_from_status(code: u16) -> Self {
