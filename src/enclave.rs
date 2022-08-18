@@ -236,7 +236,7 @@ pub struct PCRs {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct EnclaveBuildOutput {
-    measurements: EIFMeasurements,
+    pub measurements: EIFMeasurements,
 }
 
 #[derive(Debug)]
@@ -259,7 +259,7 @@ impl BuiltEnclave {
 #[serde(rename_all = "PascalCase")]
 pub struct DescribeEif {
     #[serde(flatten)]
-    measurements: EnclaveBuildOutput,
+    pub measurements: EnclaveBuildOutput,
     is_signed: bool,
     signing_certificate: EnclaveSigningCertificate,
     signature_check: bool,
