@@ -12,6 +12,11 @@ use std::io::Write;
 mod error;
 use error::DeployError;
 use indicatif::{ProgressBar, ProgressStyle};
+use reqwest::Body;
+use std::path::PathBuf;
+use tokio::fs::File;
+use tokio_stream::StreamExt;
+use tokio_util::codec::{BytesCodec, FramedRead};
 
 pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
     let mut cage_config = CageConfig::try_from_filepath(&deploy_args.config)?;
@@ -46,20 +51,6 @@ pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
 
     let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(deploy_args.api_key.clone()));
 
-    let zip_content = create_zip_archive_for_eif(output_path.path())?;
-
-    let cage_deployment_intent_payload = CreateCageDeploymentIntentRequest::new(
-        eif_measurements.pcrs(),
-        validated_config.debug,
-        validated_config.egress().is_enabled(),
-    );
-    let deployment_intent = cage_api
-        .create_cage_deployment_intent(&cage_uuid, cage_deployment_intent_payload)
-        .await?;
-
-    let s3_upload_url = deployment_intent.signed_url();
-    let reqwest_client = api::Client::builder().build().unwrap();
-
     let get_progress_bar = |start_msg: &str| {
         let progress_bar = ProgressBar::new_spinner();
         progress_bar.enable_steady_tick(80);
@@ -72,17 +63,40 @@ pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
         progress_bar
     };
 
-    let progress_bar = get_progress_bar("Uploading Cage to Evervault...");
+    let progress_bar = get_progress_bar("Zipping Cage...");
+    let zip_path = create_zip_archive_for_eif(output_path.path())?;
+    progress_bar.finish_with_message("Cage zipped.");
 
-    reqwest_client
+    let zip_file = File::open(&zip_path).await?;
+    let zip_len_bytes = zip_file.metadata().await?.len();
+    let zip_upload_stream = create_zip_upload_stream(zip_file, zip_len_bytes).await;
+
+    let cage_deployment_intent_payload = CreateCageDeploymentIntentRequest::new(
+        eif_measurements.pcrs(),
+        validated_config.debug,
+        validated_config.egress().is_enabled(),
+    );
+    let deployment_intent = cage_api
+        .create_cage_deployment_intent(&cage_uuid, cage_deployment_intent_payload)
+        .await?;
+
+    let s3_upload_url = deployment_intent.signed_url();
+    let reqwest_client = api::Client::builder().build().unwrap();
+    let s3_response = reqwest_client
         .put(s3_upload_url)
         .header("Content-Type", "application/zip")
-        .body(zip_content)
+        .header("Content-Length", zip_len_bytes)
+        .body(Body::wrap_stream(zip_upload_stream))
         .send()
-        .await
-        .map(|_| progress_bar.finish_with_message("Cage uploaded to Evervault."))
-        .map_err(|_| progress_bar.finish_with_message("Cage failed to upload."))
-        .unwrap();
+        .await?;
+
+    tokio::fs::remove_file(zip_path).await?;
+
+    if s3_response.status().is_success() {
+        log::info!("Cage uploaded to Evervault.");
+    } else {
+        return Err(DeployError::UploadError(s3_response.text().await?));
+    };
 
     let progress_bar = get_progress_bar("Deploying Cage into a Nitro Enclave...");
 
@@ -137,7 +151,7 @@ fn merge_config_with_args(args: &DeployArgs, config: &mut CageConfig) {
     }
 }
 
-fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::ZipResult<Vec<u8>> {
+fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::ZipResult<PathBuf> {
     let zip_path = output_path.join("enclave.zip");
     let zip_file = if !zip_path.exists() {
         std::fs::File::create(&zip_path)?
@@ -159,15 +173,32 @@ fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::Zip
     zip.write_all(eif.as_slice())?;
 
     let _ = zip.finish()?;
-    let zip_content = std::fs::read(&zip_path)?;
-    if let Err(e) = std::fs::remove_file(zip_path) {
-        log::error!(
-            "An error occurred while trying to delete the enclave zip — {:?}",
-            e
-        );
-    }
 
-    Ok(zip_content)
+    Ok(zip_path)
+}
+
+async fn create_zip_upload_stream(
+    zip_file: File,
+    zip_len_bytes: u64,
+) -> async_stream::AsyncStream<
+    Result<bytes::BytesMut, std::io::Error>,
+    impl core::future::Future<Output = ()>,
+> {
+    let mut stream = FramedRead::new(zip_file, BytesCodec::new());
+    let progress_bar = ProgressBar::new(zip_len_bytes);
+    progress_bar.set_style(ProgressStyle::default_bar()
+        .template("Uploading Cage to Evervault {bar:40.green/blue} {bytes} ({percent}%) [{elapsed_precise}]")
+        .progress_chars("##-"));
+    async_stream::stream! {
+        let mut bytes_sent = 0;
+        while let Some(bytes) = stream.next().await {
+            progress_bar.set_position(bytes_sent);
+            if let Ok(bytes) = &bytes {
+                bytes_sent += bytes.len() as u64;
+            }
+            yield bytes;
+        }
+    }
 }
 
 fn get_eif(eif_path: String) -> Result<(EIFMeasurements, OutputPath), DeployError> {

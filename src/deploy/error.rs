@@ -20,4 +20,6 @@ pub enum DeployError {
     RequestError(#[from] reqwest::Error),
     #[error("An error contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),
+    #[error("Cage failed to upload - {0}")]
+    UploadError(String),
 }

@@ -271,6 +271,7 @@ dependencies = [
 name = "ev-cage"
 version = "0.0.0-dev"
 dependencies = [
+ "async-stream",
  "async-trait",
  "atty",
  "bytes",
@@ -290,6 +291,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tokio-test",
  "tokio-util 0.6.10",
  "toml",
@@ -994,6 +996,7 @@ dependencies = [
  "serde_urlencoded",
  "tokio",
  "tokio-native-tls",
+ "tokio-util 0.7.3",
  "tower-service",
  "url",
  "wasm-bindgen",
