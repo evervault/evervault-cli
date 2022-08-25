@@ -3,6 +3,7 @@ use super::AuthMode;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone)]
 pub struct CagesClient {
     inner: GenericApiClient,
 }

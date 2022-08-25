@@ -8,5 +8,7 @@ pub mod deploy;
 pub mod describe;
 pub mod docker;
 pub mod enclave;
+pub mod delete;
+
 #[cfg(test)]
 pub mod test_utils;

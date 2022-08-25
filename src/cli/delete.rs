@@ -1,9 +1,9 @@
 use crate::delete::delete_cage;
 use clap::Parser;
 
-/// Deploy a Cage from a toml file.
+/// Delete a Cage from a toml file.
 #[derive(Debug, Parser)]
-#[clap(name = "deploy", about)]
+#[clap(name = "delete", about)]
 pub struct DeleteArgs {
     /// Path to cage.toml config file
     #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
