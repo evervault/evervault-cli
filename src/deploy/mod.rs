@@ -101,7 +101,7 @@ pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
         return Err(DeployError::UploadError(s3_response.text().await?));
     };
 
-    let progress_bar = get_progress_bar("Deploying Cage into a Nitro Enclave...");
+    let progress_bar = get_progress_bar("Building Cage Image in Evervault..");
 
     watch_deployment(
         cage_api,
@@ -125,7 +125,21 @@ async fn watch_deployment(
             .await
         {
             Ok(deployment_response) => {
-                if deployment_response.is_finished() {
+                let status = (deployment_response.is_built(), deployment_response.is_finished());
+
+                match status {
+                    (_, true) => {
+                        progress_bar.finish_with_message("Cage deployed!");
+                        break;
+                    },
+                    (true, false) => {
+                        progress_bar.set_message("Deploying cage into Nitro Enclave..");
+                        break;
+                    },
+                    (false, false) => (),
+                }
+
+                if deployment_response.is_built() && !deployment_response.is_finished() {
                     progress_bar.finish_with_message("Cage deployed!");
                     break;
                 }
