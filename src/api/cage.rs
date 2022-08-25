@@ -169,6 +169,7 @@ impl CreateCageDeploymentIntentResponse {
 pub enum CageState {
     Pending,
     Active,
+    Deleting,
     Deleted,
 }
 
