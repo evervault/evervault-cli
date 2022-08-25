@@ -6,7 +6,7 @@ use crate::cli::deploy::DeployArgs;
 use crate::common::{resolve_output_path, OutputPath};
 use crate::config::{CageConfig, ValidatedCageBuildConfig};
 use crate::describe::describe_eif;
-use crate::enclave::EIFMeasurements;
+use crate::enclave::{EIFMeasurements, ENCLAVE_FILENAME};
 use std::fs;
 use std::io::Write;
 mod error;
@@ -71,10 +71,13 @@ pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
     let zip_len_bytes = zip_file.metadata().await?.len();
     let zip_upload_stream = create_zip_upload_stream(zip_file, zip_len_bytes).await;
 
+    let eif_size_bytes = get_eif_size_bytes(output_path).await?;
+
     let cage_deployment_intent_payload = CreateCageDeploymentIntentRequest::new(
         eif_measurements.pcrs(),
         validated_config.debug,
         validated_config.egress().is_enabled(),
+        eif_size_bytes,
     );
     let deployment_intent = cage_api
         .create_cage_deployment_intent(&cage_uuid, cage_deployment_intent_payload)
@@ -129,7 +132,7 @@ async fn watch_deployment(
             }
             Err(e) => {
                 progress_bar.finish();
-                println!("Unable to retrieve deployment status. Error: {:?}", e);
+                log::error!("Unable to retrieve deployment status. Error: {:?}", e);
                 break;
             }
         };
@@ -167,8 +170,8 @@ fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::Zip
     let zip_opts =
         zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
-    let eif_path = output_path.join("enclave.eif");
-    zip.start_file("enclave.eif", zip_opts)?;
+    let eif_path = output_path.join(ENCLAVE_FILENAME);
+    zip.start_file(ENCLAVE_FILENAME, zip_opts)?;
     let eif = std::fs::read(eif_path)?;
     zip.write_all(eif.as_slice())?;
 
@@ -207,4 +210,27 @@ fn get_eif(eif_path: String) -> Result<(EIFMeasurements, OutputPath), DeployErro
     let output_p = format!("{}/enclave.eif", output_path.path().to_str().unwrap());
     fs::copy(&eif_path, output_p)?;
     Ok((eif.measurements.measurements, output_path))
+}
+
+async fn get_eif_size_bytes(output_path: OutputPath) -> Result<u64, DeployError> {
+    match tokio::fs::metadata(output_path.path().join(ENCLAVE_FILENAME)).await {
+        Ok(metadata) => Ok(metadata.len()),
+        Err(err) => Err(DeployError::EifSizeReadError(err)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils;
+
+    #[tokio::test]
+    async fn test_get_eif_size() {
+        let (_, output_path) = test_utils::build_test_cage(None).await.unwrap();
+        let _eif_size_bytes = get_eif_size_bytes(output_path).await.unwrap();
+        // when we have fully reproducable builds, this test should check that the size of
+        // the test EIF remains constant. Currently, it varies by a few bytes on each run.
+        // e.g.
+        // assert_eq!(eif_size_bytes, test_utils::TEST_EIF_SIZE_BYTES);
+    }
 }

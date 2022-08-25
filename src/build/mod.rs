@@ -203,12 +203,13 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
 
 #[cfg(test)]
 mod test {
-    use super::{build_enclave_image_file, process_dockerfile, BuildError};
+    use super::{process_dockerfile, BuildError};
     use crate::config::EgressSettings;
     use crate::config::ValidatedCageBuildConfig;
     use crate::config::ValidatedSigningInfo;
     use crate::docker;
     use crate::enclave;
+    use crate::test_utils;
     use itertools::zip;
     use tempfile::TempDir;
 
@@ -367,39 +368,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
     async fn test_choose_output_dir() {
         let output_dir = TempDir::new().unwrap();
 
-        let dn_string = crate::cert::DistinguishedName::default();
-        crate::cert::create_new_cert(".".into(), dn_string).expect("Failed to gen cert in tests");
-
-        let build_args = ValidatedCageBuildConfig {
-            cage_name: "test-cage".into(),
-            cage_uuid: "1234".into(),
-            app_uuid: "4321".into(),
-            team_uuid: "teamid".into(),
-            debug: false,
-            egress: EgressSettings {
-                enabled: false,
-                destinations: None,
-            },
-            dockerfile: "./sample-user.Dockerfile".to_string(),
-            signing: ValidatedSigningInfo {
-                cert: "./cert.pem".into(),
-                key: "./key.pem".into(),
-            },
-            attestation: None,
-        };
-
-        println!(
-            "output_dir: {}",
-            output_dir.path().to_str().unwrap().to_string()
-        );
-
-        let _ = build_enclave_image_file(
-            &build_args,
-            ".",
-            Some(output_dir.path().to_str().unwrap()),
-            false,
-        )
-        .await;
+        let _ = test_utils::build_test_cage(Some(output_dir.path().to_str().unwrap())).await;
 
         let paths = std::fs::read_dir(output_dir.path().to_str().unwrap().to_string()).unwrap();
 

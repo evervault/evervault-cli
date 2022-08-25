@@ -22,4 +22,6 @@ pub enum DeployError {
     ApiError(#[from] crate::api::client::ApiError),
     #[error("Cage failed to upload - {0}")]
     UploadError(String),
+    #[error("Could not read the size of the Cage EIF file {0}")]
+    EifSizeReadError(std::io::Error),
 }
