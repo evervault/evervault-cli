@@ -3,6 +3,7 @@ use super::AuthMode;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone)]
 pub struct CagesClient {
     inner: GenericApiClient,
 }
@@ -98,6 +99,15 @@ impl CagesClient {
         let get_cert_url = format!("{}/signing/certs/{}", self.base_url(), cert_uuid);
         self.get(&get_cert_url).send().await.handle_response().await
     }
+
+    pub async fn delete_cage(&self, cage_uuid: &str) -> ApiResult<DeleteCageResponse> {
+        let delete_cage_url = format!("{}/{}", self.base_url(), cage_uuid);
+        self.delete(&delete_cage_url)
+            .send()
+            .await
+            .handle_response()
+            .await
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -164,7 +174,7 @@ impl CreateCageDeploymentIntentResponse {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum CageState {
     Pending,
@@ -222,7 +232,7 @@ impl CageDeployment {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum BuildStatus {
     Pending,
@@ -308,6 +318,12 @@ pub struct GetCageResponse {
     deployments: Vec<DeploymentsForGetCage>,
 }
 
+impl GetCageResponse {
+    pub fn is_deleted(&self) -> bool {
+        self.cage.state == CageState::Deleted
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetCageDeploymentResponse {
@@ -319,6 +335,10 @@ pub struct GetCageDeploymentResponse {
 }
 
 impl GetCageDeploymentResponse {
+    pub fn is_built(&self) -> bool {
+        self.tee_cage_version.build_status == BuildStatus::Ready
+    }
+
     pub fn is_finished(&self) -> bool {
         self.deployment.is_finished()
     }
@@ -329,3 +349,5 @@ impl GetCageDeploymentResponse {
 pub struct GetSigningCertsResponse {
     certs: Vec<CageSigningCert>,
 }
+
+pub type DeleteCageResponse = Cage;
