@@ -30,6 +30,7 @@ async-trait = "0.1.57"
 indicatif = { version = "0.15.0" }
 async-stream = "0.3.3"
 tokio-stream = "0.1.9"
+minus = { version = "5.0.5", features = ["static_output"] }
 
 [dev-dependencies]
 tokio-test = "0.4.2"

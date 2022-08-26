@@ -1,8 +1,10 @@
 use crate::api;
 use crate::api::{client::ApiClient, AuthMode};
 use crate::config::{CageConfig, ValidatedCageBuildConfig};
+
 use chrono::TimeZone;
 use clap::Parser;
+use std::fmt::Write;
 
 /// Pull the logs for a Cage
 #[derive(Debug, Parser)]
@@ -83,20 +85,30 @@ pub async fn run(log_args: LogArgs) {
     }
 
     println!(
-        "Retrieved {} logs from {logs_start} to {logs_end}\n",
+        "Retrieved {} logs from {logs_start} to {logs_end}",
         cage_logs.log_events().len()
     );
+
+    let mut output = minus::Pager::new();
 
     cage_logs
         .log_events()
         .iter()
         .map(serde_json::to_string_pretty)
         .filter_map(|serialized_log| serialized_log.ok())
-        .for_each(|log| println!("{log}"));
+        .for_each(|log_event| {
+            writeln!(output, "{}", log_event).unwrap();
+        });
+
+    if let Err(e) = minus::page_all(output) {
+        eprintln!("An error occurred while paginating your log data - {:?}", e);
+    }
 }
 
 fn format_timestamp(epoch: i64) -> String {
+    let epoch_secs = epoch / 1000;
+    let epoch_nsecs = epoch % 1000;
     chrono::Utc
-        .timestamp(epoch, 0)
+        .timestamp(epoch_secs, epoch_nsecs as u32)
         .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
