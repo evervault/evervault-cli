@@ -2,7 +2,7 @@ use atty::Stream;
 use clap::{AppSettings, Parser};
 use env_logger::fmt::Formatter;
 use env_logger::{Builder, Env};
-use ev_cage::cli::{build, cert, deploy, describe, init, list, logs, Command};
+use ev_cage::cli::{build, cert, delete, deploy, describe, init, list, logs, Command};
 use human_panic::setup_panic;
 use log::Record;
 use std::io::Write;
@@ -43,6 +43,7 @@ async fn main() {
     match base_args.command {
         Command::Build(build_args) => build::run(build_args).await,
         Command::Cert(cert_args) => cert::run(cert_args),
+        Command::Delete(delete_args) => delete::run(delete_args).await,
         Command::Deploy(deploy_args) => deploy::run(deploy_args).await,
         Command::Describe(describe_args) => describe::run(describe_args).await,
         Command::Init(init_args) => init::run(init_args).await,
