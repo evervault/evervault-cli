@@ -18,6 +18,8 @@ use tokio::fs::File;
 use tokio_stream::StreamExt;
 use tokio_util::codec::{BytesCodec, FramedRead};
 
+const ENCLAVE_ZIP_FILENAME: &str = "enclave.zip";
+
 pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
     let mut cage_config = CageConfig::try_from_filepath(&deploy_args.config)?;
 
@@ -64,14 +66,15 @@ pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
     };
 
     let progress_bar = get_progress_bar("Zipping Cage...");
-    let zip_path = create_zip_archive_for_eif(output_path.path())?;
+    create_zip_archive_for_eif(output_path.path())?;
     progress_bar.finish_with_message("Cage zipped.");
 
+    let zip_path = output_path.path().join(ENCLAVE_ZIP_FILENAME);
     let zip_file = File::open(&zip_path).await?;
     let zip_len_bytes = zip_file.metadata().await?.len();
     let zip_upload_stream = create_zip_upload_stream(zip_file, zip_len_bytes).await;
 
-    let eif_size_bytes = get_eif_size_bytes(output_path).await?;
+    let eif_size_bytes = get_eif_size_bytes(output_path.path()).await?;
 
     let cage_deployment_intent_payload = CreateCageDeploymentIntentRequest::new(
         eif_measurements.pcrs(),
@@ -190,8 +193,8 @@ fn merge_config_with_args(args: &DeployArgs, config: &mut CageConfig) {
     }
 }
 
-fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::ZipResult<PathBuf> {
-    let zip_path = output_path.join("enclave.zip");
+fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::ZipResult<()> {
+    let zip_path = output_path.join(ENCLAVE_ZIP_FILENAME);
     let zip_file = if !zip_path.exists() {
         std::fs::File::create(&zip_path)?
     } else {
@@ -213,7 +216,7 @@ fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::Zip
 
     let _ = zip.finish()?;
 
-    Ok(zip_path)
+    Ok(())
 }
 
 async fn create_zip_upload_stream(
@@ -248,8 +251,8 @@ fn get_eif(eif_path: String) -> Result<(EIFMeasurements, OutputPath), DeployErro
     Ok((eif.measurements.measurements, output_path))
 }
 
-async fn get_eif_size_bytes(output_path: OutputPath) -> Result<u64, DeployError> {
-    match tokio::fs::metadata(output_path.path().join(ENCLAVE_FILENAME)).await {
+async fn get_eif_size_bytes(output_path: &PathBuf) -> Result<u64, DeployError> {
+    match tokio::fs::metadata(output_path.join(ENCLAVE_FILENAME)).await {
         Ok(metadata) => Ok(metadata.len()),
         Err(err) => Err(DeployError::EifSizeReadError(err)),
     }
@@ -263,10 +266,14 @@ mod tests {
     #[tokio::test]
     async fn test_get_eif_size() {
         let (_, output_path) = test_utils::build_test_cage(None).await.unwrap();
-        let _eif_size_bytes = get_eif_size_bytes(output_path).await.unwrap();
+        let output_path_as_string = output_path.path().to_str().unwrap().to_string();
+        let _eif_size_bytes = get_eif_size_bytes(output_path.path()).await.unwrap();
         // when we have fully reproducable builds, this test should check that the size of
         // the test EIF remains constant. Currently, it varies by a few bytes on each run.
         // e.g.
         // assert_eq!(eif_size_bytes, test_utils::TEST_EIF_SIZE_BYTES);
+
+        // ensure temp output directory still exists after running function
+        assert!(std::path::PathBuf::from(output_path_as_string).exists());
     }
 }
