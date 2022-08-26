@@ -91,6 +91,7 @@ pub async fn run(log_args: LogArgs) {
 
     let mut output = minus::Pager::new();
 
+    // TODO: add support for loading more logs at end of page
     cage_logs
         .log_events()
         .iter()
