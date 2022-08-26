@@ -104,16 +104,52 @@ pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
         return Err(DeployError::UploadError(s3_response.text().await?));
     };
 
-    let progress_bar = get_progress_bar("Deploying Cage into a Nitro Enclave...");
+    let progress_bar_for_build = get_progress_bar("Building Cage Image on Evervault...");
+    watch_build(
+        cage_api.clone(),
+        deployment_intent.cage_uuid(),
+        deployment_intent.deployment_uuid(),
+        progress_bar_for_build,
+    )
+    .await;
 
+    let progress_bar_for_deploy = get_progress_bar("Deploying Cage into a Nitro Enclave...");
     watch_deployment(
         cage_api,
         deployment_intent.cage_uuid(),
         deployment_intent.deployment_uuid(),
-        progress_bar,
+        progress_bar_for_deploy,
     )
     .await;
+
     Ok(())
+}
+
+async fn watch_build(
+    cage_api: CagesClient,
+    cage_uuid: &str,
+    deployment_uuid: &str,
+    progress_bar: ProgressBar,
+) {
+    loop {
+        match cage_api
+            .get_cage_deployment_by_uuid(cage_uuid, deployment_uuid)
+            .await
+        {
+            Ok(deployment_response) => {
+                if deployment_response.is_built() {
+                    progress_bar.finish_with_message("Cage built on Evervault!");
+                    break;
+                }
+            }
+            Err(e) => {
+                progress_bar.finish();
+                log::error!("Unable to retrieve build status. Error: {:?}", e);
+                break;
+            }
+        };
+        tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
+    }
 }
 
 async fn watch_deployment(
