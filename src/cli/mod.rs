@@ -5,6 +5,7 @@ pub mod deploy;
 pub mod describe;
 pub mod init;
 pub mod list;
+pub mod logs;
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
@@ -14,4 +15,5 @@ pub enum Command {
     Deploy(deploy::DeployArgs),
     Init(init::InitArgs),
     List(list::List),
+    Logs(logs::LogArgs),
 }
