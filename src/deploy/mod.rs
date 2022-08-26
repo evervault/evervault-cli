@@ -110,7 +110,7 @@ pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
     )
     .await;
 
-    let progress_bar_for_deploy= get_progress_bar("Deploying Cage into a Nitro Enclave...");
+    let progress_bar_for_deploy = get_progress_bar("Deploying Cage into a Nitro Enclave...");
     watch_deployment(
         cage_api,
         deployment_intent.cage_uuid(),
@@ -148,7 +148,6 @@ async fn watch_build(
         tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
     }
 }
-
 
 async fn watch_deployment(
     cage_api: CagesClient,

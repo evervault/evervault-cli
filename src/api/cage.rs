@@ -102,9 +102,12 @@ impl CagesClient {
 
     pub async fn delete_cage(&self, cage_uuid: &str) -> ApiResult<DeleteCageResponse> {
         let delete_cage_url = format!("{}/{}", self.base_url(), cage_uuid);
-        self.delete(&delete_cage_url).send().await.handle_response().await
+        self.delete(&delete_cage_url)
+            .send()
+            .await
+            .handle_response()
+            .await
     }
-
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -332,7 +335,6 @@ pub struct GetCageDeploymentResponse {
 }
 
 impl GetCageDeploymentResponse {
-
     pub fn is_built(&self) -> bool {
         self.tee_cage_version.build_status == BuildStatus::Ready
     }

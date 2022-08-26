@@ -38,25 +38,13 @@ pub async fn delete_cage(delete_args: DeleteArgs) -> Result<(), DeleteError> {
 
     let progress_bar = get_progress_bar("Deleting Cage...");
 
-    watch_deletion(
-        cage_api,
-        deleted_cage.uuid(),
-        progress_bar,
-    )
-    .await;
+    watch_deletion(cage_api, deleted_cage.uuid(), progress_bar).await;
     Ok(())
 }
 
-async fn watch_deletion(
-    cage_api: CagesClient,
-    cage_uuid: &str,
-    progress_bar: ProgressBar,
-) {
+async fn watch_deletion(cage_api: CagesClient, cage_uuid: &str, progress_bar: ProgressBar) {
     loop {
-        match cage_api
-            .get_cage(cage_uuid)
-            .await
-        {
+        match cage_api.get_cage(cage_uuid).await {
             Ok(cage_response) => {
                 if cage_response.is_deleted() {
                     progress_bar.finish_with_message("Cage deleted!");
