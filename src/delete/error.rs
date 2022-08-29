@@ -1,3 +1,4 @@
+use crate::common::CliError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -8,6 +9,14 @@ pub enum DeleteError {
     IoError(#[from] std::io::Error),
     #[error("An error contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),
-    #[error("Cage failed to delete - {0}")]
-    DeletionError(String),
+}
+
+impl CliError for DeleteError {
+    fn exitcode(&self) -> exitcode::ExitCode {
+        match self {
+            Self::CageConfigError(config_err) => config_err.exitcode(),
+            Self::IoError(_) => exitcode::IOERR,
+            Self::ApiError(api_err) => api_err.exitcode(),
+        }
+    }
 }
