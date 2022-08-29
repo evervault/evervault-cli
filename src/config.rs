@@ -1,3 +1,4 @@
+use super::common::CliError;
 use super::enclave::{EIFMeasurements, EnclaveSigningInfo};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -40,6 +41,17 @@ pub enum SigningInfoError {
     SigningCertNotFound(String),
     #[error("Could not find signing key file at {0}")]
     SigningKeyNotFound(String),
+}
+
+impl CliError for SigningInfoError {
+    fn exitcode(&self) -> exitcode::ExitCode {
+        match self {
+            Self::NoSigningInfoGiven | Self::EmptySigningCert | Self::EmptySigningKey => {
+                exitcode::DATAERR
+            }
+            Self::SigningCertNotFound(_) | Self::SigningKeyNotFound(_) => exitcode::NOINPUT,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -103,6 +115,18 @@ pub enum CageConfigError {
     MissingDockerfile,
     #[error("{0} was not set in the toml.")]
     MissingField(String),
+}
+
+impl CliError for CageConfigError {
+    fn exitcode(&self) -> exitcode::ExitCode {
+        match self {
+            Self::MissingConfigFile(_) | Self::FailedToAccessConfig(_) => exitcode::NOINPUT,
+            Self::FailedToParseCageConfig(_) | Self::MissingDockerfile | Self::MissingField(_) => {
+                exitcode::DATAERR
+            }
+            Self::MissingSigningInfo(signing_err) => signing_err.exitcode(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

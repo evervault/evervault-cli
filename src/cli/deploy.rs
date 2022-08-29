@@ -1,4 +1,4 @@
-use crate::deploy::deploy_eif;
+use crate::{common::CliError, deploy::deploy_eif};
 use clap::Parser;
 
 /// Deploy a Cage from a toml file.
@@ -42,9 +42,14 @@ pub struct DeployArgs {
     pub quiet: bool,
 }
 
-pub async fn run(deploy_args: DeployArgs) {
+pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     match deploy_eif(deploy_args).await {
         Ok(_) => println!("Deployment was successful"),
-        Err(e) => print!("{}", e),
+        Err(e) => {
+            print!("{}", e);
+            return e.exitcode();
+        }
     };
+
+    exitcode::OK
 }
