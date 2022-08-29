@@ -10,7 +10,7 @@ use std::fmt::Write;
 #[derive(Debug, Parser)]
 #[clap(name = "logs", about)]
 pub struct LogArgs {
-    /// Uuid of the Cage to deploy. If not supplied, the CLI will look for a local cage.toml
+    /// Uuid of the Cage show logs for. If not supplied, the CLI will look for a local cage.toml
     #[clap(long = "cage-uuid")]
     pub cage_uuid: Option<String>,
 
