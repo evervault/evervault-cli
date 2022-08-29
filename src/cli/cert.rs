@@ -1,4 +1,5 @@
 use crate::cert::{self, DistinguishedName};
+use crate::common::CliError;
 use atty::Stream;
 use clap::{Parser, Subcommand};
 
@@ -29,7 +30,7 @@ pub struct NewCertArgs {
     pub subject: Option<String>,
 }
 
-pub fn run(cert_args: CertArgs) {
+pub fn run(cert_args: CertArgs) -> exitcode::ExitCode {
     match cert_args.action {
         CertCommands::New(new_args) => {
             let distinguished_name =
@@ -37,7 +38,7 @@ pub fn run(cert_args: CertArgs) {
                     Ok(distinguished_name) => distinguished_name,
                     Err(e) => {
                         log::error!("{}", e);
-                        return;
+                        return e.exitcode();
                     }
                 };
             let (cert_path, key_path) =
@@ -45,7 +46,7 @@ pub fn run(cert_args: CertArgs) {
                     Ok(paths) => paths,
                     Err(e) => {
                         log::error!("An error occurred while generating your cert - {}", e);
-                        return;
+                        return e.exitcode();
                     }
                 };
 
@@ -65,6 +66,8 @@ pub fn run(cert_args: CertArgs) {
             };
         }
     }
+
+    exitcode::OK
 }
 
 fn try_resolve_distinguished_name(

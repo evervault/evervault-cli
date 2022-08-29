@@ -1,4 +1,4 @@
-use crate::common::OutputPathError;
+use crate::common::{CliError, OutputPathError};
 use crate::config::SigningInfoError;
 use crate::docker::error::DockerError;
 use thiserror::Error;
@@ -23,4 +23,19 @@ pub enum BuildError {
     DockerBuildError(String),
     #[error("An error occurred while converting your image to an enclave — {0}")]
     EnclaveConversionError(String),
+}
+
+impl CliError for BuildError {
+    fn exitcode(&self) -> exitcode::ExitCode {
+        match self {
+            Self::ContextDirectoryDoesNotExist(_)
+            | Self::InvalidSigningInfo(_)
+            | Self::DockerfileAccessError(_) => exitcode::NOINPUT,
+            Self::FailedToAccessOutputDir(_) | Self::FailedToWriteCageDockerfile(_) => {
+                exitcode::IOERR
+            }
+            Self::DockerError(_) | Self::DockerBuildError(_) => exitcode::SOFTWARE,
+            Self::EnclaveConversionError(_) => exitcode::SOFTWARE,
+        }
+    }
 }

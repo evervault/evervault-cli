@@ -1,5 +1,6 @@
 use crate::build::build_enclave_image_file;
-use crate::config::CageConfig;
+use crate::common::CliError;
+use crate::config::{CageConfig, ValidatedCageBuildConfig};
 use clap::Parser;
 
 /// Build a Cage from a Dockerfile
@@ -43,22 +44,22 @@ pub struct BuildArgs {
     pub write: bool,
 }
 
-pub async fn run(build_args: BuildArgs) {
+pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
     let mut cage_config = match CageConfig::try_from_filepath(&build_args.config) {
         Ok(cage_config) => cage_config,
         Err(e) => {
             log::error!("An error occurred while reading the Cage config — {:?}", e);
-            return;
+            return e.exitcode();
         }
     };
 
     merge_config_with_args(&build_args, &mut cage_config);
 
-    let validated_config = match cage_config.clone().try_into() {
+    let validated_config: ValidatedCageBuildConfig = match cage_config.clone().try_into() {
         Ok(config) => config,
         Err(e) => {
             log::error!("{}", e);
-            return;
+            return e.exitcode();
         }
     };
 
@@ -73,7 +74,7 @@ pub async fn run(build_args: BuildArgs) {
         Ok((built_enclave, _)) => built_enclave,
         Err(e) => {
             log::error!("An error occurred while building your enclave — {0:?}", e);
-            return;
+            return e.exitcode();
         }
     };
 
@@ -97,6 +98,7 @@ pub async fn run(build_args: BuildArgs) {
     });
 
     println!("{}", serde_json::to_string_pretty(&success_msg).unwrap());
+    exitcode::OK
 }
 
 fn merge_config_with_args(args: &BuildArgs, config: &mut CageConfig) {
