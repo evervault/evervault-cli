@@ -1,5 +1,6 @@
 use crate::api;
 use crate::api::{client::ApiClient, AuthMode};
+use crate::common::CliError;
 use crate::config::{CageConfig, EgressSettings, SigningInfo};
 use clap::{ArgGroup, Parser};
 
@@ -83,7 +84,7 @@ impl std::convert::Into<CageConfig> for InitArgs {
     }
 }
 
-pub async fn run(init_args: InitArgs) {
+pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
     let cages_client = api::cage::CagesClient::new(AuthMode::ApiKey(init_args.api_key.clone()));
 
     let created_cage = match cages_client
@@ -93,7 +94,7 @@ pub async fn run(init_args: InitArgs) {
         Ok(cage_ref) => cage_ref,
         Err(e) => {
             eprintln!("Error creating Cage record — {:?}", e);
-            return;
+            return e.exitcode();
         }
     };
 
@@ -118,6 +119,7 @@ pub async fn run(init_args: InitArgs) {
             }
             Err(e) => {
                 log::error!("Failed to generate cage signing credentials - {}", e);
+                return e.exitcode();
             }
         }
     }
@@ -126,13 +128,15 @@ pub async fn run(init_args: InitArgs) {
         Ok(bytes) => bytes,
         Err(e) => {
             eprintln!("Error serializing cage.toml — {:?}", e);
-            return;
+            return exitcode::SOFTWARE;
         }
     };
 
     if let Err(e) = std::fs::write(config_path, serialized_config) {
         eprintln!("Error writing cage.toml — {:?}", e);
+        exitcode::IOERR
     } else {
         log::info!("Cage.toml initialized successfully. You can now deploy a Cage using the deploy command");
+        exitcode::OK
     }
 }
