@@ -40,7 +40,7 @@ async fn main() {
 
     let base_args: BaseArgs = BaseArgs::parse();
     setup_logger(base_args.verbose);
-    match base_args.command {
+    let exit_code = match base_args.command {
         Command::Build(build_args) => build::run(build_args).await,
         Command::Cert(cert_args) => cert::run(cert_args),
         Command::Deploy(deploy_args) => deploy::run(deploy_args).await,
@@ -48,7 +48,8 @@ async fn main() {
         Command::Init(init_args) => init::run(init_args).await,
         Command::List(list_args) => list::run(list_args).await,
         Command::Delete(delete_args) => delete::run(delete_args).await,
-    }
+    };
+    std::process::exit(exit_code);
 }
 
 fn setup_logger(verbose_logging: bool) {

@@ -1,4 +1,4 @@
-use crate::delete::delete_cage;
+use crate::{common::CliError, delete::delete_cage};
 use clap::Parser;
 
 /// Delete a Cage from a toml file.
@@ -18,9 +18,14 @@ pub struct DeleteArgs {
     pub quiet: bool,
 }
 
-pub async fn run(delete_args: DeleteArgs) {
+pub async fn run(delete_args: DeleteArgs) -> exitcode::ExitCode {
     match delete_cage(delete_args).await {
         Ok(_) => println!("Deletion was successful"),
-        Err(e) => println!("{}", e),
+        Err(e) => {
+            println!("{}", e);
+            return e.exitcode();
+        }
     };
+
+    exitcode::OK
 }
