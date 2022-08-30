@@ -153,7 +153,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let mut data_plane_run_script =
         r#"echo "Booting Evervault data plane..."\nexec /data-plane"#.to_string();
     if let Some(port) = exposed_port {
-        data_plane_run_script = format!("{data_plane_run_script} -p {port}");
+        data_plane_run_script = format!("{data_plane_run_script} {port}");
     }
 
     let bootstrap_script_content =
