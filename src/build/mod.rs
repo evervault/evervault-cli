@@ -335,7 +335,7 @@ RUN mkdir -p /etc/service/user-entrypoint
 RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting user service..."\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
 RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
 RUN mkdir -p /etc/service/data-plane
-RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting Evervault data plane..."\nexec /data-plane -p 3443\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
+RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting Evervault data plane..."\nexec /data-plane 3443\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
 ENV EV_APP_UUID=3241
 ENV EV_TEAM_UUID=teamid
