@@ -230,6 +230,7 @@ mod test {
                 cert: "".into(),
                 key: "".into(),
             },
+            disable_tls_termination: false
         }
     }
 
