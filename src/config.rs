@@ -140,6 +140,7 @@ pub struct CageConfig {
     pub egress: EgressSettings,
     pub signing: Option<SigningInfo>,
     pub attestation: Option<EIFMeasurements>,
+    pub disable_tls_termination: bool
 }
 
 impl CageConfig {
@@ -162,6 +163,7 @@ pub struct ValidatedCageBuildConfig {
     pub egress: EgressSettings,
     pub signing: ValidatedSigningInfo,
     pub attestation: Option<EIFMeasurements>,
+    pub disable_tls_termination: bool
 }
 
 impl ValidatedCageBuildConfig {
@@ -222,6 +224,7 @@ impl std::convert::TryInto<ValidatedCageBuildConfig> for CageConfig {
             egress: self.egress,
             signing: signing_info.try_into()?,
             attestation: self.attestation,
+            disable_tls_termination: self.disable_tls_termination,
         })
     }
 }
