@@ -57,7 +57,7 @@ pub trait ApiClient {
     fn client(&self) -> &Client;
 
     fn base_url(&self) -> String {
-        std::env::var("EV_API_URL").unwrap_or(String::from("https://internal-api.evervault.com"))
+        std::env::var("EV_API_URL").unwrap_or(String::from("https://api.evervault.com"))
     }
 
     fn user_agent(&self) -> String {
