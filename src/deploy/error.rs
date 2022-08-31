@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::OutputPathError;
+use crate::common::{CliError, OutputPathError};
 
 #[derive(Debug, Error)]
 pub enum DeployError {
@@ -24,4 +24,18 @@ pub enum DeployError {
     UploadError(String),
     #[error("Could not read the size of the Cage EIF file {0}")]
     EifSizeReadError(std::io::Error),
+}
+
+impl CliError for DeployError {
+    fn exitcode(&self) -> exitcode::ExitCode {
+        match self {
+            Self::DescribeError(describe_err) => describe_err.exitcode(),
+            Self::BuildError(build_err) => build_err.exitcode(),
+            Self::CageConfigError(config_err) => config_err.exitcode(),
+            Self::FailedToAccessOutputDir(output_err) => output_err.exitcode(),
+            Self::IoError(_) | Self::ZipError(_) | Self::EifSizeReadError(_) => exitcode::IOERR,
+            Self::RequestError(_) | Self::UploadError(_) => exitcode::TEMPFAIL,
+            Self::ApiError(api_err) => api_err.exitcode(),
+        }
+    }
 }
