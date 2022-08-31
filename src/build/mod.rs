@@ -55,7 +55,7 @@ pub async fn build_enclave_image_file(
         .map_err(|_| BuildError::DockerfileAccessError(cage_config.dockerfile().to_string()))?;
 
     let processed_dockerfile =
-        process_dockerfile(&cage_config, dockerfile, cage_config.egress().is_enabled()).await?;
+        process_dockerfile(&cage_config, dockerfile).await?;
 
     // write new dockerfile to fs
     let ev_user_dockerfile_path = output_path.join(Path::new(EV_USER_DOCKERFILE_PATH));
@@ -89,7 +89,6 @@ pub async fn build_enclave_image_file(
 async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     build_config: &ValidatedCageBuildConfig,
     dockerfile_src: R,
-    enable_egress: bool,
 ) -> Result<Vec<Directive>, BuildError> {
     // Decode dockerfile from file
     let instruction_set = DockerfileDecoder::decode_dockerfile_from_src(dockerfile_src).await?;
@@ -135,25 +134,19 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         return Err(DockerError::RestrictedPortExposed(exposed_port.unwrap()).into());
     }
 
-    let data_plane_feature_label = if enable_egress {
-        "egress-enabled"
-    } else {
-        "egress-disabled"
-    };
-
     let epoch = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .expect("System time is before the unix epoch")
         .as_secs();
     #[cfg(not(debug_assertions))]
-    let data_plane_url = format!("https://cage-build-assets.evervault.com/runtime/latest/data-plane/{data_plane_feature_label}?t={epoch}");
+    let data_plane_url = format!("https://cage-build-assets.evervault.com/runtime/latest/data-plane/{}?t={}", build_config.get_dataplane_feature_label(), epoch);
     #[cfg(debug_assertions)]
-    let data_plane_url = format!("https://cage-build-assets.evervault.io/runtime/latest/data-plane/{data_plane_feature_label}?t={epoch}");
+    let data_plane_url = format!("https://cage-build-assets.evervault.io/runtime/latest/data-plane/{}?t={}", build_config.get_dataplane_feature_label(), epoch);
 
     let mut data_plane_run_script =
         r#"echo "Booting Evervault data plane..."\nexec /data-plane"#.to_string();
     if let Some(port) = exposed_port {
-        data_plane_run_script = format!("{data_plane_run_script} -p {port}");
+        data_plane_run_script = format!("{data_plane_run_script} {port}");
     }
 
     let bootstrap_script_content =
@@ -246,7 +239,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
 
         let config = get_config();
 
-        let processed_file = process_dockerfile(&config, &mut readable_contents, false).await;
+        let processed_file = process_dockerfile(&config, &mut readable_contents).await;
         assert_eq!(processed_file.is_ok(), true);
         let processed_file = processed_file.unwrap();
 
@@ -300,7 +293,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
 
         let config = get_config();
 
-        let processed_file = process_dockerfile(&config, &mut readable_contents, false).await;
+        let processed_file = process_dockerfile(&config, &mut readable_contents).await;
         assert_eq!(processed_file.is_err(), true);
 
         assert!(matches!(
@@ -323,7 +316,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
 
         let config = get_config();
 
-        let processed_file = process_dockerfile(&config, &mut readable_contents, false).await;
+        let processed_file = process_dockerfile(&config, &mut readable_contents).await;
         assert_eq!(processed_file.is_ok(), true);
         let processed_file = processed_file.unwrap();
 
@@ -336,7 +329,7 @@ RUN mkdir -p /etc/service/user-entrypoint
 RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting user service..."\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
 RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
 RUN mkdir -p /etc/service/data-plane
-RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting Evervault data plane..."\nexec /data-plane -p 3443\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
+RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting Evervault data plane..."\nexec /data-plane 3443\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
 ENV EV_APP_UUID=3241
 ENV EV_TEAM_UUID=teamid
