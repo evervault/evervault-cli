@@ -100,6 +100,20 @@ impl CagesClient {
         self.get(&get_cert_url).send().await.handle_response().await
     }
 
+    pub async fn get_cage_logs(
+        &self,
+        cage_uuid: &str,
+        start_time: u128,
+        end_time: u128,
+    ) -> ApiResult<CageLogs> {
+        let get_logs_url = format!(
+            "{}/{}/logs?startTime={start_time}&endTime={end_time}",
+            self.base_url(),
+            cage_uuid
+        );
+        self.get(&get_logs_url).send().await.handle_response().await
+    }
+
     pub async fn delete_cage(&self, cage_uuid: &str) -> ApiResult<DeleteCageResponse> {
         let delete_cage_url = format!("{}/{}", self.base_url(), cage_uuid);
         self.delete(&delete_cage_url)
@@ -348,6 +362,38 @@ impl GetCageDeploymentResponse {
 #[serde(rename_all = "camelCase")]
 pub struct GetSigningCertsResponse {
     certs: Vec<CageSigningCert>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CageLogs {
+    log_events: Vec<LogEvent>,
+    next_token: Option<String>,
+    start_time: String,
+    end_time: String,
+}
+
+impl CageLogs {
+    pub fn start_time(&self) -> &str {
+        &self.start_time
+    }
+
+    pub fn end_time(&self) -> &str {
+        &self.end_time
+    }
+
+    pub fn log_events(&self) -> &Vec<LogEvent> {
+        &self.log_events
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogEvent {
+    timestamp: i64,
+    message: String,
+    ingestion_time: i64,
+    instance_id: String,
 }
 
 pub type DeleteCageResponse = Cage;
