@@ -194,23 +194,35 @@ impl ValidatedCageBuildConfig {
     pub fn team_uuid(&self) -> &str {
         &self.team_uuid
     }
+
+    pub fn disable_tls_termination(&self) -> bool {
+        self.disable_tls_termination
+    }
+
+    pub fn get_dataplane_feature_label(&self) -> String {
+        let egress_label = if self.egress.is_enabled() { "egress-enabled" } else { "egress-disabled" };
+        let tls_label = if self.disable_tls_termination { "tls-termination-disabled" } else { "tls-termination-enabled" };
+        format!("{egress_label}/{tls_label}")
+    }
 }
 
-impl std::convert::TryInto<ValidatedCageBuildConfig> for CageConfig {
+impl std::convert::TryFrom<CageConfig> for ValidatedCageBuildConfig {
     type Error = CageConfigError;
 
-    fn try_into(self) -> Result<ValidatedCageBuildConfig, Self::Error> {
-        let signing_info = self.signing.ok_or(SigningInfoError::NoSigningInfoGiven)?;
+    fn try_from(config: CageConfig) -> Result<Self, Self::Error> {
+        let signing_info = config.signing.ok_or(SigningInfoError::NoSigningInfoGiven)?;
 
-        let dockerfile = self.dockerfile.ok_or(CageConfigError::MissingDockerfile)?;
+        let dockerfile = config
+            .dockerfile
+            .ok_or(CageConfigError::MissingDockerfile)?;
 
-        let app_uuid = self
+        let app_uuid = config
             .app_uuid
             .ok_or(CageConfigError::MissingField("App uuid".into()))?;
-        let cage_uuid = self
+        let cage_uuid = config
             .uuid
             .ok_or(CageConfigError::MissingField("Cage uuid".into()))?;
-        let team_uuid = self
+        let team_uuid = config
             .team_uuid
             .ok_or(CageConfigError::MissingField("Team uuid".into()))?;
 
@@ -218,13 +230,13 @@ impl std::convert::TryInto<ValidatedCageBuildConfig> for CageConfig {
             cage_uuid,
             app_uuid,
             team_uuid,
-            cage_name: self.name,
-            debug: self.debug,
+            cage_name: config.name,
+            debug: config.debug,
             dockerfile,
-            egress: self.egress,
+            egress: config.egress,
             signing: signing_info.try_into()?,
-            attestation: self.attestation,
-            disable_tls_termination: self.disable_tls_termination,
+            attestation: config.attestation,
+            disable_tls_termination: config.disable_tls_termination,
         })
     }
 }
