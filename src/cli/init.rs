@@ -52,6 +52,10 @@ pub struct InitArgs {
     /// Flag to enable cert generation during init. This will use the default certificate.
     #[clap(long = "generate-signing")]
     pub gen_signing_credentials: bool,
+
+    /// Flag to disable tls termination. This will pass the raw TCP streams directly to your service.
+    #[clap(long = "disable-tls-termination", default_value = "false")]
+    pub disable_tls_termination: bool,
 }
 
 impl std::convert::Into<CageConfig> for InitArgs {
@@ -80,6 +84,7 @@ impl std::convert::Into<CageConfig> for InitArgs {
             dockerfile: self.dockerfile,
             signing: signing_info,
             attestation: None,
+            disable_tls_termination: self.disable_tls_termination
         }
     }
 }
