@@ -140,7 +140,7 @@ pub struct CageConfig {
     pub egress: EgressSettings,
     pub signing: Option<SigningInfo>,
     pub attestation: Option<EIFMeasurements>,
-    pub disable_tls_termination: bool
+    pub disable_tls_termination: bool,
 }
 
 impl CageConfig {
@@ -163,7 +163,7 @@ pub struct ValidatedCageBuildConfig {
     pub egress: EgressSettings,
     pub signing: ValidatedSigningInfo,
     pub attestation: Option<EIFMeasurements>,
-    pub disable_tls_termination: bool
+    pub disable_tls_termination: bool,
 }
 
 impl ValidatedCageBuildConfig {

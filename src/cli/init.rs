@@ -84,7 +84,7 @@ impl std::convert::Into<CageConfig> for InitArgs {
             dockerfile: self.dockerfile,
             signing: signing_info,
             attestation: None,
-            disable_tls_termination: self.disable_tls_termination
+            disable_tls_termination: self.disable_tls_termination,
         }
     }
 }
