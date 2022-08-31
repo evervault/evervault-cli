@@ -1,4 +1,5 @@
 use super::AuthMode;
+use crate::common::CliError;
 use async_trait::async_trait;
 use reqwest::{Client, RequestBuilder, Response};
 use reqwest::{Error, Result};
@@ -56,7 +57,7 @@ pub trait ApiClient {
     fn client(&self) -> &Client;
 
     fn base_url(&self) -> String {
-        std::env::var("EV_API_URL").unwrap_or(String::from("https://internal-api.evervault.com"))
+        std::env::var("EV_API_URL").unwrap_or(String::from("https://api.evervault.com"))
     }
 
     fn user_agent(&self) -> String {
@@ -131,6 +132,19 @@ pub enum ApiError {
     Conflict,
     Unknown(Option<Error>),
     ParsingError(String),
+}
+
+impl CliError for ApiError {
+    fn exitcode(&self) -> exitcode::ExitCode {
+        match self {
+            Self::BadRequest | Self::NotFound => exitcode::DATAERR,
+            Self::Unauthorized => exitcode::NOUSER,
+            Self::Internal | Self::ParsingError(_) => exitcode::SOFTWARE,
+            Self::Forbidden => exitcode::NOPERM,
+            Self::Conflict => exitcode::DATAERR,
+            Self::Unknown(_) => exitcode::UNAVAILABLE,
+        }
+    }
 }
 
 pub type ApiResult<T> = core::result::Result<T, ApiError>;

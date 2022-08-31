@@ -1,5 +1,6 @@
 use crate::api;
 use crate::api::{client::ApiClient, AuthMode};
+use crate::common::CliError;
 use crate::config::{CageConfig, ValidatedCageBuildConfig};
 
 use chrono::TimeZone;
@@ -23,7 +24,7 @@ pub struct LogArgs {
     pub api_key: String,
 }
 
-pub async fn run(log_args: LogArgs) {
+pub async fn run(log_args: LogArgs) -> i32 {
     let cages_client = api::cage::CagesClient::new(AuthMode::ApiKey(log_args.api_key.clone()));
 
     let cage_uuid = match log_args.cage_uuid.clone() {
@@ -32,9 +33,9 @@ pub async fn run(log_args: LogArgs) {
             .and_then(ValidatedCageBuildConfig::try_from)
         {
             Ok(config) => config.cage_uuid().to_string(),
-            Err(_) => {
+            Err(e) => {
                 eprintln!("An error occurred while resolving your Cage toml.\n\nPlease make sure you have a cage.toml file in the current directory, or have supplied a path with the --config flag.");
-                return;
+                return e.exitcode();
             }
         },
     };
@@ -44,7 +45,7 @@ pub async fn run(log_args: LogArgs) {
         Some(end_time) => end_time,
         None => {
             eprintln!("Failed to compute current time");
-            return;
+            return exitcode::OSERR;
         }
     };
 
@@ -55,7 +56,7 @@ pub async fn run(log_args: LogArgs) {
         Some(start_time) => start_time,
         None => {
             eprintln!("Failed to compute start time.");
-            return;
+            return exitcode::SOFTWARE;
         }
     };
 
@@ -70,7 +71,7 @@ pub async fn run(log_args: LogArgs) {
         Ok(logs) => logs,
         Err(e) => {
             eprintln!("Failed to retrieve logs for Cage - {:?}", e);
-            return;
+            return e.exitcode();
         }
     };
 
@@ -81,7 +82,7 @@ pub async fn run(log_args: LogArgs) {
 
     if cage_logs.log_events().is_empty() {
         println!("No logs found between {logs_start} and {logs_end}",);
-        return;
+        return exitcode::OK;
     }
 
     println!(
@@ -103,6 +104,9 @@ pub async fn run(log_args: LogArgs) {
 
     if let Err(e) = minus::page_all(output) {
         eprintln!("An error occurred while paginating your log data - {:?}", e);
+        return exitcode::SOFTWARE;
+    } else {
+        return exitcode::OK;
     }
 }
 
