@@ -2,16 +2,11 @@ use crate::api;
 use crate::api::{client::ApiClient, AuthMode};
 use crate::common::CliError;
 use crate::config::{CageConfig, EgressSettings, SigningInfo};
-use clap::{ArgGroup, Parser};
+use clap::Parser;
 
 /// Initialize a Cage.toml in the current directory
 #[derive(Debug, Parser)]
 #[clap(name = "init", about)]
-#[clap(group(
-  ArgGroup::new("egress-destinations")
-    .arg("destinations")
-    .requires("egress")
-))]
 pub struct InitArgs {
     /// Directory to write the Cage toml to. Defaults to the current directory.
     #[clap(short = 'o', long = "output", default_value = ".")]
@@ -28,10 +23,6 @@ pub struct InitArgs {
     /// Flag to enable egress on your Cage
     #[clap(long = "egress-enabled")]
     pub egress: bool,
-
-    /// Destinations to allow egress traffic to, comma separated e.g. api.evervault.com,httpbin.org
-    #[clap(long = "destinations")]
-    pub destinations: Option<String>,
 
     /// Dockerfile to build the Cage
     #[clap(short = 'f', long = "file")]
@@ -73,9 +64,7 @@ impl std::convert::Into<CageConfig> for InitArgs {
             debug: self.debug,
             egress: EgressSettings {
                 enabled: self.egress,
-                destinations: self
-                    .destinations
-                    .map(|dest| dest.split(",").map(String::from).collect::<Vec<String>>()),
+                destinations: None,
             },
             dockerfile: self.dockerfile,
             signing: signing_info,
