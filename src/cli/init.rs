@@ -7,11 +7,6 @@ use clap::{ArgGroup, Parser};
 /// Initialize a Cage.toml in the current directory
 #[derive(Debug, Parser)]
 #[clap(name = "init", about)]
-#[clap(group(
-  ArgGroup::new("egress-destinations")
-    .arg("destinations")
-    .requires("egress")
-))]
 pub struct InitArgs {
     /// Directory to write the Cage toml to. Defaults to the current directory.
     #[clap(short = 'o', long = "output", default_value = ".")]
