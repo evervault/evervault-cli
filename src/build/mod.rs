@@ -370,23 +370,20 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
             println!("Name: {}", path.unwrap().path().display())
         }
 
-        assert_eq!(
+        assert!(
             output_dir
                 .path()
                 .join(super::EV_USER_DOCKERFILE_PATH)
-                .exists(),
-            true
+                .exists()
         );
-        assert_eq!(
+        assert!(
             output_dir
                 .path()
                 .join(enclave::NITRO_CLI_IMAGE_FILENAME)
-                .exists(),
-            true
+                .exists()
         );
-        assert_eq!(
-            output_dir.path().join(enclave::ENCLAVE_FILENAME).exists(),
-            true
+        assert!(
+            output_dir.path().join(enclave::ENCLAVE_FILENAME).exists()
         );
     }
 }
