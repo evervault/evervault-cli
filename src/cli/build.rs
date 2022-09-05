@@ -35,7 +35,7 @@ pub struct BuildArgs {
     #[clap(long, from_global)]
     pub json: bool,
 
-    /// Path to directory where the processed docker image and enclave will be saved
+    /// Path to directory where the processed dockerfile and enclave will be saved
     #[clap(short = 'o', long = "output")]
     pub output_dir: Option<String>,
 
