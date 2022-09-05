@@ -2,7 +2,7 @@ use crate::api;
 use crate::api::{client::ApiClient, AuthMode};
 use crate::common::CliError;
 use crate::config::{CageConfig, EgressSettings, SigningInfo};
-use clap::{ArgGroup, Parser};
+use clap::Parser;
 
 /// Initialize a Cage.toml in the current directory
 #[derive(Debug, Parser)]
