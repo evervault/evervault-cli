@@ -29,10 +29,6 @@ pub struct InitArgs {
     #[clap(long = "egress-enabled")]
     pub egress: bool,
 
-    /// Destinations to allow egress traffic to, comma separated e.g. api.evervault.com,httpbin.org
-    #[clap(long = "destinations")]
-    pub destinations: Option<String>,
-
     /// Dockerfile to build the Cage
     #[clap(short = 'f', long = "file")]
     pub dockerfile: Option<String>,
@@ -73,9 +69,7 @@ impl std::convert::Into<CageConfig> for InitArgs {
             debug: self.debug,
             egress: EgressSettings {
                 enabled: self.egress,
-                destinations: self
-                    .destinations
-                    .map(|dest| dest.split(",").map(String::from).collect::<Vec<String>>()),
+                destinations: None,
             },
             dockerfile: self.dockerfile,
             signing: signing_info,
