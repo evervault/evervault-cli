@@ -336,6 +336,10 @@ impl GetCageResponse {
     pub fn is_deleted(&self) -> bool {
         self.cage.state == CageState::Deleted
     }
+
+    pub fn domain(&self) -> &str {
+        self.cage.domain.as_str()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

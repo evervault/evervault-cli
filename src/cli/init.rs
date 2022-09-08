@@ -1,7 +1,7 @@
 use crate::api;
 use crate::api::{client::ApiClient, AuthMode};
 use crate::common::CliError;
-use crate::config::{CageConfig, EgressSettings, SigningInfo};
+use crate::config::{default_dockerfile, CageConfig, EgressSettings, SigningInfo};
 use clap::Parser;
 
 /// Initialize a Cage.toml in the current directory
@@ -70,7 +70,7 @@ impl std::convert::Into<CageConfig> for InitArgs {
                 enabled: self.egress,
                 destinations: None,
             },
-            dockerfile: self.dockerfile,
+            dockerfile: self.dockerfile.unwrap_or_else(default_dockerfile), // need to manually set default dockerfile
             signing: signing_info,
             attestation: None,
             disable_tls_termination: self.disable_tls_termination,

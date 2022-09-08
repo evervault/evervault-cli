@@ -1,6 +1,6 @@
 use crate::build::build_enclave_image_file;
 use crate::common::CliError;
-use crate::config::{CageConfig, ValidatedCageBuildConfig};
+use crate::config::{read_and_validate_config, BuildTimeConfig};
 use clap::Parser;
 
 /// Build a Cage from a Dockerfile
@@ -12,8 +12,8 @@ pub struct BuildArgs {
     pub config: String,
 
     /// Path to Dockerfile for Cage. Will override any dockerfile specified in the .toml file.
-    #[clap(short = 'f', long = "file", default_value = "./Dockerfile")]
-    pub dockerfile: String,
+    #[clap(short = 'f', long = "file")]
+    pub dockerfile: Option<String>,
 
     /// Path to use for Docker context. Defaults to the current directory.
     #[clap(default_value = ".")]
@@ -44,24 +44,29 @@ pub struct BuildArgs {
     pub write: bool,
 }
 
+impl BuildTimeConfig for BuildArgs {
+    fn certificate(&self) -> Option<&str> {
+        self.certificate.as_deref()
+    }
+
+    fn dockerfile(&self) -> Option<&str> {
+        self.dockerfile.as_deref()
+    }
+
+    fn private_key(&self) -> Option<&str> {
+        self.private_key.as_deref()
+    }
+}
+
 pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
-    let mut cage_config = match CageConfig::try_from_filepath(&build_args.config) {
-        Ok(cage_config) => cage_config,
-        Err(e) => {
-            log::error!("An error occurred while reading the Cage config — {:?}", e);
-            return e.exitcode();
-        }
-    };
-
-    merge_config_with_args(&build_args, &mut cage_config);
-
-    let validated_config: ValidatedCageBuildConfig = match cage_config.clone().try_into() {
-        Ok(config) => config,
-        Err(e) => {
-            log::error!("{}", e);
-            return e.exitcode();
-        }
-    };
+    let (mut cage_config, validated_config) =
+        match read_and_validate_config(&build_args.context_path, &build_args) {
+            Ok(config) => config,
+            Err(e) => {
+                log::error!("Failed to read cage config from file system — {}", e);
+                return e.exitcode();
+            }
+        };
 
     let built_enclave = match build_enclave_image_file(
         &validated_config,
@@ -99,18 +104,4 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
 
     println!("{}", serde_json::to_string_pretty(&success_msg).unwrap());
     exitcode::OK
-}
-
-fn merge_config_with_args(args: &BuildArgs, config: &mut CageConfig) {
-    if config.dockerfile().is_none() {
-        config.set_dockerfile(args.dockerfile.clone());
-    }
-
-    if args.certificate.is_some() && config.cert().is_none() {
-        config.set_cert(args.certificate.clone().unwrap());
-    }
-
-    if args.private_key.is_some() && config.key().is_none() {
-        config.set_key(args.private_key.clone().unwrap());
-    }
 }
