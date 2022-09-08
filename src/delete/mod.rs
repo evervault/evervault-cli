@@ -9,8 +9,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 
 pub async fn delete_cage(delete_args: DeleteArgs) -> Result<(), DeleteError> {
     let cage_config = CageConfig::try_from_filepath(&delete_args.config)?;
-
-    let validated_config: ValidatedCageBuildConfig = cage_config.clone().try_into()?;
+    let validated_config: ValidatedCageBuildConfig = cage_config.as_ref().try_into()?;
 
     let cage_uuid = validated_config.cage_uuid().to_string();
 

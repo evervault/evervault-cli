@@ -1,13 +1,9 @@
 use crate::api;
-use crate::api::cage::CagesClient;
-use crate::api::{cage::CreateCageDeploymentIntentRequest, client::ApiClient, AuthMode};
-use crate::build::build_enclave_image_file;
-use crate::cli::deploy::DeployArgs;
+use crate::api::{cage::CagesClient, cage::CreateCageDeploymentIntentRequest};
 use crate::common::{resolve_output_path, OutputPath};
-use crate::config::{CageConfig, ValidatedCageBuildConfig};
+use crate::config::ValidatedCageBuildConfig;
 use crate::describe::describe_eif;
 use crate::enclave::{EIFMeasurements, ENCLAVE_FILENAME};
-use std::fs;
 use std::io::Write;
 mod error;
 use error::DeployError;
@@ -20,39 +16,12 @@ use tokio_util::codec::{BytesCodec, FramedRead};
 
 const ENCLAVE_ZIP_FILENAME: &str = "enclave.zip";
 
-pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
-    let mut cage_config = CageConfig::try_from_filepath(&deploy_args.config)?;
-
-    merge_config_with_args(&deploy_args, &mut cage_config);
-    let validated_config: ValidatedCageBuildConfig = cage_config.clone().try_into()?;
-
-    let cage_uuid = validated_config.cage_uuid().to_string();
-
-    let (eif_measurements, output_path) = match deploy_args.eif_path {
-        Some(eif_path) => get_eif(eif_path)?,
-        None => build_enclave_image_file(
-            &validated_config,
-            &deploy_args.context_path,
-            None,
-            !deploy_args.quiet,
-        )
-        .await
-        .map(|enclave_info| {
-            let (built_enclave, output_path) = enclave_info;
-            (built_enclave.measurements().clone(), output_path)
-        })?,
-    };
-
-    if deploy_args.write {
-        crate::common::update_cage_config_with_eif_measurements(
-            &mut cage_config,
-            &deploy_args.config,
-            &eif_measurements,
-        );
-    }
-
-    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(deploy_args.api_key.clone()));
-
+pub async fn deploy_eif(
+    validated_config: &ValidatedCageBuildConfig,
+    cage_api: &CagesClient,
+    output_path: OutputPath,
+    eif_measurements: EIFMeasurements,
+) -> Result<(), DeployError> {
     let get_progress_bar = |start_msg: &str| {
         let progress_bar = ProgressBar::new_spinner();
         progress_bar.enable_steady_tick(80);
@@ -83,7 +52,7 @@ pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
         eif_size_bytes,
     );
     let deployment_intent = cage_api
-        .create_cage_deployment_intent(&cage_uuid, cage_deployment_intent_payload)
+        .create_cage_deployment_intent(validated_config.cage_uuid(), cage_deployment_intent_payload)
         .await?;
 
     let s3_upload_url = deployment_intent.signed_url();
@@ -153,7 +122,7 @@ async fn watch_build(
 }
 
 async fn watch_deployment(
-    cage_api: CagesClient,
+    cage_api: &CagesClient,
     cage_uuid: &str,
     deployment_uuid: &str,
     progress_bar: ProgressBar,
@@ -176,20 +145,6 @@ async fn watch_deployment(
             }
         };
         tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
-    }
-}
-
-fn merge_config_with_args(args: &DeployArgs, config: &mut CageConfig) {
-    if config.dockerfile().is_none() {
-        config.set_dockerfile(args.dockerfile.clone());
-    }
-
-    if args.certificate.is_some() && config.cert().is_none() {
-        config.set_cert(args.certificate.clone().unwrap());
-    }
-
-    if args.private_key.is_some() && config.key().is_none() {
-        config.set_key(args.private_key.clone().unwrap());
     }
 }
 
@@ -243,11 +198,11 @@ async fn create_zip_upload_stream(
     }
 }
 
-fn get_eif(eif_path: String) -> Result<(EIFMeasurements, OutputPath), DeployError> {
-    let eif = describe_eif(&eif_path)?;
+pub fn get_eif<S: AsRef<str>>(eif_path: S) -> Result<(EIFMeasurements, OutputPath), DeployError> {
+    let eif = describe_eif(eif_path.as_ref())?;
     let output_path = resolve_output_path(None::<&str>)?;
     let output_p = format!("{}/enclave.eif", output_path.path().to_str().unwrap());
-    fs::copy(&eif_path, output_p)?;
+    std::fs::copy(eif_path.as_ref(), output_p)?;
     Ok((eif.measurements.measurements, output_path))
 }
 
