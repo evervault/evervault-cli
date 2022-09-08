@@ -150,10 +150,11 @@ pub struct CageConfig {
     pub debug: bool,
     #[serde(default = "default_dockerfile")]
     pub dockerfile: String,
+    #[serde(default)]
+    pub disable_tls_termination: bool,
     pub egress: EgressSettings,
     pub signing: Option<SigningInfo>,
     pub attestation: Option<EIFMeasurements>,
-    pub disable_tls_termination: bool,
 }
 
 impl CageConfig {
@@ -359,4 +360,60 @@ pub fn read_and_validate_config<B: BuildTimeConfig>(
     let validated_config: ValidatedCageBuildConfig = merged_config.as_ref().try_into()?;
 
     Ok((cage_config, validated_config))
+}
+
+#[cfg(test)]
+mod test {
+    use super::{BuildTimeConfig, CageConfig};
+
+    struct ExampleArgs {
+        cert: String,
+        dockerfile: String,
+        pk: String,
+    }
+
+    impl BuildTimeConfig for ExampleArgs {
+        fn certificate(&self) -> Option<&str> {
+            Some(self.cert.as_str())
+        }
+
+        fn dockerfile(&self) -> Option<&str> {
+            Some(self.dockerfile.as_str())
+        }
+
+        fn private_key(&self) -> Option<&str> {
+            Some(self.pk.as_str())
+        }
+    }
+
+    #[test]
+    fn merge_args_with_config() {
+        let config = CageConfig {
+            name: "Cage123".to_string(),
+            uuid: Some("abcdef123".to_string()),
+            app_uuid: Some("abcdef321".to_string()),
+            team_uuid: Some("team_abcdef456".to_string()),
+            debug: false,
+            dockerfile: "./Dockerfile.config".to_string(),
+            disable_tls_termination: false,
+            egress: super::EgressSettings {
+                enabled: false,
+                destinations: None,
+            },
+            signing: None,
+            attestation: None,
+        };
+
+        let test_args = ExampleArgs {
+            cert: "args-cert.pem".to_string(),
+            dockerfile: "./Dockerfile.args".to_string(),
+            pk: "pk.pem".to_string(),
+        };
+
+        let merged = test_args.merge_with_config(&config);
+        assert!(merged.signing.is_some());
+        assert_eq!(merged.dockerfile(), test_args.dockerfile().unwrap());
+        assert_eq!(merged.cert().unwrap(), test_args.certificate().unwrap());
+        assert_eq!(merged.key().unwrap(), test_args.private_key().unwrap());
+    }
 }
