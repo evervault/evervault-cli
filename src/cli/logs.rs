@@ -30,7 +30,7 @@ pub async fn run(log_args: LogArgs) -> i32 {
     let cage_uuid = match log_args.cage_uuid.clone() {
         Some(cage_uuid) => cage_uuid,
         None => match CageConfig::try_from_filepath(&log_args.config)
-            .and_then(ValidatedCageBuildConfig::try_from)
+            .and_then(|config| ValidatedCageBuildConfig::try_from(config.as_ref()))
         {
             Ok(config) => config.cage_uuid().to_string(),
             Err(e) => {

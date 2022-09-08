@@ -4,7 +4,7 @@ use crate::api::{cage::CreateCageDeploymentIntentRequest, client::ApiClient, Aut
 use crate::build::build_enclave_image_file;
 use crate::cli::deploy::DeployArgs;
 use crate::common::{resolve_output_path, OutputPath};
-use crate::config::{CageConfig, ValidatedCageBuildConfig};
+use crate::config::{CageConfig, ValidatedCageBuildConfig, BuildTimeConfig};
 use crate::describe::describe_eif;
 use crate::enclave::{EIFMeasurements, ENCLAVE_FILENAME};
 use std::fs;
@@ -22,9 +22,9 @@ const ENCLAVE_ZIP_FILENAME: &str = "enclave.zip";
 
 pub async fn deploy_eif(deploy_args: DeployArgs) -> Result<(), DeployError> {
     let mut cage_config = CageConfig::try_from_filepath(&deploy_args.config)?;
+    let merged_config = deploy_args.merge_with_config(&cage_config);
 
-    merge_config_with_args(&deploy_args, &mut cage_config);
-    let validated_config: ValidatedCageBuildConfig = cage_config.clone().try_into()?;
+    let validated_config: ValidatedCageBuildConfig = merged_config.as_ref().try_into()?;
 
     let cage_uuid = validated_config.cage_uuid().to_string();
 
@@ -176,20 +176,6 @@ async fn watch_deployment(
             }
         };
         tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
-    }
-}
-
-fn merge_config_with_args(args: &DeployArgs, config: &mut CageConfig) {
-    if config.dockerfile().is_none() {
-        config.set_dockerfile(args.dockerfile.clone());
-    }
-
-    if args.certificate.is_some() && config.cert().is_none() {
-        config.set_cert(args.certificate.clone().unwrap());
-    }
-
-    if args.private_key.is_some() && config.key().is_none() {
-        config.set_key(args.private_key.clone().unwrap());
     }
 }
 
