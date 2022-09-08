@@ -70,18 +70,18 @@ impl ValidatedSigningInfo {
     }
 }
 
-impl std::convert::TryInto<ValidatedSigningInfo> for SigningInfo {
+impl std::convert::TryFrom<&SigningInfo> for ValidatedSigningInfo {
     type Error = SigningInfoError;
 
-    fn try_into(self) -> Result<ValidatedSigningInfo, Self::Error> {
+    fn try_from(signing_info: &SigningInfo) -> Result<ValidatedSigningInfo, Self::Error> {
         Ok(ValidatedSigningInfo {
-            cert: self.cert.ok_or(Self::Error::EmptySigningCert)?,
-            key: self.key.ok_or(Self::Error::EmptySigningKey)?,
+            cert: signing_info.cert.as_deref().ok_or(Self::Error::EmptySigningCert)?.to_string(),
+            key: signing_info.key.as_deref().ok_or(Self::Error::EmptySigningKey)?.to_string(),
         })
     }
 }
 
-impl std::convert::TryFrom<&ValidatedSigningInfo> for EnclaveSigningInfo {
+impl<'a> std::convert::TryFrom<&ValidatedSigningInfo> for EnclaveSigningInfo {
     type Error = SigningInfoError;
 
     fn try_from(signing_info: &ValidatedSigningInfo) -> Result<Self, Self::Error> {
@@ -129,6 +129,10 @@ impl CliError for CageConfigError {
     }
 }
 
+pub fn default_dockerfile() -> String {
+    "./Dockerfile".to_string()
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CageConfig {
     pub name: String,
@@ -136,7 +140,8 @@ pub struct CageConfig {
     pub app_uuid: Option<String>,
     pub team_uuid: Option<String>,
     pub debug: bool,
-    pub dockerfile: Option<String>,
+    #[serde(default = "default_dockerfile")]
+    pub dockerfile: String,
     pub egress: EgressSettings,
     pub signing: Option<SigningInfo>,
     pub attestation: Option<EIFMeasurements>,
@@ -147,6 +152,12 @@ impl CageConfig {
         self.uuid = Some(cage.uuid().into());
         self.app_uuid = Some(cage.app_uuid().into());
         self.team_uuid = Some(cage.team_uuid().into());
+    }
+}
+
+impl std::convert::AsRef<CageConfig> for CageConfig {
+    fn as_ref(&self) -> &Self {
+        self
     }
 }
 
@@ -194,51 +205,17 @@ impl ValidatedCageBuildConfig {
     }
 }
 
-impl std::convert::TryFrom<CageConfig> for ValidatedCageBuildConfig {
-    type Error = CageConfigError;
-
-    fn try_from(config: CageConfig) -> Result<Self, Self::Error> {
-        let signing_info = config.signing.ok_or(SigningInfoError::NoSigningInfoGiven)?;
-
-        let dockerfile = config
-            .dockerfile
-            .ok_or(CageConfigError::MissingDockerfile)?;
-
-        let app_uuid = config
-            .app_uuid
-            .ok_or(CageConfigError::MissingField("App uuid".into()))?;
-        let cage_uuid = config
-            .uuid
-            .ok_or(CageConfigError::MissingField("Cage uuid".into()))?;
-        let team_uuid = config
-            .team_uuid
-            .ok_or(CageConfigError::MissingField("Team uuid".into()))?;
-
-        Ok(ValidatedCageBuildConfig {
-            cage_uuid,
-            app_uuid,
-            team_uuid,
-            cage_name: config.name,
-            debug: config.debug,
-            dockerfile,
-            egress: config.egress,
-            signing: signing_info.try_into()?,
-            attestation: config.attestation,
-        })
-    }
-}
-
 impl CageConfig {
     pub fn name(&self) -> &str {
         &self.name
     }
 
     pub fn set_dockerfile(&mut self, dockerfile: String) {
-        self.dockerfile = Some(dockerfile);
+        self.dockerfile = dockerfile;
     }
 
-    pub fn dockerfile(&self) -> Option<&str> {
-        self.dockerfile.as_deref()
+    pub fn dockerfile(&self) -> &str {
+        self.dockerfile.as_ref()
     }
 
     pub fn cert(&self) -> Option<&str> {
@@ -277,5 +254,64 @@ impl CageConfig {
 
         let cage_config_content = std::fs::read(config_path)?;
         Ok(toml::de::from_slice(cage_config_content.as_slice())?)
+    }
+}
+
+impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
+    type Error = CageConfigError;
+
+    fn try_from(config: &CageConfig) -> Result<Self, Self::Error> {
+        let signing_info = config.signing.as_ref().ok_or(SigningInfoError::NoSigningInfoGiven)?;
+
+        let app_uuid = config
+            .app_uuid
+            .clone()
+            .ok_or(CageConfigError::MissingField("App uuid".into()))?;
+        let cage_uuid = config
+            .uuid
+            .clone()
+            .ok_or(CageConfigError::MissingField("Cage uuid".into()))?;
+        let team_uuid = config
+            .team_uuid
+            .clone()
+            .ok_or(CageConfigError::MissingField("Team uuid".into()))?;
+
+        Ok(ValidatedCageBuildConfig {
+            cage_uuid,
+            app_uuid,
+            team_uuid,
+            cage_name: config.name.clone(),
+            debug: config.debug,
+            dockerfile: config.dockerfile.clone(),
+            egress: config.egress.clone(),
+            signing: signing_info.try_into()?,
+            attestation: config.attestation.clone(),
+        })
+    }
+}
+
+
+
+pub trait BuildTimeConfig {
+    fn certificate(&self) -> Option<&str>;
+    fn dockerfile(&self) -> Option<&str>;
+    fn private_key(&self) -> Option<&str>;
+
+    fn merge_with_config(&self, config: &CageConfig) -> CageConfig {
+        let mut merged_config = config.clone();
+
+        if let Some(cert) = self.certificate() {
+            merged_config.set_cert(cert.to_string());
+        }
+
+        if let Some(dockerfile) = self.dockerfile() {
+            merged_config.set_dockerfile(dockerfile.to_string());
+        }
+
+        if let Some(private_key) = self.private_key() {
+            merged_config.set_key(private_key.to_string());
+        }
+
+        merged_config
     }
 }

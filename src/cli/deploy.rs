@@ -1,4 +1,5 @@
 use crate::{common::CliError, deploy::deploy_eif};
+use crate::config::BuildTimeConfig;
 use clap::Parser;
 
 /// Deploy a Cage from a toml file.
@@ -10,8 +11,8 @@ pub struct DeployArgs {
     pub config: String,
 
     /// Path to Dockerfile for Cage. Will override any dockerfile specified in the .toml file.
-    #[clap(short = 'f', long = "file", default_value = "./Dockerfile")]
-    pub dockerfile: String,
+    #[clap(short = 'f', long = "file")]
+    pub dockerfile: Option<String>,
 
     /// Path to EIF for Cage. Will not build if EIF is provided.
     #[clap(long = "eif-path")]
@@ -40,6 +41,20 @@ pub struct DeployArgs {
     /// Disable verbose output
     #[clap(long)]
     pub quiet: bool,
+}
+
+impl BuildTimeConfig for DeployArgs {
+    fn certificate(&self) -> Option<&str> {
+        self.certificate.as_deref()    
+    }
+
+    fn dockerfile(&self) -> Option<&str> {
+        self.dockerfile.as_deref()
+    }
+
+    fn private_key(&self) -> Option<&str> {
+        self.private_key.as_deref()
+    }
 }
 
 pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
