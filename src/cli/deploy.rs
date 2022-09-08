@@ -114,7 +114,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     };
 
     println!(
-        "Cage deployed successfully. Your Cage is now available at {}",
+        "Cage deployed successfully. Your Cage is now available at https://{}",
         cage.domain()
     );
     exitcode::OK
@@ -132,15 +132,13 @@ async fn resolve_eif(
             e.exitcode()
         });
     } else {
-        build_enclave_image_file(validated_config, context_path, None, verbose)
-            .await
-            .map(|enclave_info| {
-                let (built_enclave, output_path) = enclave_info;
-                (built_enclave.measurements().clone(), output_path)
-            })
-            .map_err(|build_err| {
-                log::error!("Failed to build EIF - {}", build_err);
-                build_err.exitcode()
-            })
+        let (built_enclave, output_path) =
+            build_enclave_image_file(validated_config, context_path, None, verbose)
+                .await
+                .map_err(|build_err| {
+                    log::error!("Failed to build EIF - {}", build_err);
+                    build_err.exitcode()
+                })?;
+        Ok((built_enclave.measurements().to_owned(), output_path))
     }
 }
