@@ -31,5 +31,6 @@ fn get_test_build_args() -> ValidatedCageBuildConfig {
             key: "./key.pem".into(),
         },
         attestation: None,
+        disable_tls_termination: false,
     }
 }
