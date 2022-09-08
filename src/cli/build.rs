@@ -60,7 +60,7 @@ impl BuildTimeConfig for BuildArgs {
 
 pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
     let (mut cage_config, validated_config) =
-        match read_and_validate_config(&build_args.context_path, &build_args) {
+        match read_and_validate_config(&build_args.config, &build_args) {
             Ok(config) => config,
             Err(e) => {
                 log::error!("Failed to read cage config from file system — {}", e);
