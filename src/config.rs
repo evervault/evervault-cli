@@ -153,6 +153,7 @@ pub struct CageConfig {
     pub egress: EgressSettings,
     pub signing: Option<SigningInfo>,
     pub attestation: Option<EIFMeasurements>,
+    pub disable_tls_termination: bool,
 }
 
 impl CageConfig {
@@ -181,6 +182,7 @@ pub struct ValidatedCageBuildConfig {
     pub egress: EgressSettings,
     pub signing: ValidatedSigningInfo,
     pub attestation: Option<EIFMeasurements>,
+    pub disable_tls_termination: bool,
 }
 
 impl ValidatedCageBuildConfig {
@@ -210,6 +212,24 @@ impl ValidatedCageBuildConfig {
 
     pub fn team_uuid(&self) -> &str {
         &self.team_uuid
+    }
+
+    pub fn disable_tls_termination(&self) -> bool {
+        self.disable_tls_termination
+    }
+
+    pub fn get_dataplane_feature_label(&self) -> String {
+        let egress_label = if self.egress.is_enabled() {
+            "egress-enabled"
+        } else {
+            "egress-disabled"
+        };
+        let tls_label = if self.disable_tls_termination {
+            "tls-termination-disabled"
+        } else {
+            "tls-termination-enabled"
+        };
+        format!("{egress_label}/{tls_label}")
     }
 }
 
@@ -297,6 +317,7 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             egress: config.egress.clone(),
             signing: signing_info.try_into()?,
             attestation: config.attestation.clone(),
+            disable_tls_termination: config.disable_tls_termination
         })
     }
 }
