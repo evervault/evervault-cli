@@ -54,8 +54,7 @@ pub async fn build_enclave_image_file(
         .await
         .map_err(|_| BuildError::DockerfileAccessError(cage_config.dockerfile().to_string()))?;
 
-    let processed_dockerfile =
-        process_dockerfile(&cage_config, dockerfile).await?;
+    let processed_dockerfile = process_dockerfile(&cage_config, dockerfile).await?;
 
     // write new dockerfile to fs
     let ev_user_dockerfile_path = output_path.join(Path::new(EV_USER_DOCKERFILE_PATH));
@@ -139,9 +138,17 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .expect("System time is before the unix epoch")
         .as_secs();
     #[cfg(not(debug_assertions))]
-    let data_plane_url = format!("https://cage-build-assets.evervault.com/runtime/latest/data-plane/{}?t={}", build_config.get_dataplane_feature_label(), epoch);
+    let data_plane_url = format!(
+        "https://cage-build-assets.evervault.com/runtime/latest/data-plane/{}?t={}",
+        build_config.get_dataplane_feature_label(),
+        epoch
+    );
     #[cfg(debug_assertions)]
-    let data_plane_url = format!("https://cage-build-assets.evervault.io/runtime/latest/data-plane/{}?t={}", build_config.get_dataplane_feature_label(), epoch);
+    let data_plane_url = format!(
+        "https://cage-build-assets.evervault.io/runtime/latest/data-plane/{}?t={}",
+        build_config.get_dataplane_feature_label(),
+        epoch
+    );
 
     let mut data_plane_run_script =
         r#"echo "Booting Evervault data plane..."\nexec /data-plane"#.to_string();
@@ -370,20 +377,14 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
             println!("Name: {}", path.unwrap().path().display())
         }
 
-        assert!(
-            output_dir
-                .path()
-                .join(super::EV_USER_DOCKERFILE_PATH)
-                .exists()
-        );
-        assert!(
-            output_dir
-                .path()
-                .join(enclave::NITRO_CLI_IMAGE_FILENAME)
-                .exists()
-        );
-        assert!(
-            output_dir.path().join(enclave::ENCLAVE_FILENAME).exists()
-        );
+        assert!(output_dir
+            .path()
+            .join(super::EV_USER_DOCKERFILE_PATH)
+            .exists());
+        assert!(output_dir
+            .path()
+            .join(enclave::NITRO_CLI_IMAGE_FILENAME)
+            .exists());
+        assert!(output_dir.path().join(enclave::ENCLAVE_FILENAME).exists());
     }
 }
