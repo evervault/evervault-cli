@@ -1,4 +1,4 @@
-use crate::{deploy::{deploy_eif, get_eif}, config::read_and_validate_config};
+use crate::{deploy::{deploy_eif, get_eif}, config::{read_and_validate_config, ValidatedCageBuildConfig}, enclave::EIFMeasurements, common::OutputPath};
 use crate::common::{CliError};
 use crate::api::{self, client::ApiClient, AuthMode};
 use crate::config::BuildTimeConfig;
@@ -69,19 +69,14 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         }
     };
 
-    let (eif_measurements, output_path) = match deploy_args.eif_path {
-        Some(eif_path) => get_eif(eif_path).unwrap(),
-        None => build_enclave_image_file(
-            &validated_config,
-            &deploy_args.context_path,
-            None,
-            !deploy_args.quiet,
-        )
-        .await
-        .map(|enclave_info| {
-            let (built_enclave, output_path) = enclave_info;
-            (built_enclave.measurements().clone(), output_path)
-        }).unwrap(),
+    let (eif_measurements, output_path) = match resolve_eif(
+        &validated_config, 
+        &deploy_args.context_path, 
+        deploy_args.eif_path.as_deref(), 
+        !deploy_args.quiet
+    ).await {
+        Ok(eif_info) => eif_info,
+        Err(e) => return e
     };
 
     if deploy_args.write {
@@ -112,4 +107,33 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
 
     println!("Cage deployed successfully. Your Cage is now available at {}", cage.domain());
     exitcode::OK
+}
+
+async fn resolve_eif(
+    validated_config: &ValidatedCageBuildConfig, 
+    context_path: &str, 
+    eif_path: Option<&str>, 
+    verbose: bool
+) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
+    if let Some(path) = eif_path {
+        return get_eif(path).map_err(|e| {
+            log::error!("Failed to access the EIF at {}", path);
+            e.exitcode()
+        });
+    } else {
+        build_enclave_image_file(
+            validated_config,
+            context_path,
+            None,
+            verbose
+        )
+        .await
+        .map(|enclave_info| {
+            let (built_enclave, output_path) = enclave_info;
+            (built_enclave.measurements().clone(), output_path)
+        }).map_err(|build_err| {
+            log::error!("Failed to build EIF - {}", build_err);
+            build_err.exitcode()
+        })
+    }
 }
