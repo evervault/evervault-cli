@@ -94,6 +94,14 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
 
     let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(deploy_args.api_key.clone()));
 
+    let cage = match cage_api.get_cage(validated_config.cage_uuid()).await {
+        Ok(cage) => cage,
+        Err(e) => {
+            log::error!("Failed to retrieve Cage details from Evervault API – {}", e);
+            return e.exitcode();
+        }
+    };
+
     match deploy_eif(&validated_config, &cage_api, output_path, eif_measurements).await {
         Ok(_) => println!("Deployment was successful"),
         Err(e) => {
@@ -102,5 +110,6 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         }
     };
 
+    println!("Cage deployed successfully. Your Cage is now available at {}", cage.domain());
     exitcode::OK
 }
