@@ -36,8 +36,8 @@ pub struct BuildArgs {
     pub json: bool,
 
     /// Path to directory where the processed dockerfile and enclave will be saved
-    #[clap(short = 'o', long = "output")]
-    pub output_dir: Option<String>,
+    #[clap(short = 'o', long = "output", default_value = ".")]
+    pub output_dir: String,
 
     /// Write latest attestation information to cage.toml config file
     #[clap(short = 'w', long = "write")]
@@ -66,7 +66,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
     let built_enclave = match build_enclave_image_file(
         &validated_config,
         &build_args.context_path,
-        build_args.output_dir.as_deref(),
+        Some(&build_args.output_dir),
         !build_args.quiet,
     )
     .await
