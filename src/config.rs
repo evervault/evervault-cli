@@ -290,6 +290,7 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
     }
 }
 
+/// Helper trait for allowing command line args to override a deserialized config
 pub trait BuildTimeConfig {
     fn certificate(&self) -> Option<&str>;
     fn dockerfile(&self) -> Option<&str>;
