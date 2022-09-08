@@ -54,8 +54,7 @@ pub async fn build_enclave_image_file(
         .await
         .map_err(|_| BuildError::DockerfileAccessError(cage_config.dockerfile().to_string()))?;
 
-    let processed_dockerfile =
-        process_dockerfile(&cage_config, dockerfile, cage_config.egress().is_enabled()).await?;
+    let processed_dockerfile = process_dockerfile(&cage_config, dockerfile).await?;
 
     // write new dockerfile to fs
     let ev_user_dockerfile_path = output_path.join(Path::new(EV_USER_DOCKERFILE_PATH));
@@ -89,7 +88,6 @@ pub async fn build_enclave_image_file(
 async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     build_config: &ValidatedCageBuildConfig,
     dockerfile_src: R,
-    enable_egress: bool,
 ) -> Result<Vec<Directive>, BuildError> {
     // Decode dockerfile from file
     let instruction_set = DockerfileDecoder::decode_dockerfile_from_src(dockerfile_src).await?;
@@ -135,20 +133,22 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         return Err(DockerError::RestrictedPortExposed(exposed_port.unwrap()).into());
     }
 
-    let data_plane_feature_label = if enable_egress {
-        "egress-enabled"
-    } else {
-        "egress-disabled"
-    };
-
     let epoch = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .expect("System time is before the unix epoch")
         .as_secs();
     #[cfg(not(debug_assertions))]
-    let data_plane_url = format!("https://cage-build-assets.evervault.com/runtime/latest/data-plane/{data_plane_feature_label}?t={epoch}");
+    let data_plane_url = format!(
+        "https://cage-build-assets.evervault.com/runtime/latest/data-plane/{}?t={}",
+        build_config.get_dataplane_feature_label(),
+        epoch
+    );
     #[cfg(debug_assertions)]
-    let data_plane_url = format!("https://cage-build-assets.evervault.io/runtime/latest/data-plane/{data_plane_feature_label}?t={epoch}");
+    let data_plane_url = format!(
+        "https://cage-build-assets.evervault.io/runtime/latest/data-plane/{}?t={}",
+        build_config.get_dataplane_feature_label(),
+        epoch
+    );
 
     let mut data_plane_run_script =
         r#"echo "Booting Evervault data plane..."\nexec /data-plane"#.to_string();
@@ -230,6 +230,7 @@ mod test {
                 cert: "".into(),
                 key: "".into(),
             },
+            disable_tls_termination: false,
         }
     }
 
@@ -245,7 +246,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
 
         let config = get_config();
 
-        let processed_file = process_dockerfile(&config, &mut readable_contents, false).await;
+        let processed_file = process_dockerfile(&config, &mut readable_contents).await;
         assert_eq!(processed_file.is_ok(), true);
         let processed_file = processed_file.unwrap();
 
@@ -279,7 +280,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
             let expected_directive = expected_directive.to_string();
             let processed_directive = processed_directive.to_string();
             if expected_directive.contains("cage-build-assets") {
-                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled?t="));
+                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled/tls-termination-enabled?t="));
                 assert!(processed_directive.ends_with("-O /data-plane && chmod +x /data-plane"));
             } else {
                 assert_eq!(expected_directive, processed_directive);
@@ -299,7 +300,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
 
         let config = get_config();
 
-        let processed_file = process_dockerfile(&config, &mut readable_contents, false).await;
+        let processed_file = process_dockerfile(&config, &mut readable_contents).await;
         assert_eq!(processed_file.is_err(), true);
 
         assert!(matches!(
@@ -322,7 +323,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
 
         let config = get_config();
 
-        let processed_file = process_dockerfile(&config, &mut readable_contents, false).await;
+        let processed_file = process_dockerfile(&config, &mut readable_contents).await;
         assert_eq!(processed_file.is_ok(), true);
         let processed_file = processed_file.unwrap();
 
@@ -356,7 +357,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
             let expected_directive = expected_directive.to_string();
             let processed_directive = processed_directive.to_string();
             if expected_directive.contains("cage-build-assets") {
-                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled?t="));
+                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled/tls-termination-enabled?t="));
                 assert!(processed_directive.ends_with("-O /data-plane && chmod +x /data-plane"));
             } else {
                 assert_eq!(expected_directive, processed_directive);
@@ -376,23 +377,14 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
             println!("Name: {}", path.unwrap().path().display())
         }
 
-        assert_eq!(
-            output_dir
-                .path()
-                .join(super::EV_USER_DOCKERFILE_PATH)
-                .exists(),
-            true
-        );
-        assert_eq!(
-            output_dir
-                .path()
-                .join(enclave::NITRO_CLI_IMAGE_FILENAME)
-                .exists(),
-            true
-        );
-        assert_eq!(
-            output_dir.path().join(enclave::ENCLAVE_FILENAME).exists(),
-            true
-        );
+        assert!(output_dir
+            .path()
+            .join(super::EV_USER_DOCKERFILE_PATH)
+            .exists());
+        assert!(output_dir
+            .path()
+            .join(enclave::NITRO_CLI_IMAGE_FILENAME)
+            .exists());
+        assert!(output_dir.path().join(enclave::ENCLAVE_FILENAME).exists());
     }
 }
