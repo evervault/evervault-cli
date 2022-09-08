@@ -317,7 +317,7 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             egress: config.egress.clone(),
             signing: signing_info.try_into()?,
             attestation: config.attestation.clone(),
-            disable_tls_termination: config.disable_tls_termination
+            disable_tls_termination: config.disable_tls_termination,
         })
     }
 }
