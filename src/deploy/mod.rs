@@ -1,5 +1,5 @@
 use crate::api;
-use crate::api::{cage::CreateCageDeploymentIntentRequest, cage::CagesClient};
+use crate::api::{cage::CagesClient, cage::CreateCageDeploymentIntentRequest};
 use crate::common::{resolve_output_path, OutputPath};
 use crate::config::ValidatedCageBuildConfig;
 use crate::describe::describe_eif;
@@ -17,9 +17,9 @@ use tokio_util::codec::{BytesCodec, FramedRead};
 const ENCLAVE_ZIP_FILENAME: &str = "enclave.zip";
 
 pub async fn deploy_eif(
-    validated_config: &ValidatedCageBuildConfig, 
-    cage_api: &CagesClient, 
-    output_path: OutputPath, 
+    validated_config: &ValidatedCageBuildConfig,
+    cage_api: &CagesClient,
+    output_path: OutputPath,
     eif_measurements: EIFMeasurements,
 ) -> Result<(), DeployError> {
     let get_progress_bar = |start_msg: &str| {
