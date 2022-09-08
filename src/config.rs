@@ -200,8 +200,16 @@ impl ValidatedCageBuildConfig {
     }
 
     pub fn get_dataplane_feature_label(&self) -> String {
-        let egress_label = if self.egress.is_enabled() { "egress-enabled" } else { "egress-disabled" };
-        let tls_label = if self.disable_tls_termination { "tls-termination-disabled" } else { "tls-termination-enabled" };
+        let egress_label = if self.egress.is_enabled() {
+            "egress-enabled"
+        } else {
+            "egress-disabled"
+        };
+        let tls_label = if self.disable_tls_termination {
+            "tls-termination-disabled"
+        } else {
+            "tls-termination-enabled"
+        };
         format!("{egress_label}/{tls_label}")
     }
 }
