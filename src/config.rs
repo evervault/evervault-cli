@@ -290,13 +290,12 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
     }
 }
 
-
-
 pub trait BuildTimeConfig {
     fn certificate(&self) -> Option<&str>;
     fn dockerfile(&self) -> Option<&str>;
     fn private_key(&self) -> Option<&str>;
 
+    // Return new copy of config to prevent args being written to toml file in err
     fn merge_with_config(&self, config: &CageConfig) -> CageConfig {
         let mut merged_config = config.clone();
 
@@ -314,4 +313,14 @@ pub trait BuildTimeConfig {
 
         merged_config
     }
+}
+
+// Return both config read directly from FS as well as merged & validated config
+pub fn read_and_validate_config<B: BuildTimeConfig>(config_path: &str, args: &B) -> Result<(CageConfig, ValidatedCageBuildConfig), CageConfigError> {
+    let cage_config = CageConfig::try_from_filepath(&config_path)?;
+    let merged_config = args.merge_with_config(&cage_config);
+
+    let validated_config: ValidatedCageBuildConfig = merged_config.as_ref().try_into()?;
+
+    Ok((cage_config, validated_config))
 }
