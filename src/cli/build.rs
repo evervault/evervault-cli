@@ -1,6 +1,6 @@
 use crate::build::build_enclave_image_file;
 use crate::common::CliError;
-use crate::config::{BuildTimeConfig, CageConfig, ValidatedCageBuildConfig};
+use crate::config::{BuildTimeConfig, read_and_validate_config};
 use clap::Parser;
 
 /// Build a Cage from a Dockerfile
@@ -59,19 +59,10 @@ impl BuildTimeConfig for BuildArgs {
 }
 
 pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
-    let mut cage_config = match CageConfig::try_from_filepath(&build_args.context_path) {
+    let (mut cage_config, validated_config) = match read_and_validate_config(&build_args.context_path, &build_args) {
         Ok(config) => config,
         Err(e) => {
             log::error!("Failed to read cage config from file system — {}", e);
-            return e.exitcode();
-        }
-    };
-    let merged_cage_config = build_args.merge_with_config(&cage_config);
-
-    let validated_config: ValidatedCageBuildConfig = match ValidatedCageBuildConfig::try_from(&merged_cage_config) {
-        Ok(config) => config,
-        Err(e) => {
-            log::error!("Failed to validate cage config — {}", e);
             return e.exitcode();
         }
     };

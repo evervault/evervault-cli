@@ -1,5 +1,8 @@
-use crate::{common::CliError, deploy::deploy_eif};
+use crate::{deploy::{deploy_eif, get_eif}, config::read_and_validate_config};
+use crate::common::{CliError};
+use crate::api::{self, client::ApiClient, AuthMode};
 use crate::config::BuildTimeConfig;
+use crate::build::build_enclave_image_file;
 use clap::Parser;
 
 /// Deploy a Cage from a toml file.
@@ -58,7 +61,40 @@ impl BuildTimeConfig for DeployArgs {
 }
 
 pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
-    match deploy_eif(deploy_args).await {
+    let (mut cage_config, validated_config) = match read_and_validate_config(&deploy_args.config, &deploy_args) {
+        Ok(configs) => configs,
+        Err(e) => {
+            log::error!("Failed to validate Cage config - {}", e);
+            return e.exitcode();
+        }
+    };
+
+    let (eif_measurements, output_path) = match deploy_args.eif_path {
+        Some(eif_path) => get_eif(eif_path).unwrap(),
+        None => build_enclave_image_file(
+            &validated_config,
+            &deploy_args.context_path,
+            None,
+            !deploy_args.quiet,
+        )
+        .await
+        .map(|enclave_info| {
+            let (built_enclave, output_path) = enclave_info;
+            (built_enclave.measurements().clone(), output_path)
+        }).unwrap(),
+    };
+
+    if deploy_args.write {
+        crate::common::update_cage_config_with_eif_measurements(
+            &mut cage_config,
+            &deploy_args.config,
+            &eif_measurements,
+        );
+    }
+
+    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(deploy_args.api_key.clone()));
+
+    match deploy_eif(&validated_config, &cage_api, output_path, eif_measurements).await {
         Ok(_) => println!("Deployment was successful"),
         Err(e) => {
             print!("{}", e);
