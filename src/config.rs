@@ -75,8 +75,16 @@ impl std::convert::TryFrom<&SigningInfo> for ValidatedSigningInfo {
 
     fn try_from(signing_info: &SigningInfo) -> Result<ValidatedSigningInfo, Self::Error> {
         Ok(ValidatedSigningInfo {
-            cert: signing_info.cert.as_deref().ok_or(Self::Error::EmptySigningCert)?.to_string(),
-            key: signing_info.key.as_deref().ok_or(Self::Error::EmptySigningKey)?.to_string(),
+            cert: signing_info
+                .cert
+                .as_deref()
+                .ok_or(Self::Error::EmptySigningCert)?
+                .to_string(),
+            key: signing_info
+                .key
+                .as_deref()
+                .ok_or(Self::Error::EmptySigningKey)?
+                .to_string(),
         })
     }
 }
@@ -261,7 +269,10 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
     type Error = CageConfigError;
 
     fn try_from(config: &CageConfig) -> Result<Self, Self::Error> {
-        let signing_info = config.signing.as_ref().ok_or(SigningInfoError::NoSigningInfoGiven)?;
+        let signing_info = config
+            .signing
+            .as_ref()
+            .ok_or(SigningInfoError::NoSigningInfoGiven)?;
 
         let app_uuid = config
             .app_uuid
@@ -317,7 +328,10 @@ pub trait BuildTimeConfig {
 }
 
 // Return both config read directly from FS as well as merged & validated config
-pub fn read_and_validate_config<B: BuildTimeConfig>(config_path: &str, args: &B) -> Result<(CageConfig, ValidatedCageBuildConfig), CageConfigError> {
+pub fn read_and_validate_config<B: BuildTimeConfig>(
+    config_path: &str,
+    args: &B,
+) -> Result<(CageConfig, ValidatedCageBuildConfig), CageConfigError> {
     let cage_config = CageConfig::try_from_filepath(&config_path)?;
     let merged_config = args.merge_with_config(&cage_config);
 
