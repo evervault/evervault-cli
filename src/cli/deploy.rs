@@ -105,16 +105,13 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         }
     };
 
-    match deploy_eif(&validated_config, &cage_api, output_path, eif_measurements).await {
-        Ok(_) => println!("Deployment was successful"),
-        Err(e) => {
-            print!("{}", e);
-            return e.exitcode();
-        }
+    if let Err(e) =  deploy_eif(&validated_config, &cage_api, output_path, eif_measurements).await {
+        print!("{}", e);
+        return e.exitcode();
     };
 
     println!(
-        "Cage deployed successfully. Your Cage is now available at https://{}",
+        "Your Cage is now available at https://{}",
         cage.domain()
     );
     exitcode::OK
