@@ -88,8 +88,9 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     };
 
     log::info!(
-        "Deploying Cage with the following attestation measurements: {}", 
-        serde_json::to_string_pretty(&eif_measurements).expect("Failed to serialize Cage attestation measures.")
+        "Deploying Cage with the following attestation measurements: {}",
+        serde_json::to_string_pretty(&eif_measurements)
+            .expect("Failed to serialize Cage attestation measures.")
     );
 
     if deploy_args.write {
@@ -110,15 +111,12 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         }
     };
 
-    if let Err(e) =  deploy_eif(&validated_config, &cage_api, output_path, eif_measurements).await {
+    if let Err(e) = deploy_eif(&validated_config, &cage_api, output_path, eif_measurements).await {
         log::error!("{}", e);
         return e.exitcode();
     };
 
-    log::info!(
-        "Your Cage is now available at https://{}",
-        cage.domain()
-    );
+    log::info!("Your Cage is now available at https://{}", cage.domain());
     exitcode::OK
 }
 
