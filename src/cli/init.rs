@@ -45,7 +45,7 @@ pub struct InitArgs {
     pub gen_signing_credentials: bool,
 
     /// Flag to disable tls termination. This will pass the raw TCP streams directly to your service.
-    #[clap(long = "disable-tls-termination", default_value = "false")]
+    #[clap(long = "disable-tls-termination")]
     pub disable_tls_termination: bool,
 }
 
