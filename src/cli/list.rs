@@ -1,6 +1,6 @@
-use crate::{api, get_api_key};
 use crate::api::{client::ApiClient, AuthMode};
 use crate::common::CliError;
+use crate::{api, get_api_key};
 use clap::Parser;
 
 /// List your Cages and Deployments

@@ -1,8 +1,8 @@
-use crate::get_api_key;
 use crate::api;
 use crate::api::{client::ApiClient, AuthMode};
 use crate::common::CliError;
 use crate::config::{CageConfig, ValidatedCageBuildConfig};
+use crate::get_api_key;
 
 use chrono::TimeZone;
 use clap::Parser;
