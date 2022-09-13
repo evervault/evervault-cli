@@ -1,8 +1,8 @@
-use crate::get_api_key;
 use crate::api::{self, client::ApiClient, AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::common::CliError;
 use crate::config::BuildTimeConfig;
+use crate::get_api_key;
 use crate::{
     common::OutputPath,
     config::{read_and_validate_config, ValidatedCageBuildConfig},

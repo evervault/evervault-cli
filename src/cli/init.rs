@@ -1,8 +1,8 @@
-use crate::get_api_key;
 use crate::api;
 use crate::api::{client::ApiClient, AuthMode};
 use crate::common::CliError;
 use crate::config::{default_dockerfile, CageConfig, EgressSettings, SigningInfo};
+use crate::get_api_key;
 use clap::Parser;
 
 /// Initialize a Cage.toml in the current directory
