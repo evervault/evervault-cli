@@ -1,3 +1,4 @@
+use crate::get_api_key;
 use crate::api;
 use crate::api::{client::ApiClient, AuthMode};
 use crate::common::CliError;
@@ -35,10 +36,6 @@ pub struct InitArgs {
     /// Path to the signing key to use for the Cage
     #[clap(long = "private-key")]
     pub key_path: Option<String>,
-
-    /// API key to be used for the api calls
-    #[clap(long = "api-key")]
-    pub api_key: String,
 
     /// Flag to enable cert generation during init. This will use the default certificate.
     #[clap(long = "generate-signing")]
@@ -79,7 +76,8 @@ impl std::convert::Into<CageConfig> for InitArgs {
 }
 
 pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
-    let cages_client = api::cage::CagesClient::new(AuthMode::ApiKey(init_args.api_key.clone()));
+    let api_key = get_api_key!();
+    let cages_client = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.clone()));
 
     let created_cage = match cages_client
         .create_cage(init_args.cage_name.clone().into())

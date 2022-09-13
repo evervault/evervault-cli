@@ -1,3 +1,4 @@
+use crate::get_api_key;
 use crate::api::{self, client::ApiClient, AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::common::CliError;
@@ -42,10 +43,6 @@ pub struct DeployArgs {
     #[clap(short = 'w', long = "write")]
     pub write: bool,
 
-    /// API Key
-    #[clap(long = "api-key")]
-    pub api_key: String,
-
     /// Disable verbose output
     #[clap(long)]
     pub quiet: bool,
@@ -66,6 +63,7 @@ impl BuildTimeConfig for DeployArgs {
 }
 
 pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
+    let api_key = get_api_key!();
     let (mut cage_config, validated_config) =
         match read_and_validate_config(&deploy_args.config, &deploy_args) {
             Ok(configs) => configs,
@@ -101,7 +99,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         );
     }
 
-    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(deploy_args.api_key.clone()));
+    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key));
 
     let cage = match cage_api.get_cage(validated_config.cage_uuid()).await {
         Ok(cage) => cage,

@@ -1,4 +1,6 @@
-use crate::{common::CliError, delete::delete_cage};
+use crate::common::CliError;
+use crate::delete::delete_cage;
+use crate::get_api_key;
 use clap::Parser;
 
 /// Delete a Cage from a toml file.
@@ -9,17 +11,14 @@ pub struct DeleteArgs {
     #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
     pub config: String,
 
-    /// API Key
-    #[clap(long = "api-key")]
-    pub api_key: String,
-
     /// Disable verbose output
     #[clap(long)]
     pub quiet: bool,
 }
 
 pub async fn run(delete_args: DeleteArgs) -> exitcode::ExitCode {
-    match delete_cage(delete_args).await {
+    let api_key = get_api_key!();
+    match delete_cage(delete_args.config.as_str(), api_key.as_str()).await {
         Ok(_) => println!("Deletion was successful"),
         Err(e) => {
             println!("{}", e);

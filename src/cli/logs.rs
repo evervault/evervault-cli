@@ -1,3 +1,4 @@
+use crate::get_api_key;
 use crate::api;
 use crate::api::{client::ApiClient, AuthMode};
 use crate::common::CliError;
@@ -18,14 +19,11 @@ pub struct LogArgs {
     /// Path to the toml file containing the Cage's config
     #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
     pub config: String,
-
-    /// API key to be used for the api calls
-    #[clap(long = "api-key")]
-    pub api_key: String,
 }
 
 pub async fn run(log_args: LogArgs) -> i32 {
-    let cages_client = api::cage::CagesClient::new(AuthMode::ApiKey(log_args.api_key.clone()));
+    let api_key = get_api_key!();
+    let cages_client = api::cage::CagesClient::new(AuthMode::ApiKey(api_key));
 
     let cage_uuid = match log_args.cage_uuid.clone() {
         Some(cage_uuid) => cage_uuid,
