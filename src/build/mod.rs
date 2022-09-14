@@ -115,19 +115,20 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .filter(remove_unwanted_directives)
         .collect();
 
-    let user_service_builder = crate::docker::utils::create_combined_docker_entrypoint(
-        last_entrypoint,
-        last_cmd,
-    )
-    .map(|entrypoint| {
-        let entrypoint_script = format!("echo \"Booting user service...\"\\n{}", entrypoint);
-        let user_service_runner = format!("{USER_ENTRYPOINT_SERVICE_PATH}/run");
-        let user_service_builder_script = crate::docker::utils::write_command_to_script(
-            entrypoint_script.as_str(),
-            user_service_runner.as_str(),
-        );
-        Directive::new_run(user_service_builder_script)
-    })?;
+    let user_service_builder =
+        crate::docker::utils::create_combined_docker_entrypoint(last_entrypoint, last_cmd).map(
+            |entrypoint| {
+                let entrypoint_script =
+                    format!("echo \\\"Booting user service...\\\"\\ncd %s\\nexec {entrypoint}");
+                let user_service_runner = format!("{USER_ENTRYPOINT_SERVICE_PATH}/run");
+                let user_service_runit_wrapper = crate::docker::utils::write_command_to_script(
+                    entrypoint_script.as_str(),
+                    user_service_runner.as_str(),
+                    &[r#" "$PWD" "#],
+                );
+                Directive::new_run(user_service_runit_wrapper)
+            },
+        )?;
 
     if let Some(true) = exposed_port.map(|port| port == 443) {
         return Err(DockerError::RestrictedPortExposed(exposed_port.unwrap()).into());
@@ -151,19 +152,20 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     );
 
     let mut data_plane_run_script =
-        r#"echo "Booting Evervault data plane..."\nexec /data-plane"#.to_string();
+        r#"echo \"Booting Evervault data plane...\"\nexec /data-plane"#.to_string();
     if let Some(port) = exposed_port {
         data_plane_run_script = format!("{data_plane_run_script} {port}");
     }
 
     let bootstrap_script_content =
-        r#"ifconfig lo 127.0.0.1\necho "Booting enclave..."\nexec runsvdir /etc/service"#;
+        r#"ifconfig lo 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service"#;
 
     let injected_directives = vec![
         // install dependencies
         Directive::new_run(crate::docker::utils::write_command_to_script(
-            r#"if [ "$( command -v apk )" ]; then\necho "Installing using apk"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ "$( command -v apt-get )" ]; then\necho "Installing using apt-get"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho "No suitable installer found. Please contact support: support@evervault.com"\nexit 1\nfi"#,
+            r#"if [ \"$( command -v apk )\" ]; then\necho \"Installing using apk\"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ \"$( command -v apt-get )\" ]; then\necho \"Installing using apt-get\"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho \"No suitable installer found. Please contact support: support@evervault.com\"\nexit 1\nfi"#,
             "/runtime-installer",
+            &[],
         )),
         Directive::new_run("sh /runtime-installer ; rm /runtime-installer"),
         // create user service directory
@@ -180,6 +182,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         Directive::new_run(crate::docker::utils::write_command_to_script(
             data_plane_run_script.as_str(),
             format!("{DATA_PLANE_SERVICE_PATH}/run").as_str(),
+            &[],
         )),
         // set cage name and app uuid as in enclave env vars
         Directive::new_env("EV_CAGE_NAME", build_config.cage_name()),
@@ -189,6 +192,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         Directive::new_run(crate::docker::utils::write_command_to_script(
             bootstrap_script_content,
             "/bootstrap",
+            &[],
         )),
         // add entrypoint which starts the runit services
         Directive::new_entrypoint(
