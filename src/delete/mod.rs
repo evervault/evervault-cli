@@ -1,19 +1,18 @@
 use crate::api;
 use crate::api::cage::CagesClient;
 use crate::api::{client::ApiClient, AuthMode};
-use crate::cli::delete::DeleteArgs;
 use crate::config::{CageConfig, ValidatedCageBuildConfig};
 mod error;
 use error::DeleteError;
 use indicatif::{ProgressBar, ProgressStyle};
 
-pub async fn delete_cage(delete_args: DeleteArgs) -> Result<(), DeleteError> {
-    let cage_config = CageConfig::try_from_filepath(&delete_args.config)?;
+pub async fn delete_cage(config: &str, api_key: &str) -> Result<(), DeleteError> {
+    let cage_config = CageConfig::try_from_filepath(config)?;
     let validated_config: ValidatedCageBuildConfig = cage_config.as_ref().try_into()?;
 
     let cage_uuid = validated_config.cage_uuid().to_string();
 
-    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(delete_args.api_key.clone()));
+    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
 
     let get_progress_bar = |start_msg: &str| {
         let progress_bar = ProgressBar::new_spinner();
