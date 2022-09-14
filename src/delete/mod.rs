@@ -6,7 +6,6 @@ mod error;
 use error::DeleteError;
 use indicatif::{ProgressBar, ProgressStyle};
 
-// pub async fn delete_cage(delete_args: DeleteArgs) -> Result<(), DeleteError> {
 pub async fn delete_cage(config: &str, api_key: &str) -> Result<(), DeleteError> {
     let cage_config = CageConfig::try_from_filepath(config)?;
     let validated_config: ValidatedCageBuildConfig = cage_config.as_ref().try_into()?;
