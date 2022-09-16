@@ -41,16 +41,16 @@ pub fn create_combined_docker_entrypoint(
 
 // Takes a command A and produces a command B which writes A to a bash script.
 // Useful for creating scripts within in Dockerfiles
-pub fn write_command_to_script(command: &str, script_path: &str) -> String {
-    [
-        r#"/bin/sh -c "printf '"'#!/bin/sh\n"#,
-        command,
-        r#"\n'"' > "#,
-        script_path,
-        r#"""#,
-        format!(" && chmod +x {script_path}").as_str(),
-    ]
-    .join("")
+pub fn write_command_to_script(command: &str, script_path: &str, arguments: &[&str]) -> String {
+    let mut script_writer = Vec::from([r##"printf "#!/bin/sh\n"##, command, r#"\n""#]);
+    if arguments.len() > 0 {
+        script_writer.extend(arguments);
+    }
+
+    let target = [" > ", script_path, r#" && chmod +x "#, script_path];
+
+    script_writer.extend(target);
+    script_writer.join("")
 }
 
 pub fn verify_docker_is_running() -> Result<bool, super::error::DockerError> {
@@ -64,10 +64,10 @@ mod tests {
 
     #[test]
     fn test_write_command_to_script() {
-        let script_command = write_command_to_script("echo hello", "hello-script.sh");
+        let script_command = write_command_to_script("echo hello", "hello-script.sh", &[]);
         assert_eq!(
             script_command,
-            r#"/bin/sh -c "printf '"'#!/bin/sh\necho hello\n'"' > hello-script.sh" && chmod +x hello-script.sh"#
+            r##"printf "#!/bin/sh\necho hello\n" > hello-script.sh && chmod +x hello-script.sh"##
         )
     }
 }

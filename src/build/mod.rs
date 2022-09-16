@@ -115,19 +115,20 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .filter(remove_unwanted_directives)
         .collect();
 
-    let user_service_builder = crate::docker::utils::create_combined_docker_entrypoint(
-        last_entrypoint,
-        last_cmd,
-    )
-    .map(|entrypoint| {
-        let entrypoint_script = format!("echo \"Booting user service...\"\\n{}", entrypoint);
-        let user_service_runner = format!("{USER_ENTRYPOINT_SERVICE_PATH}/run");
-        let user_service_builder_script = crate::docker::utils::write_command_to_script(
-            entrypoint_script.as_str(),
-            user_service_runner.as_str(),
-        );
-        Directive::new_run(user_service_builder_script)
-    })?;
+    let user_service_builder =
+        crate::docker::utils::create_combined_docker_entrypoint(last_entrypoint, last_cmd).map(
+            |entrypoint| {
+                let entrypoint_script =
+                    format!("echo \\\"Booting user service...\\\"\\ncd %s\\nexec {entrypoint}");
+                let user_service_runner = format!("{USER_ENTRYPOINT_SERVICE_PATH}/run");
+                let user_service_runit_wrapper = crate::docker::utils::write_command_to_script(
+                    entrypoint_script.as_str(),
+                    user_service_runner.as_str(),
+                    &[r#" "$PWD" "#],
+                );
+                Directive::new_run(user_service_runit_wrapper)
+            },
+        )?;
 
     if let Some(true) = exposed_port.map(|port| port == 443) {
         return Err(DockerError::RestrictedPortExposed(exposed_port.unwrap()).into());
@@ -151,19 +152,20 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     );
 
     let mut data_plane_run_script =
-        r#"echo "Booting Evervault data plane..."\nexec /data-plane"#.to_string();
+        r#"echo \"Booting Evervault data plane...\"\nexec /data-plane"#.to_string();
     if let Some(port) = exposed_port {
         data_plane_run_script = format!("{data_plane_run_script} {port}");
     }
 
     let bootstrap_script_content =
-        r#"ifconfig lo 127.0.0.1\necho "Booting enclave..."\nexec runsvdir /etc/service"#;
+        r#"ifconfig lo 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service"#;
 
     let injected_directives = vec![
         // install dependencies
         Directive::new_run(crate::docker::utils::write_command_to_script(
-            r#"if [ "$( command -v apk )" ]; then\necho "Installing using apk"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ "$( command -v apt-get )" ]; then\necho "Installing using apt-get"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho "No suitable installer found. Please contact support: support@evervault.com"\nexit 1\nfi"#,
+            r#"if [ \"$( command -v apk )\" ]; then\necho \"Installing using apk\"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ \"$( command -v apt-get )\" ]; then\necho \"Installing using apt-get\"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho \"No suitable installer found. Please contact support: support@evervault.com\"\nexit 1\nfi"#,
             "/runtime-installer",
+            &[],
         )),
         Directive::new_run("sh /runtime-installer ; rm /runtime-installer"),
         // create user service directory
@@ -180,6 +182,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         Directive::new_run(crate::docker::utils::write_command_to_script(
             data_plane_run_script.as_str(),
             format!("{DATA_PLANE_SERVICE_PATH}/run").as_str(),
+            &[],
         )),
         // set cage name and app uuid as in enclave env vars
         Directive::new_env("EV_CAGE_NAME", build_config.cage_name()),
@@ -189,6 +192,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         Directive::new_run(crate::docker::utils::write_command_to_script(
             bootstrap_script_content,
             "/bootstrap",
+            &[],
         )),
         // add entrypoint which starts the runit services
         Directive::new_entrypoint(
@@ -250,22 +254,22 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
         assert_eq!(processed_file.is_ok(), true);
         let processed_file = processed_file.unwrap();
 
-        let expected_output_contents = r#"FROM alpine
+        let expected_output_contents = r##"FROM alpine
 RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
-RUN /bin/sh -c "printf '"'#!/bin/sh\nif [ "$( command -v apk )" ]; then\necho "Installing using apk"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ "$( command -v apt-get )" ]; then\necho "Installing using apt-get"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho "No suitable installer found. Please contact support: support@evervault.com"\nexit 1\nfi\n'"' > /runtime-installer" && chmod +x /runtime-installer
+RUN printf "#!/bin/sh\nif [ \"$( command -v apk )\" ]; then\necho \"Installing using apk\"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ \"$( command -v apt-get )\" ]; then\necho \"Installing using apt-get\"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho \"No suitable installer found. Please contact support: support@evervault.com\"\nexit 1\nfi\n" > /runtime-installer && chmod +x /runtime-installer
 RUN sh /runtime-installer ; rm /runtime-installer
 RUN mkdir -p /etc/service/user-entrypoint
-RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting user service..."\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
+RUN printf "#!/bin/sh\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
 RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
 RUN mkdir -p /etc/service/data-plane
-RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting Evervault data plane..."\nexec /data-plane\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
+RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
 ENV EV_APP_UUID=3241
 ENV EV_TEAM_UUID=teamid
-RUN /bin/sh -c "printf '"'#!/bin/sh\nifconfig lo 127.0.0.1\necho "Booting enclave..."\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
-"#;
+"##;
 
         let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
             expected_output_contents.as_bytes(),
@@ -327,22 +331,22 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
         assert_eq!(processed_file.is_ok(), true);
         let processed_file = processed_file.unwrap();
 
-        let expected_output_contents = r#"FROM alpine
+        let expected_output_contents = r##"FROM alpine
 RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
-RUN /bin/sh -c "printf '"'#!/bin/sh\nif [ "$( command -v apk )" ]; then\necho "Installing using apk"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ "$( command -v apt-get )" ]; then\necho "Installing using apt-get"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho "No suitable installer found. Please contact support: support@evervault.com"\nexit 1\nfi\n'"' > /runtime-installer" && chmod +x /runtime-installer
+RUN printf "#!/bin/sh\nif [ \"$( command -v apk )\" ]; then\necho \"Installing using apk\"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ \"$( command -v apt-get )\" ]; then\necho \"Installing using apt-get\"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho \"No suitable installer found. Please contact support: support@evervault.com\"\nexit 1\nfi\n" > /runtime-installer && chmod +x /runtime-installer
 RUN sh /runtime-installer ; rm /runtime-installer
 RUN mkdir -p /etc/service/user-entrypoint
-RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting user service..."\nsh /hello-script\n'"' > /etc/service/user-entrypoint/run" && chmod +x /etc/service/user-entrypoint/run
+RUN printf "#!/bin/sh\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
 RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
 RUN mkdir -p /etc/service/data-plane
-RUN /bin/sh -c "printf '"'#!/bin/sh\necho "Booting Evervault data plane..."\nexec /data-plane 3443\n'"' > /etc/service/data-plane/run" && chmod +x /etc/service/data-plane/run
+RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
 ENV EV_APP_UUID=3241
 ENV EV_TEAM_UUID=teamid
-RUN /bin/sh -c "printf '"'#!/bin/sh\nifconfig lo 127.0.0.1\necho "Booting enclave..."\nexec runsvdir /etc/service\n'"' > /bootstrap" && chmod +x /bootstrap
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
-"#;
+"##;
 
         let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
             expected_output_contents.as_bytes(),
