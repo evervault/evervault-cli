@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use crate::common::BuildArg;
-
 use super::docker::command;
 use std::io::Write;
 use std::path::PathBuf;
@@ -17,16 +15,11 @@ pub fn build_user_image(
     user_dockerfile_path: &std::path::Path,
     user_context_path: &str,
     verbose: bool,
-    docker_build_args: Option<&[BuildArg]>,
+    docker_build_args: Vec<&str>,
 ) -> Result<(), String> {
     let mut command_line_args = vec![user_context_path.as_ref()];
-    let build_args: Option<Vec<std::ffi::OsString>> =
-        docker_build_args.map(|inner| inner.iter().map(BuildArg::to_command_line_arg).collect());
-    if let Some(converted_build_args) = build_args.as_deref() {
-        converted_build_args.iter().for_each(|arg| {
-            command_line_args.push(arg.as_os_str());
-        })
-    }
+    let mut build_args = docker_build_args.iter().map(AsRef::as_ref).collect();
+    command_line_args.append(&mut build_args);
 
     let build_image_status = command::build_image(
         user_dockerfile_path,

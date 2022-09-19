@@ -1,7 +1,7 @@
 pub mod error;
 use error::BuildError;
 
-use crate::common::{resolve_output_path, BuildArg, OutputPath};
+use crate::common::{resolve_output_path, OutputPath};
 use crate::config::ValidatedCageBuildConfig;
 use crate::docker::error::DockerError;
 use crate::docker::parse::{Directive, DockerfileDecoder, Mode};
@@ -21,7 +21,7 @@ pub async fn build_enclave_image_file(
     context_path: &str,
     output_dir: Option<&str>,
     verbose: bool,
-    docker_build_args: Option<&[BuildArg]>,
+    docker_build_args: Vec<&str>,
 ) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
     if !Path::new(&context_path).exists() {
         log::error!(
