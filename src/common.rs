@@ -115,6 +115,22 @@ macro_rules! get_api_key {
     };
 }
 
+pub fn prepare_build_args(build_args: &Vec<String>) -> Option<Vec<String>> {
+    if build_args.len() == 0 {
+        return None;
+    }
+
+    let mut formatted_args: Vec<String> = Vec::with_capacity(build_args.len()*2);
+    build_args
+        .iter()
+        .fold(&mut formatted_args, |acc, build_arg| {
+            acc.push("--build-arg".to_string());
+            acc.push(build_arg.clone());
+            acc
+        });
+    Some(formatted_args)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -132,5 +148,28 @@ mod test {
             resolve_output_path(Some("./src")).expect("Failed to resolve canonical path");
         assert!(output_path._tmp_dir.is_none());
         assert!(output_path.file_path.as_path().ends_with("src"));
+    }
+
+    #[test]
+    fn test_build_args_prep_with_empty_list() {
+        let args = vec![];
+        let result = prepare_build_args(&args);
+        assert_eq!(None, result);
+    }
+
+    #[test]
+    fn test_build_args_prep_with_non_empty_list() {
+        let args = vec!["DEBUG=true".into(), "API_KEY=secret".into()];
+        let result = prepare_build_args(&args);
+        assert!(result.is_some());
+        let formatted = result.unwrap();
+        let chunked_args = formatted.chunks(2);
+        let combined_iter = args.iter().zip(chunked_args.into_iter());
+        combined_iter.for_each(|(expected_arg, formatted_args)| {
+            let flag = formatted_args[0].as_str();
+            let value = formatted_args[1].as_str();
+            assert_eq!(flag, "--build-arg");
+            assert_eq!(value, expected_arg.as_str());
+        });
     }
 }

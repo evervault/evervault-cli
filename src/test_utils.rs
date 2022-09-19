@@ -11,7 +11,7 @@ pub async fn build_test_cage(
     crate::cert::create_new_cert(".".into(), dn_string).expect("Failed to gen cert in tests");
     let build_args = get_test_build_args();
 
-    build_enclave_image_file(&build_args, ".", output_dir, false).await
+    build_enclave_image_file(&build_args, ".", output_dir, false, None).await
 }
 
 fn get_test_build_args() -> ValidatedCageBuildConfig {

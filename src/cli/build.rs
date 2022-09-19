@@ -1,5 +1,5 @@
 use crate::build::build_enclave_image_file;
-use crate::common::CliError;
+use crate::common::{CliError, prepare_build_args};
 use crate::config::{read_and_validate_config, BuildTimeConfig};
 use clap::Parser;
 
@@ -72,11 +72,13 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
             }
         };
 
-    let borrowed_args: Vec<&str> = build_args
-        .docker_build_args
-        .iter()
-        .map(AsRef::as_ref)
-        .collect();
+    let formatted_args = prepare_build_args(&build_args.docker_build_args);
+    let borrowed_args = formatted_args.as_ref().map(|args| 
+        args.iter()
+            .map(AsRef::as_ref)
+            .collect()
+    );
+
     let built_enclave = match build_enclave_image_file(
         &validated_config,
         &build_args.context_path,
