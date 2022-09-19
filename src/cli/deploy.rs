@@ -46,7 +46,7 @@ pub struct DeployArgs {
     #[clap(long)]
     pub quiet: bool,
 
-    /// Build time args to provide to docker
+    /// Build time argumentss to provide to docker
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 }
