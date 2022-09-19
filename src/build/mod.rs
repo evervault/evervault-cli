@@ -1,7 +1,7 @@
 pub mod error;
 use error::BuildError;
 
-use crate::common::{resolve_output_path, OutputPath};
+use crate::common::{resolve_output_path, BuildArg, OutputPath};
 use crate::config::ValidatedCageBuildConfig;
 use crate::docker::error::DockerError;
 use crate::docker::parse::{Directive, DockerfileDecoder, Mode};
@@ -21,6 +21,7 @@ pub async fn build_enclave_image_file(
     context_path: &str,
     output_dir: Option<&str>,
     verbose: bool,
+    docker_build_args: Option<&[BuildArg]>,
 ) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
     if !Path::new(&context_path).exists() {
         log::error!(
@@ -71,8 +72,13 @@ pub async fn build_enclave_image_file(
     );
 
     log::info!("Building docker image…");
-    enclave::build_user_image(&ev_user_dockerfile_path, &context_path, verbose)
-        .map_err(|e| BuildError::DockerBuildError(e))?;
+    enclave::build_user_image(
+        &ev_user_dockerfile_path,
+        &context_path,
+        verbose,
+        docker_build_args,
+    )
+    .map_err(|e| BuildError::DockerBuildError(e))?;
 
     log::debug!("Building Nitro CLI image…");
 

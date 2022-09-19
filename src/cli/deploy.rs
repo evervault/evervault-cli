@@ -1,11 +1,9 @@
 use crate::api::{self, client::ApiClient, AuthMode};
 use crate::build::build_enclave_image_file;
-use crate::common::CliError;
-use crate::config::BuildTimeConfig;
 use crate::get_api_key;
 use crate::{
-    common::OutputPath,
-    config::{read_and_validate_config, ValidatedCageBuildConfig},
+    common::{BuildArg, BuildArgParser, CliError, OutputPath},
+    config::{read_and_validate_config, BuildTimeConfig, ValidatedCageBuildConfig},
     deploy::{deploy_eif, get_eif},
     enclave::EIFMeasurements,
 };
@@ -46,6 +44,10 @@ pub struct DeployArgs {
     /// Disable verbose output
     #[clap(long)]
     pub quiet: bool,
+
+    /// Build time args to provide to docker
+    #[clap(long = "build-arg", value_parser = BuildArgParser)]
+    pub docker_build_args: Option<Vec<BuildArg>>,
 }
 
 impl BuildTimeConfig for DeployArgs {
@@ -88,6 +90,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         &deploy_args.context_path,
         deploy_args.eif_path.as_deref(),
         !deploy_args.quiet,
+        deploy_args.docker_build_args.as_deref(),
     )
     .await
     {
@@ -123,6 +126,7 @@ async fn resolve_eif(
     context_path: &str,
     eif_path: Option<&str>,
     verbose: bool,
+    build_args: Option<&[BuildArg]>,
 ) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
     if let Some(path) = eif_path {
         return get_eif(path).map_err(|e| {
@@ -131,7 +135,7 @@ async fn resolve_eif(
         });
     } else {
         let (built_enclave, output_path) =
-            build_enclave_image_file(validated_config, context_path, None, verbose)
+            build_enclave_image_file(validated_config, context_path, None, verbose, build_args)
                 .await
                 .map_err(|build_err| {
                     log::error!("Failed to build EIF - {}", build_err);
