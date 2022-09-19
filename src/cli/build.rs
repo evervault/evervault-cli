@@ -1,5 +1,5 @@
 use crate::build::build_enclave_image_file;
-use crate::common::{BuildArg, BuildArgParser, CliError};
+use crate::common::CliError;
 use crate::config::{read_and_validate_config, BuildTimeConfig};
 use clap::Parser;
 
@@ -44,8 +44,8 @@ pub struct BuildArgs {
     pub write: bool,
 
     /// Pass build time arguments to docker
-    #[clap(long = "build-arg", value_parser = BuildArgParser)]
-    pub docker_build_args: Option<Vec<BuildArg>>,
+    #[clap(long = "build-arg")]
+    pub docker_build_args: Vec<String>,
 }
 
 impl BuildTimeConfig for BuildArgs {
@@ -72,12 +72,17 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
             }
         };
 
+    let borrowed_args: Vec<&str> = build_args
+        .docker_build_args
+        .iter()
+        .map(AsRef::as_ref)
+        .collect();
     let built_enclave = match build_enclave_image_file(
         &validated_config,
         &build_args.context_path,
         Some(&build_args.output_dir),
         !build_args.quiet,
-        build_args.docker_build_args.as_deref(),
+        borrowed_args,
     )
     .await
     {
