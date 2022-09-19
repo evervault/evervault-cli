@@ -43,7 +43,7 @@ pub struct BuildArgs {
     #[clap(short = 'w', long = "write")]
     pub write: bool,
 
-    /// Pass build time arguments to docker
+    /// Build time argumentss to provide to docker
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 }
