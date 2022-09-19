@@ -21,7 +21,7 @@ pub async fn build_enclave_image_file(
     context_path: &str,
     output_dir: Option<&str>,
     verbose: bool,
-    docker_build_args: Vec<&str>,
+    docker_build_args: Option<Vec<&str>>,
 ) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
     if !Path::new(&context_path).exists() {
         log::error!(

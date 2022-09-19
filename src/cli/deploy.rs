@@ -1,5 +1,6 @@
 use crate::api::{self, client::ApiClient, AuthMode};
 use crate::build::build_enclave_image_file;
+use crate::common::prepare_build_args;
 use crate::get_api_key;
 use crate::{
     common::{CliError, OutputPath},
@@ -85,11 +86,13 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         }
     };
 
-    let build_args = deploy_args
-        .docker_build_args
-        .iter()
-        .map(AsRef::as_ref)
-        .collect();
+    let formatted_args = prepare_build_args(&deploy_args.docker_build_args);
+    let build_args = formatted_args.as_ref().map(|args| 
+        args.iter()
+            .map(AsRef::as_ref)
+            .collect()
+    );
+
     let (eif_measurements, output_path) = match resolve_eif(
         &validated_config,
         &deploy_args.context_path,
@@ -131,7 +134,7 @@ async fn resolve_eif(
     context_path: &str,
     eif_path: Option<&str>,
     verbose: bool,
-    build_args: Vec<&str>,
+    build_args: Option<Vec<&str>>,
 ) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
     if let Some(path) = eif_path {
         return get_eif(path).map_err(|e| {

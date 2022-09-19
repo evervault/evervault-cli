@@ -15,11 +15,14 @@ pub fn build_user_image(
     user_dockerfile_path: &std::path::Path,
     user_context_path: &str,
     verbose: bool,
-    docker_build_args: Vec<&str>,
+    docker_build_args: Option<Vec<&str>>,
 ) -> Result<(), String> {
     let mut command_line_args = vec![user_context_path.as_ref()];
-    let mut build_args = docker_build_args.iter().map(AsRef::as_ref).collect();
-    command_line_args.append(&mut build_args);
+    
+    if let Some(build_args) = docker_build_args.as_ref() {
+        let mut docker_build_args = build_args.iter().map(AsRef::as_ref).collect();
+        command_line_args.append(&mut docker_build_args);
+    }
 
     let build_image_status = command::build_image(
         user_dockerfile_path,
