@@ -120,7 +120,7 @@ pub fn prepare_build_args(build_args: &Vec<String>) -> Option<Vec<String>> {
         return None;
     }
 
-    let mut formatted_args: Vec<String> = Vec::with_capacity(build_args.len()*2);
+    let mut formatted_args: Vec<String> = Vec::with_capacity(build_args.len() * 2);
     build_args
         .iter()
         .fold(&mut formatted_args, |acc, build_arg| {
