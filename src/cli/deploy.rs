@@ -87,11 +87,9 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     };
 
     let formatted_args = prepare_build_args(&deploy_args.docker_build_args);
-    let build_args = formatted_args.as_ref().map(|args| 
-        args.iter()
-            .map(AsRef::as_ref)
-            .collect()
-    );
+    let build_args = formatted_args
+        .as_ref()
+        .map(|args| args.iter().map(AsRef::as_ref).collect());
 
     let (eif_measurements, output_path) = match resolve_eif(
         &validated_config,
