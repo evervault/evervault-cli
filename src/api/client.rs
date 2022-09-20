@@ -11,7 +11,6 @@ use thiserror::Error;
 #[derive(Clone)]
 pub struct GenericApiClient {
     client: Client,
-    auth: AuthMode,
 }
 
 impl Default for GenericApiClient {
@@ -19,41 +18,17 @@ impl Default for GenericApiClient {
         let client = Client::builder().timeout(Duration::from_secs(60)).build();
         Self {
             client: client.unwrap(),
-            auth: AuthMode::NoAuth,
         }
     }
 }
 
-impl std::convert::From<AuthMode> for GenericApiClient {
-    fn from(auth_mode: AuthMode) -> Self {
-        let mut client = Self::default();
-        client.auth = auth_mode;
-        client
-    }
-}
-
 impl ApiClient for GenericApiClient {
-    fn new(auth_mode: AuthMode) -> Self {
-        Self::from(auth_mode)
-    }
-
-    fn auth(&self) -> &AuthMode {
-        &self.auth
-    }
-
-    fn update_auth(&mut self, auth: AuthMode) {
-        self.auth = auth;
-    }
-
     fn client(&self) -> &Client {
         &self.client
     }
 }
 
 pub trait ApiClient {
-    fn new(auth_mode: AuthMode) -> Self;
-    fn auth(&self) -> &AuthMode;
-    fn update_auth(&mut self, auth: AuthMode);
     fn client(&self) -> &Client;
 
     fn base_url(&self) -> String {
@@ -62,10 +37,6 @@ pub trait ApiClient {
 
     fn user_agent(&self) -> String {
         format!("evervault-cage-cli/{}", env!("CARGO_PKG_VERSION"))
-    }
-
-    fn is_authorised(&self) -> bool {
-        !matches!(self.auth(), AuthMode::NoAuth)
     }
 
     fn get(&self, url: &String) -> RequestBuilder {
@@ -84,28 +55,48 @@ pub trait ApiClient {
         self.prepare(self.client().delete(url))
     }
 
-    fn prepare(&self, mut request_builder: RequestBuilder) -> RequestBuilder {
-        request_builder = request_builder.header("user-agent", self.user_agent());
-        match &self.auth() {
-            AuthMode::NoAuth => request_builder,
+    fn prepare(&self, request_builder: RequestBuilder) -> RequestBuilder {
+        request_builder.header("user-agent", self.user_agent())
+    }
+}
+
+pub trait AuthenticatedClient: ApiClient {
+    fn new(auth_mode: AuthMode) -> Self;
+    fn auth(&self) -> &AuthMode;
+    fn prepare(&self, request_builder: RequestBuilder) -> RequestBuilder {
+        let request_builder = <Self as ApiClient>::prepare(self, request_builder);
+        match self.auth() {
             AuthMode::ApiKey(api_key) => request_builder.header("api-key", api_key),
             AuthMode::BearerAuth(token) => request_builder.bearer_auth(token),
+            AuthMode::NoAuth => request_builder,
         }
     }
 }
 
 #[async_trait]
 pub trait HandleResponse {
-    async fn handle_response<T: DeserializeOwned>(self) -> ApiResult<T>;
+    async fn handle_json_response<T: DeserializeOwned>(self) -> ApiResult<T>;
+    async fn handle_text_response(self) -> ApiResult<String>;
     fn handle_no_op_response(self) -> ApiResult<()>;
 }
 
 #[async_trait]
 impl HandleResponse for Result<Response> {
-    async fn handle_response<T: DeserializeOwned>(self) -> ApiResult<T> {
+    async fn handle_json_response<T: DeserializeOwned>(self) -> ApiResult<T> {
         match self {
             Ok(res) if res.status().is_success() => res
                 .json()
+                .await
+                .map_err(|e| ApiError::ParsingError(e.to_string())),
+            Ok(res) => Err(ApiError::get_error_from_status(res.status().as_u16())),
+            Err(e) => Err(ApiError::Unknown(Some(e))),
+        }
+    }
+
+    async fn handle_text_response(self) -> ApiResult<String> {
+        match self {
+            Ok(res) if res.status().is_success() => res
+                .text()
                 .await
                 .map_err(|e| ApiError::ParsingError(e.to_string())),
             Ok(res) => Err(ApiError::get_error_from_status(res.status().as_u16())),

@@ -1,4 +1,4 @@
-use crate::api::{self, client::ApiClient, AuthMode};
+use crate::api::{self, client::AuthenticatedClient, AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::common::prepare_build_args;
 use crate::get_api_key;

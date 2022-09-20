@@ -1,6 +1,6 @@
 use crate::api;
 use crate::api::cage::CagesClient;
-use crate::api::{client::ApiClient, AuthMode};
+use crate::api::{client::AuthenticatedClient, AuthMode};
 use crate::config::{CageConfig, ValidatedCageBuildConfig};
 mod error;
 use error::DeleteError;

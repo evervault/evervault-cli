@@ -1,4 +1,4 @@
-use super::client::{ApiClient, ApiResult, GenericApiClient, HandleResponse};
+use super::client::{ApiClient, ApiResult, AuthenticatedClient, GenericApiClient, HandleResponse};
 use super::AuthMode;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -6,23 +6,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone)]
 pub struct CagesClient {
     inner: GenericApiClient,
+    auth_mode: AuthMode,
 }
 
 impl ApiClient for CagesClient {
-    fn new(auth_mode: AuthMode) -> Self {
-        Self {
-            inner: GenericApiClient::from(auth_mode),
-        }
-    }
-
-    fn auth(&self) -> &AuthMode {
-        self.inner.auth()
-    }
-
-    fn update_auth(&mut self, auth: AuthMode) {
-        self.inner.update_auth(auth);
-    }
-
     fn client(&self) -> &Client {
         self.inner.client()
     }
@@ -33,6 +20,19 @@ impl ApiClient for CagesClient {
     }
 }
 
+impl AuthenticatedClient for CagesClient {
+    fn new(auth_mode: AuthMode) -> Self {
+        Self {
+            inner: GenericApiClient::default(),
+            auth_mode,
+        }
+    }
+
+    fn auth(&self) -> &AuthMode {
+        &self.auth_mode
+    }
+}
+
 impl CagesClient {
     pub async fn create_cage(&self, cage_create_payload: CreateCageRequest) -> ApiResult<Cage> {
         let create_cage_url = format!("{}/", self.base_url());
@@ -40,7 +40,7 @@ impl CagesClient {
             .json(&cage_create_payload)
             .send()
             .await
-            .handle_response()
+            .handle_json_response()
             .await
     }
 
@@ -54,7 +54,7 @@ impl CagesClient {
             .json(&payload)
             .send()
             .await
-            .handle_response()
+            .handle_json_response()
             .await
     }
 
@@ -63,13 +63,17 @@ impl CagesClient {
         self.get(&get_cages_url)
             .send()
             .await
-            .handle_response()
+            .handle_json_response()
             .await
     }
 
     pub async fn get_cage(&self, cage_uuid: &str) -> ApiResult<GetCageResponse> {
         let get_cage_url = format!("{}/{}", self.base_url(), cage_uuid);
-        self.get(&get_cage_url).send().await.handle_response().await
+        self.get(&get_cage_url)
+            .send()
+            .await
+            .handle_json_response()
+            .await
     }
 
     pub async fn get_cage_deployment_by_uuid(
@@ -83,7 +87,11 @@ impl CagesClient {
             cage_uuid,
             deployment_uuid
         );
-        self.get(&get_cage_url).send().await.handle_response().await
+        self.get(&get_cage_url)
+            .send()
+            .await
+            .handle_json_response()
+            .await
     }
 
     pub async fn get_signing_certs(&self) -> ApiResult<GetSigningCertsResponse> {
@@ -91,13 +99,17 @@ impl CagesClient {
         self.get(&get_certs_url)
             .send()
             .await
-            .handle_response()
+            .handle_json_response()
             .await
     }
 
     pub async fn get_cage_cert_by_uuid(&self, cert_uuid: &str) -> ApiResult<CageSigningCert> {
         let get_cert_url = format!("{}/signing/certs/{}", self.base_url(), cert_uuid);
-        self.get(&get_cert_url).send().await.handle_response().await
+        self.get(&get_cert_url)
+            .send()
+            .await
+            .handle_json_response()
+            .await
     }
 
     pub async fn get_cage_logs(
@@ -111,7 +123,11 @@ impl CagesClient {
             self.base_url(),
             cage_uuid
         );
-        self.get(&get_logs_url).send().await.handle_response().await
+        self.get(&get_logs_url)
+            .send()
+            .await
+            .handle_json_response()
+            .await
     }
 
     pub async fn delete_cage(&self, cage_uuid: &str) -> ApiResult<DeleteCageResponse> {
@@ -119,7 +135,7 @@ impl CagesClient {
         self.delete(&delete_cage_url)
             .send()
             .await
-            .handle_response()
+            .handle_json_response()
             .await
     }
 }
