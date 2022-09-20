@@ -41,7 +41,7 @@ pub async fn run() -> exitcode::ExitCode {
 
     let result = std::process::Command::new("sh")
         .arg(tempfile.path())
-        .env("EV_FORCE_INSTALL", "true")
+        .env("CAGE_CLI_FORCE_INSTALL", "true")
         .stdout(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::inherit())
         .status();
