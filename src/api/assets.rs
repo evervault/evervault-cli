@@ -1,13 +1,12 @@
-use super::client::{ApiClient, ApiResult, HandleResponse};
-use reqwest::Client;
+use super::client::{ApiClient, ApiResult, GenericApiClient, HandleResponse};
 
 pub struct AssetsClient {
-    client: reqwest::Client,
+    inner: GenericApiClient,
 }
 
 impl ApiClient for AssetsClient {
     fn client(&self) -> &reqwest::Client {
-        &self.client
+        &self.inner.client()
     }
 
     fn base_url(&self) -> String {
@@ -18,8 +17,9 @@ impl ApiClient for AssetsClient {
 
 impl AssetsClient {
     pub fn new() -> Self {
+        let generic_client = GenericApiClient::default();
         Self {
-            client: Client::new(),
+            inner: generic_client,
         }
     }
 
