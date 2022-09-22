@@ -294,7 +294,7 @@ pub struct CageSigningCert {
     not_after: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum DeployStatus {
     Pending,
@@ -316,6 +316,18 @@ pub struct CageRegionalDeployment {
     // should revert this to just String after API fix
     started_at: Option<String>,
     completed_at: Option<String>,
+}
+
+impl CageRegionalDeployment {
+    pub fn is_failed(&self) -> bool {
+        self.deploy_status == DeployStatus::Failed
+    }
+
+    pub fn get_failure_reason(&self) -> String {
+        self.failure_reason.unwrap_or(String::from(
+            "Error deploying cage. Please contact Evervault Support",
+        ))
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -375,6 +387,15 @@ impl GetCageDeploymentResponse {
 
     pub fn is_finished(&self) -> bool {
         self.deployment.is_finished()
+    }
+
+    //TODO: Handle multi region deployment failures
+    pub fn is_failed(&self) -> bool {
+        self.tee_cage_regional_deployments[0].is_failed()
+    }
+
+    pub fn get_failure_reason(&self) -> String {
+        self.tee_cage_regional_deployments[0].get_failure_reason()
     }
 }
 
