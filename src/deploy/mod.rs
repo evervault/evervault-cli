@@ -136,6 +136,9 @@ async fn watch_deployment(
                 if deployment_response.is_finished() {
                     progress_bar.finish_with_message("Cage deployed!");
                     break;
+                } else if deployment_response.is_failed() {
+                    progress_bar.finish_with_message(&deployment_response.get_failure_reason());
+                    break;
                 }
             }
             Err(e) => {
