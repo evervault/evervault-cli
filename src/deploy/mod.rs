@@ -73,7 +73,7 @@ pub async fn deploy_eif(
         return Err(DeployError::UploadError(s3_response.text().await?));
     };
 
-    let progress_bar_for_build = get_progress_bar("Building Cage Image on Evervault...");
+    let progress_bar_for_build = get_progress_bar("Building Cage Docker Image on Evervault Infra...");
     watch_build(
         cage_api.clone(),
         deployment_intent.cage_uuid(),
@@ -82,16 +82,15 @@ pub async fn deploy_eif(
     )
     .await;
 
-    let progress_bar_for_deploy = get_progress_bar("Deploying Cage into a Nitro Enclave...");
+    let progress_bar_for_deploy = get_progress_bar("Deploying Cage into a Trusted Execution Environment...");
     watch_deployment(
         cage_api,
         deployment_intent.cage_uuid(),
         deployment_intent.deployment_uuid(),
         progress_bar_for_deploy,
     )
-    .await;
+    .await
 
-    Ok(())
 }
 
 async fn watch_build(
@@ -126,7 +125,7 @@ async fn watch_deployment(
     cage_uuid: &str,
     deployment_uuid: &str,
     progress_bar: ProgressBar,
-) {
+) -> Result<(), DeployError> {
     loop {
         match cage_api
             .get_cage_deployment_by_uuid(cage_uuid, deployment_uuid)
@@ -137,8 +136,9 @@ async fn watch_deployment(
                     progress_bar.finish_with_message("Cage deployed!");
                     break;
                 } else if deployment_response.is_failed() {
-                    progress_bar.finish_with_message(&deployment_response.get_failure_reason());
-                    break;
+                    progress_bar.finish();
+                    log::error!("{}", &deployment_response.get_failure_reason());
+                    return Err(DeployError::DeploymentError());
                 }
             }
             Err(e) => {
@@ -148,7 +148,8 @@ async fn watch_deployment(
             }
         };
         tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
-    }
+    };
+    Ok(())
 }
 
 fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::ZipResult<()> {
