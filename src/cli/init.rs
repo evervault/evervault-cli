@@ -1,5 +1,5 @@
 use crate::api;
-use crate::api::{client::AuthenticatedClient, AuthMode};
+use crate::api::{client::ApiClient, AuthMode};
 use crate::common::CliError;
 use crate::config::{default_dockerfile, CageConfig, EgressSettings, SigningInfo};
 use crate::get_api_key;
