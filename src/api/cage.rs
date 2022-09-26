@@ -1,4 +1,4 @@
-use super::client::{ApiClient, ApiResult, GenericApiClient, HandleResponse};
+use super::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
 use super::AuthMode;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -19,8 +19,8 @@ impl ApiClient for CagesClient {
         self.inner.auth()
     }
 
-    fn update_auth(&mut self, auth: AuthMode) {
-        self.inner.update_auth(auth);
+    fn update_auth(&mut self, auth: AuthMode) -> Result<(), ApiClientError> {
+        self.inner.update_auth(auth)
     }
 
     fn client(&self) -> &Client {

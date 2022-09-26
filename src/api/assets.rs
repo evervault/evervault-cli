@@ -1,10 +1,15 @@
-use super::client::{ApiClient, ApiResult, GenericApiClient, HandleResponse};
+use super::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
 
 pub struct AssetsClient {
     inner: GenericApiClient,
 }
 
 impl ApiClient for AssetsClient {
+    fn new(auth_mode: super::AuthMode) -> Self {
+        let client = GenericApiClient::new(auth_mode);
+        Self { inner: client }
+    }
+
     fn client(&self) -> &reqwest::Client {
         &self.inner.client()
     }
@@ -14,17 +19,12 @@ impl ApiClient for AssetsClient {
             .unwrap_or(String::from("https://cage-build-assets.evervault.com"))
     }
 
-    fn new(auth_mode: super::AuthMode) -> Self {
-        let client = GenericApiClient::new(auth_mode);
-        Self { inner: client }
-    }
-
     fn auth(&self) -> &super::AuthMode {
         self.inner.auth()
     }
 
-    fn update_auth(&mut self, auth: super::AuthMode) {
-        self.inner.update_auth(auth);
+    fn update_auth(&mut self, _: super::AuthMode) -> Result<(), ApiClientError> {
+        Err(ApiClientError::AuthModeNotSupport)
     }
 }
 
