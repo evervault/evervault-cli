@@ -1,4 +1,4 @@
-use crate::api::{client::AuthenticatedClient, AuthMode};
+use crate::api::{client::ApiClient, AuthMode};
 use crate::common::CliError;
 use crate::{api, get_api_key};
 use clap::Parser;
