@@ -73,7 +73,8 @@ pub async fn deploy_eif(
         return Err(DeployError::UploadError(s3_response.text().await?));
     };
 
-    let progress_bar_for_build = get_progress_bar("Building Cage Docker Image on Evervault Infra...");
+    let progress_bar_for_build =
+        get_progress_bar("Building Cage Docker Image on Evervault Infra...");
     watch_build(
         cage_api.clone(),
         deployment_intent.cage_uuid(),
@@ -82,7 +83,8 @@ pub async fn deploy_eif(
     )
     .await;
 
-    let progress_bar_for_deploy = get_progress_bar("Deploying Cage into a Trusted Execution Environment...");
+    let progress_bar_for_deploy =
+        get_progress_bar("Deploying Cage into a Trusted Execution Environment...");
     watch_deployment(
         cage_api,
         deployment_intent.cage_uuid(),
@@ -90,7 +92,6 @@ pub async fn deploy_eif(
         progress_bar_for_deploy,
     )
     .await
-
 }
 
 async fn watch_build(
@@ -148,7 +149,7 @@ async fn watch_deployment(
             }
         };
         tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
-    };
+    }
     Ok(())
 }
 
