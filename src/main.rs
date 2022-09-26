@@ -2,7 +2,7 @@ use atty::Stream;
 use clap::{AppSettings, Parser};
 use env_logger::fmt::Formatter;
 use env_logger::{Builder, Env};
-use ev_cage::cli::{build, cert, delete, deploy, describe, init, list, logs, Command};
+use ev_cage::cli::{build, cert, delete, deploy, describe, init, list, logs, update, Command};
 use human_panic::setup_panic;
 use log::Record;
 use std::io::Write;
@@ -49,6 +49,7 @@ async fn main() {
         Command::Init(init_args) => init::run(init_args).await,
         Command::List(list_args) => list::run(list_args).await,
         Command::Logs(log_args) => logs::run(log_args).await,
+        Command::Update => update::run().await,
     };
     std::process::exit(exit_code);
 }
