@@ -52,7 +52,7 @@ impl ApiClient for GenericApiClient {
 }
 
 pub enum ApiClientError {
-    AuthModeNotSupport,
+    AuthModeNotSupported,
 }
 
 pub trait ApiClient {
