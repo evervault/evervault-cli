@@ -2,7 +2,7 @@ use super::AuthMode;
 use crate::common::CliError;
 use async_trait::async_trait;
 use reqwest::{Client, RequestBuilder, Response};
-use reqwest::{Error, Result};
+use reqwest::{Error, Result as ReqwestResult};
 use serde::de::DeserializeOwned;
 use std::fmt::Formatter;
 use std::time::Duration;
@@ -41,8 +41,9 @@ impl ApiClient for GenericApiClient {
         &self.auth
     }
 
-    fn update_auth(&mut self, auth: AuthMode) {
+    fn update_auth(&mut self, auth: AuthMode) -> Result<(), ApiClientError> {
         self.auth = auth;
+        Ok(())
     }
 
     fn client(&self) -> &Client {
@@ -50,10 +51,14 @@ impl ApiClient for GenericApiClient {
     }
 }
 
+pub enum ApiClientError {
+    AuthModeNotSupport,
+}
+
 pub trait ApiClient {
     fn new(auth_mode: AuthMode) -> Self;
     fn auth(&self) -> &AuthMode;
-    fn update_auth(&mut self, auth: AuthMode);
+    fn update_auth(&mut self, auth: AuthMode) -> Result<(), ApiClientError>;
     fn client(&self) -> &Client;
 
     fn base_url(&self) -> String {
@@ -102,7 +107,7 @@ pub trait HandleResponse {
 }
 
 #[async_trait]
-impl HandleResponse for Result<Response> {
+impl HandleResponse for ReqwestResult<Response> {
     async fn handle_json_response<T: DeserializeOwned>(self) -> ApiResult<T> {
         match self {
             Ok(res) if res.status().is_success() => res
