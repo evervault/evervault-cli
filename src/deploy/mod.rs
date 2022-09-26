@@ -138,7 +138,7 @@ async fn watch_deployment(
                 } else if deployment_response.is_failed() {
                     progress_bar.finish();
                     log::error!("{}", &deployment_response.get_failure_reason());
-                    return Err(DeployError::DeploymentError());
+                    return Err(DeployError::DeploymentError);
                 }
             }
             Err(e) => {
