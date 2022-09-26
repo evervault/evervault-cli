@@ -1,3 +1,4 @@
+pub mod assets;
 pub mod cage;
 pub mod client;
 

@@ -96,16 +96,28 @@ pub trait ApiClient {
 
 #[async_trait]
 pub trait HandleResponse {
-    async fn handle_response<T: DeserializeOwned>(self) -> ApiResult<T>;
+    async fn handle_json_response<T: DeserializeOwned>(self) -> ApiResult<T>;
+    async fn handle_text_response(self) -> ApiResult<String>;
     fn handle_no_op_response(self) -> ApiResult<()>;
 }
 
 #[async_trait]
 impl HandleResponse for Result<Response> {
-    async fn handle_response<T: DeserializeOwned>(self) -> ApiResult<T> {
+    async fn handle_json_response<T: DeserializeOwned>(self) -> ApiResult<T> {
         match self {
             Ok(res) if res.status().is_success() => res
                 .json()
+                .await
+                .map_err(|e| ApiError::ParsingError(e.to_string())),
+            Ok(res) => Err(ApiError::get_error_from_status(res.status().as_u16())),
+            Err(e) => Err(ApiError::Unknown(Some(e))),
+        }
+    }
+
+    async fn handle_text_response(self) -> ApiResult<String> {
+        match self {
+            Ok(res) if res.status().is_success() => res
+                .text()
                 .await
                 .map_err(|e| ApiError::ParsingError(e.to_string())),
             Ok(res) => Err(ApiError::get_error_from_status(res.status().as_u16())),

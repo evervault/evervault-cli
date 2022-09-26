@@ -7,6 +7,7 @@ pub mod describe;
 pub mod init;
 pub mod list;
 pub mod logs;
+pub mod update;
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
@@ -18,4 +19,5 @@ pub enum Command {
     Init(init::InitArgs),
     List(list::List),
     Logs(logs::LogArgs),
+    Update,
 }
