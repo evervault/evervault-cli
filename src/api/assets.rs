@@ -24,7 +24,7 @@ impl ApiClient for AssetsClient {
     }
 
     fn update_auth(&mut self, _: super::AuthMode) -> Result<(), ApiClientError> {
-        Err(ApiClientError::AuthModeNotSupport)
+        Err(ApiClientError::AuthModeNotSupported)
     }
 }
 
