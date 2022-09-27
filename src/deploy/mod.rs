@@ -11,10 +11,12 @@ use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Body;
 use std::path::PathBuf;
 use tokio::fs::File;
+use tokio::time::timeout;
 use tokio_stream::StreamExt;
 use tokio_util::codec::{BytesCodec, FramedRead};
 
 const ENCLAVE_ZIP_FILENAME: &str = "enclave.zip";
+const DEPLOY_WATCH_TIMEOUT_SECONDS: u64 = 600; //10 minutes
 
 pub async fn deploy_eif(
     validated_config: &ValidatedCageBuildConfig,
@@ -85,13 +87,18 @@ pub async fn deploy_eif(
 
     let progress_bar_for_deploy =
         get_progress_bar("Deploying Cage into a Trusted Execution Environment...");
-    watch_deployment(
-        cage_api,
-        deployment_intent.cage_uuid(),
-        deployment_intent.deployment_uuid(),
-        progress_bar_for_deploy,
+
+    timed_operation(
+        "Cage Deployment",
+        DEPLOY_WATCH_TIMEOUT_SECONDS,
+        watch_deployment(
+            cage_api,
+            deployment_intent.cage_uuid(),
+            deployment_intent.deployment_uuid(),
+            progress_bar_for_deploy,
+        ),
     )
-    .await
+    .await?
 }
 
 async fn watch_build(
@@ -218,10 +225,29 @@ async fn get_eif_size_bytes(output_path: &PathBuf) -> Result<u64, DeployError> {
     }
 }
 
+pub async fn timed_operation<T: std::future::Future>(
+    operation_name: &str,
+    max_timeout_seconds: u64,
+    operation: T,
+) -> Result<<T as std::future::Future>::Output, DeployError> {
+    let max_timeout = std::time::Duration::from_secs(max_timeout_seconds);
+    let result = timeout(max_timeout, operation).await;
+    if let Ok(r) = result {
+        Ok(r)
+    } else {
+        Err(DeployError::TimeoutError(
+            operation_name.to_string(),
+            max_timeout.as_secs(),
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::test_utils;
+    use std::thread::sleep;
+    use std::time::Duration;
 
     #[tokio::test]
     async fn test_get_eif_size() {
@@ -235,5 +261,35 @@ mod tests {
 
         // ensure temp output directory still exists after running function
         assert!(std::path::PathBuf::from(output_path_as_string).exists());
+    }
+
+    async fn long_operation(duration: Duration) {
+        tokio::time::sleep(duration).await;
+    }
+
+    #[tokio::test]
+    async fn test_timed_operation_does_timeout() {
+        let operation_name = "Long Operation";
+        let result =
+            timed_operation(operation_name, 1, long_operation(Duration::from_secs(10))).await;
+        let correct_result = match result {
+            Err(DeployError::TimeoutError(_, _)) => true,
+            _ => false,
+        };
+
+        assert_eq!(correct_result, true);
+    }
+
+    #[tokio::test]
+    async fn test_timed_operation_does_not_timeout() {
+        let operation_name = "Long Operation";
+        let result =
+            timed_operation(operation_name, 4, long_operation(Duration::from_secs(2))).await;
+        let correct_result = match result {
+            Err(DeployError::TimeoutError(_, _)) => false,
+            _ => true,
+        };
+
+        assert_eq!(correct_result, true);
     }
 }
