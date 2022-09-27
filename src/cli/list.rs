@@ -75,12 +75,14 @@ async fn list_deployments(
         match read_and_validate_config(&deployment_args.config, &deployment_args) {
             Ok((_, validated_config)) => validated_config.cage_uuid().to_string(),
             Err(e) => {
-                log::error!("No Cage uuid provided, and failed to parse the Cage config - {}", e);
+                log::error!(
+                    "No Cage uuid provided, and failed to parse the Cage config - {}",
+                    e
+                );
                 return e.exitcode();
             }
         }
     };
-
 
     let cages = match cage_client.get_cage(&cage_uuid).await {
         Ok(cages) => cages,
