@@ -1,13 +1,12 @@
 use crate::api;
 use crate::api::{cage::CagesClient, cage::CreateCageDeploymentIntentRequest};
-use crate::common::{resolve_output_path, OutputPath};
+use crate::common::{get_progress_bar, resolve_output_path, OutputPath};
 use crate::config::ValidatedCageBuildConfig;
 use crate::describe::describe_eif;
 use crate::enclave::{EIFMeasurements, ENCLAVE_FILENAME};
 use std::io::Write;
 mod error;
 use error::DeployError;
-use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Body;
 use std::path::PathBuf;
 use tokio::fs::File;
@@ -24,18 +23,6 @@ pub async fn deploy_eif(
     output_path: OutputPath,
     eif_measurements: EIFMeasurements,
 ) -> Result<(), DeployError> {
-    let get_progress_bar = |start_msg: &str| {
-        let progress_bar = ProgressBar::new_spinner();
-        progress_bar.enable_steady_tick(80);
-        progress_bar.set_style(
-            ProgressStyle::default_spinner()
-                .tick_strings(&["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷", "[INFO]"])
-                .template("{spinner:.green} {msg}"),
-        );
-        progress_bar.set_message(start_msg);
-        progress_bar
-    };
-
     let progress_bar = get_progress_bar("Zipping Cage...");
     create_zip_archive_for_eif(output_path.path())?;
     progress_bar.finish_with_message("Cage zipped.");
