@@ -7,6 +7,7 @@ use crate::enclave::{EIFMeasurements, ENCLAVE_FILENAME};
 use std::io::Write;
 mod error;
 use error::DeployError;
+use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Body;
 use std::path::PathBuf;
 use tokio::fs::File;
