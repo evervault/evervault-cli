@@ -87,7 +87,7 @@ pub async fn deploy_eif(
 
     let progress_bar_for_deploy =
         get_progress_bar("Deploying Cage into a Trusted Execution Environment...");
-    
+
     timed_operation(
         "Cage Deployment",
         DEPLOY_WATCH_TIMEOUT_SECONDS,
@@ -96,8 +96,9 @@ pub async fn deploy_eif(
             deployment_intent.cage_uuid(),
             deployment_intent.deployment_uuid(),
             progress_bar_for_deploy,
-        )
-    ).await?
+        ),
+    )
+    .await?
 }
 
 async fn watch_build(
@@ -227,14 +228,17 @@ async fn get_eif_size_bytes(output_path: &PathBuf) -> Result<u64, DeployError> {
 pub async fn timed_operation<T: std::future::Future>(
     operation_name: &str,
     max_timeout_seconds: u64,
-    operation: T
+    operation: T,
 ) -> Result<<T as std::future::Future>::Output, DeployError> {
     let max_timeout = std::time::Duration::from_secs(max_timeout_seconds);
     let result = timeout(max_timeout, operation).await;
     if let Ok(r) = result {
         Ok(r)
     } else {
-        Err(DeployError::TimeoutError(operation_name.to_string(), max_timeout.as_secs()))
+        Err(DeployError::TimeoutError(
+            operation_name.to_string(),
+            max_timeout.as_secs(),
+        ))
     }
 }
 
@@ -265,29 +269,27 @@ mod tests {
 
     #[tokio::test]
     async fn test_timed_operation_does_timeout() {
-
         let operation_name = "Long Operation";
-        let result = timed_operation(operation_name, 1, long_operation(Duration::from_secs(10))).await;
+        let result =
+            timed_operation(operation_name, 1, long_operation(Duration::from_secs(10))).await;
         let correct_result = match result {
-            Err(DeployError::TimeoutError(_,_)) => true,
-            _ => false
+            Err(DeployError::TimeoutError(_, _)) => true,
+            _ => false,
         };
-        
+
         assert_eq!(correct_result, true);
     }
-    
+
     #[tokio::test]
     async fn test_timed_operation_does_not_timeout() {
-
         let operation_name = "Long Operation";
-        let result = timed_operation(operation_name, 4, long_operation(Duration::from_secs(2))).await;
+        let result =
+            timed_operation(operation_name, 4, long_operation(Duration::from_secs(2))).await;
         let correct_result = match result {
-            Err(DeployError::TimeoutError(_,_)) => false,
-            _ => true
+            Err(DeployError::TimeoutError(_, _)) => false,
+            _ => true,
         };
-        
+
         assert_eq!(correct_result, true);
     }
-
-    
 }
