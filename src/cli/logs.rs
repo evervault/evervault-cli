@@ -83,19 +83,32 @@ pub async fn run(log_args: LogArgs) -> i32 {
         return exitcode::OK;
     }
 
-    println!(
+    let mut output = minus::Pager::new();
+
+    if let Err(_) = output.set_prompt(format!(
         "Retrieved {} logs from {logs_start} to {logs_end}",
         cage_logs.log_events().len()
-    );
-
-    let mut output = minus::Pager::new();
+    )) {
+        eprintln!("An error occurred while displaying your Cage's logs.");
+        return exitcode::TEMPFAIL;
+    }
 
     // TODO: add support for loading more logs at end of page
     cage_logs
         .log_events()
         .iter()
-        .map(serde_json::to_string_pretty)
-        .filter_map(|serialized_log| serialized_log.ok())
+        .map(|event| {
+            let mut instance_id = event.instance_id().to_string();
+            let instance_len = instance_id.len();
+            let _ = instance_id.drain(0..instance_len - 6);
+            let timestamp = format_timestamp(event.timestamp());
+            format!(
+                "[ Instance-{} @ {} ] {}",
+                instance_id,
+                timestamp,
+                event.message()
+            )
+        })
         .for_each(|log_event| {
             writeln!(output, "{}", log_event).unwrap();
         });
