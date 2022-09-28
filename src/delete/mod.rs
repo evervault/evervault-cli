@@ -1,10 +1,11 @@
 use crate::api;
 use crate::api::cage::CagesClient;
 use crate::api::{client::ApiClient, AuthMode};
+use crate::common::get_progress_bar;
 use crate::config::{CageConfig, ValidatedCageBuildConfig};
 mod error;
 use error::DeleteError;
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::ProgressBar;
 
 pub async fn delete_cage(config: &str, api_key: &str) -> Result<(), DeleteError> {
     let cage_config = CageConfig::try_from_filepath(config)?;
@@ -13,18 +14,6 @@ pub async fn delete_cage(config: &str, api_key: &str) -> Result<(), DeleteError>
     let cage_uuid = validated_config.cage_uuid().to_string();
 
     let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
-
-    let get_progress_bar = |start_msg: &str| {
-        let progress_bar = ProgressBar::new_spinner();
-        progress_bar.enable_steady_tick(80);
-        progress_bar.set_style(
-            ProgressStyle::default_spinner()
-                .tick_strings(&["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷", "[INFO]"])
-                .template("{spinner:.green} {msg}"),
-        );
-        progress_bar.set_message(start_msg);
-        progress_bar
-    };
 
     let deleted_cage = match cage_api.delete_cage(&cage_uuid).await {
         Ok(cage_ref) => cage_ref,
