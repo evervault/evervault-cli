@@ -185,6 +185,7 @@ async fn create_zip_upload_stream(
     let progress_bar = ProgressBar::new(zip_len_bytes);
     progress_bar.set_style(ProgressStyle::default_bar()
         .template("Uploading Cage to Evervault {bar:40.green/blue} {bytes} ({percent}%) [{elapsed_precise}]")
+        .expect("Failed to create progress bar template from hardcoded template")
         .progress_chars("##-"));
     async_stream::stream! {
         let mut bytes_sent = 0;
