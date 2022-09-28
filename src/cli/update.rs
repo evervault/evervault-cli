@@ -7,7 +7,7 @@ use dialoguer::Confirm;
 #[clap(name = "update", about)]
 pub struct UpdateArgs {
     #[clap(short = 'f', long = "force")]
-    force: bool
+    force: bool,
 }
 
 pub async fn run(args: UpdateArgs) -> exitcode::ExitCode {
@@ -26,8 +26,18 @@ pub async fn run(args: UpdateArgs) -> exitcode::ExitCode {
         return exitcode::OK;
     }
 
-    log::info!("Current version: {}. Latest version is {}.", current_version, new_version.as_str());
-    if !args.force && !Confirm::new().with_prompt("Would you like to update?").default(true).interact().unwrap_or(false) {
+    log::info!(
+        "Current version: {}. Latest version is {}.",
+        current_version,
+        new_version.as_str()
+    );
+    if !args.force
+        && !Confirm::new()
+            .with_prompt("Would you like to update?")
+            .default(true)
+            .interact()
+            .unwrap_or(false)
+    {
         return exitcode::OK;
     }
 
