@@ -24,6 +24,10 @@ pub enum DeployError {
     UploadError(String),
     #[error("Could not read the size of the Cage EIF file {0}")]
     EifSizeReadError(std::io::Error),
+    #[error("Could not deploy cage to Evervault Infrastructure")]
+    DeploymentError,
+    #[error("[{0}] Operation timed out after {1} seconds")]
+    TimeoutError(String, u64),
 }
 
 impl CliError for DeployError {
@@ -34,7 +38,10 @@ impl CliError for DeployError {
             Self::CageConfigError(config_err) => config_err.exitcode(),
             Self::FailedToAccessOutputDir(output_err) => output_err.exitcode(),
             Self::IoError(_) | Self::ZipError(_) | Self::EifSizeReadError(_) => exitcode::IOERR,
-            Self::RequestError(_) | Self::UploadError(_) => exitcode::TEMPFAIL,
+            Self::RequestError(_)
+            | Self::UploadError(_)
+            | Self::DeploymentError
+            | Self::TimeoutError(..) => exitcode::TEMPFAIL,
             Self::ApiError(api_err) => api_err.exitcode(),
         }
     }
