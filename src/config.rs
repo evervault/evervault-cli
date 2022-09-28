@@ -325,9 +325,15 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
 
 /// Helper trait for allowing command line args to override a deserialized config
 pub trait BuildTimeConfig {
-    fn certificate(&self) -> Option<&str>;
-    fn dockerfile(&self) -> Option<&str>;
-    fn private_key(&self) -> Option<&str>;
+    fn certificate(&self) -> Option<&str> {
+        None
+    }
+    fn dockerfile(&self) -> Option<&str> {
+        None
+    }
+    fn private_key(&self) -> Option<&str> {
+        None
+    }
 
     // Return new copy of config to prevent args being written to toml file in err
     fn merge_with_config(&self, config: &CageConfig) -> CageConfig {

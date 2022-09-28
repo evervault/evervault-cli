@@ -1,5 +1,6 @@
 use crate::api::{client::ApiClient, AuthMode};
 use crate::common::CliError;
+use crate::config::{read_and_validate_config, BuildTimeConfig};
 use crate::{api, get_api_key};
 use clap::Parser;
 
@@ -28,8 +29,13 @@ pub enum ListCommands {
 pub struct DeploymentArgs {
     /// The cage uuid to get deployments for
     #[clap(long = "cage-uuid")]
-    cage_uuid: String,
+    cage_uuid: Option<String>,
+
+    /// The file containing the Cage config
+    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    config: String,
 }
+impl BuildTimeConfig for DeploymentArgs {}
 
 pub async fn run(list_action: List) -> exitcode::ExitCode {
     let api_key = get_api_key!();
@@ -63,7 +69,22 @@ async fn list_deployments(
     cage_client: &api::cage::CagesClient,
     deployment_args: DeploymentArgs,
 ) -> exitcode::ExitCode {
-    let cages = match cage_client.get_cage(&deployment_args.cage_uuid).await {
+    let cage_uuid = if let Some(uuid) = deployment_args.cage_uuid.clone() {
+        uuid
+    } else {
+        match read_and_validate_config(&deployment_args.config, &deployment_args) {
+            Ok((_, validated_config)) => validated_config.cage_uuid().to_string(),
+            Err(e) => {
+                log::error!(
+                    "No Cage uuid provided, and failed to parse the Cage config - {}",
+                    e
+                );
+                return e.exitcode();
+            }
+        }
+    };
+
+    let cages = match cage_client.get_cage(&cage_uuid).await {
         Ok(cages) => cages,
         Err(e) => {
             log::error!("An error occurred while retrieving your Cages — {:?}", e);
