@@ -19,5 +19,5 @@ pub enum Command {
     Init(init::InitArgs),
     List(list::List),
     Logs(logs::LogArgs),
-    Update,
+    Update(update::UpdateArgs),
 }

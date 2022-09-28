@@ -1,6 +1,16 @@
 use crate::{api, common::CliError};
+use clap::Parser;
+use dialoguer::Confirm;
 
-pub async fn run() -> exitcode::ExitCode {
+/// Check for new versions of the CLI and install them
+#[derive(Debug, Parser)]
+#[clap(name = "update", about)]
+pub struct UpdateArgs {
+    #[clap(short = 'f', long = "force")]
+    force: bool
+}
+
+pub async fn run(args: UpdateArgs) -> exitcode::ExitCode {
     let assets_client = api::assets::AssetsClient::new();
     let new_version = match assets_client.get_latest_cli_version().await {
         Ok(version) => version,
@@ -13,6 +23,12 @@ pub async fn run() -> exitcode::ExitCode {
     let current_version = env!("CARGO_PKG_VERSION");
     if new_version.as_str() == current_version {
         log::info!("Already on latest version ({})", current_version);
+        return exitcode::OK;
+    }
+
+    log::info!("Current version: {}. Latest version is {}.", current_version, new_version.as_str());
+    if !args.force && !Confirm::new().with_prompt("Would you like to update?").default(true).interact().unwrap_or(false) {
+        return exitcode::OK;
     }
 
     let install_script = match assets_client.get_cli_install_script().await {

@@ -49,7 +49,7 @@ async fn main() {
         Command::Init(init_args) => init::run(init_args).await,
         Command::List(list_args) => list::run(list_args).await,
         Command::Logs(log_args) => logs::run(log_args).await,
-        Command::Update => update::run().await,
+        Command::Update(update_args) => update::run(update_args).await,
     };
     std::process::exit(exit_code);
 }
