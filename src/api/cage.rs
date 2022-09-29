@@ -437,4 +437,18 @@ pub struct LogEvent {
     instance_id: String,
 }
 
+impl LogEvent {
+    pub fn timestamp(&self) -> i64 {
+        self.timestamp
+    }
+
+    pub fn message(&self) -> &str {
+        self.message.as_str()
+    }
+
+    pub fn instance_id(&self) -> &str {
+        self.instance_id.as_str()
+    }
+}
+
 pub type DeleteCageResponse = Cage;
