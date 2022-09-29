@@ -135,6 +135,9 @@ async fn watch_deployment(
                     progress_bar.finish();
                     log::error!("{}", &deployment_response.get_failure_reason());
                     return Err(DeployError::DeploymentError);
+                } else {
+                    let msg = format!("Deploying Cage into a Trusted Execution Environment... ({})", deployment_response.get_detailed_status());
+                    progress_bar.set_message(msg)
                 }
             }
             Err(e) => {
