@@ -316,6 +316,7 @@ pub struct CageRegionalDeployment {
     // should revert this to just String after API fix
     started_at: Option<String>,
     completed_at: Option<String>,
+    detailed_status: Option<String>
 }
 
 impl CageRegionalDeployment {
@@ -326,6 +327,12 @@ impl CageRegionalDeployment {
     pub fn get_failure_reason(&self) -> String {
         self.failure_reason.clone().unwrap_or(String::from(
             "Error deploying cage. Please contact Evervault Support",
+        ))
+    }
+
+    pub fn get_detailed_status(&self) -> String {
+        self.detailed_status.clone().unwrap_or(String::from(
+            "Note: Initialising a cage takes some time.",
         ))
     }
 }
@@ -396,6 +403,10 @@ impl GetCageDeploymentResponse {
 
     pub fn get_failure_reason(&self) -> String {
         self.tee_cage_regional_deployments[0].get_failure_reason()
+    }
+
+    pub fn get_detailed_status(&self) -> String {
+        self.tee_cage_regional_deployments[0].get_detailed_status()
     }
 }
 
