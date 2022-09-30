@@ -137,7 +137,7 @@ async fn watch_deployment(
                     return Err(DeployError::DeploymentError);
                 } else {
                     let msg = format!(
-                        "Deploying Cage into a Trusted Execution Environment... ({})",
+                        "Deploying Cage into a Trusted Execution Environment. This will take a few minutes. ({})",
                         deployment_response.get_detailed_status()
                     );
                     progress_bar.set_message(msg)

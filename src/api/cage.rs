@@ -333,7 +333,7 @@ impl CageRegionalDeployment {
     pub fn get_detailed_status(&self) -> String {
         self.detailed_status
             .clone()
-            .unwrap_or(String::from("Note: Initialising a cage takes some time."))
+            .unwrap_or(String::from("Starting deployment."))
     }
 }
 
