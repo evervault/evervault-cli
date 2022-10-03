@@ -2,16 +2,19 @@ use crate::api;
 use crate::api::cage::CagesClient;
 use crate::api::{client::ApiClient, AuthMode};
 use crate::common::get_progress_bar;
-use crate::config::{CageConfig, ValidatedCageBuildConfig};
+use crate::config::CageConfig;
 mod error;
 use error::DeleteError;
 use indicatif::ProgressBar;
 
 pub async fn delete_cage(config: &str, api_key: &str) -> Result<(), DeleteError> {
     let cage_config = CageConfig::try_from_filepath(config)?;
-    let validated_config: ValidatedCageBuildConfig = cage_config.as_ref().try_into()?;
 
-    let cage_uuid = validated_config.cage_uuid().to_string();
+
+    let cage_uuid = match cage_config.uuid {
+        Some(uuid) => uuid,
+        None => return Err(DeleteError::MissingUuid)
+    };
 
     let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
 
