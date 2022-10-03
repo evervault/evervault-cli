@@ -1,6 +1,6 @@
 use crate::api;
 use crate::api::{cage::CagesClient, cage::CreateCageDeploymentIntentRequest};
-use crate::common::{get_progress_bar, resolve_output_path, OutputPath};
+use crate::common::{resolve_output_path, OutputPath, get_tracker, ProgressLogger};
 use crate::config::ValidatedCageBuildConfig;
 use crate::describe::describe_eif;
 use crate::enclave::{EIFMeasurements, ENCLAVE_FILENAME};
@@ -24,7 +24,7 @@ pub async fn deploy_eif(
     output_path: OutputPath,
     eif_measurements: EIFMeasurements,
 ) -> Result<(), DeployError> {
-    let progress_bar = get_progress_bar("Zipping Cage...");
+    let progress_bar = get_tracker("Zipping Cage...", false);
     create_zip_archive_for_eif(output_path.path())?;
     progress_bar.finish_with_message("Cage zipped.");
 
@@ -64,17 +64,18 @@ pub async fn deploy_eif(
     };
 
     let progress_bar_for_build =
-        get_progress_bar("Building Cage Docker Image on Evervault Infra...");
+        get_tracker("Building Cage Docker Image on Evervault Infra...", false);
     watch_build(
         cage_api.clone(),
         deployment_intent.cage_uuid(),
         deployment_intent.deployment_uuid(),
-        progress_bar_for_build,
+        &progress_bar_for_build,
     )
     .await;
-
+    
+    
     let progress_bar_for_deploy =
-        get_progress_bar("Deploying Cage into a Trusted Execution Environment...");
+        get_tracker("Deploying Cage into a Trusted Execution Environment...", false);
 
     timed_operation(
         "Cage Deployment",
@@ -89,11 +90,11 @@ pub async fn deploy_eif(
     .await?
 }
 
-async fn watch_build(
+async fn watch_build<'a>(
     cage_api: CagesClient,
     cage_uuid: &str,
     deployment_uuid: &str,
-    progress_bar: ProgressBar,
+    progress_bar: &'a Box<dyn ProgressLogger>,
 ) {
     loop {
         match cage_api
@@ -120,7 +121,7 @@ async fn watch_deployment(
     cage_api: &CagesClient,
     cage_uuid: &str,
     deployment_uuid: &str,
-    progress_bar: ProgressBar,
+    progress_bar: impl ProgressLogger,
 ) -> Result<(), DeployError> {
     loop {
         match cage_api

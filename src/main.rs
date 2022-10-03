@@ -62,7 +62,7 @@ fn setup_logger(verbose_logging: bool) {
 
     let log_formatter = |buf: &mut Formatter, record: &Record| {
         // If stderr is being piped elsewhere, add timestamps and remove colors
-        if atty::isnt(Stream::Stderr) {
+        if true {
             let timestamp = buf.timestamp_millis();
             writeln!(
                 buf,
