@@ -1,8 +1,8 @@
 use crate::api;
 use crate::api::cage::CagesClient;
 use crate::api::{client::ApiClient, AuthMode};
-use crate::common::{get_tracker, ProgressLogger};
 use crate::config::{CageConfig, ValidatedCageBuildConfig};
+use crate::progress::{get_tracker, ProgressLogger};
 mod error;
 use error::DeleteError;
 
@@ -22,7 +22,7 @@ pub async fn delete_cage(config: &str, api_key: &str) -> Result<(), DeleteError>
         }
     };
 
-    let progress_bar = get_tracker("Deleting Cage...", false);
+    let progress_bar = get_tracker("Deleting Cage...", None);
 
     watch_deletion(cage_api, deleted_cage.uuid(), progress_bar).await;
     Ok(())
