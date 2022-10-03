@@ -19,9 +19,9 @@ pub struct DeleteArgs {
 pub async fn run(delete_args: DeleteArgs) -> exitcode::ExitCode {
     let api_key = get_api_key!();
     match delete_cage(delete_args.config.as_str(), api_key.as_str()).await {
-        Ok(_) => println!("Deletion was successful"),
+        Ok(_) => log::info!("Deletion was successful"),
         Err(e) => {
-            println!("{}", e);
+            log::info!("{}", e);
             return e.exitcode();
         }
     };

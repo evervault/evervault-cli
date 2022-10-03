@@ -112,6 +112,6 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         "enclaveMeasurements": built_enclave.measurements()
     });
 
-    println!("{}", serde_json::to_string_pretty(&success_msg).unwrap());
+    log::info!("{}", serde_json::to_string_pretty(&success_msg).unwrap());
     exitcode::OK
 }

@@ -20,6 +20,6 @@ pub async fn run(describe_args: DescribeArgs) -> exitcode::ExitCode {
         }
     };
 
-    println!("{}", serde_json::to_string_pretty(&description).unwrap());
+    log::info!("{}", serde_json::to_string_pretty(&description).unwrap());
     exitcode::OK
 }

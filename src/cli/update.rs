@@ -15,7 +15,7 @@ pub async fn run(args: UpdateArgs) -> exitcode::ExitCode {
     let new_version = match assets_client.get_latest_cli_version().await {
         Ok(version) => version,
         Err(e) => {
-            eprintln!("Failed to retrieve latest CLI version - {}", e);
+            log::error!("Failed to retrieve latest CLI version - {}", e);
             return e.exitcode();
         }
     };
@@ -44,7 +44,7 @@ pub async fn run(args: UpdateArgs) -> exitcode::ExitCode {
     let install_script = match assets_client.get_cli_install_script().await {
         Ok(script) => script,
         Err(e) => {
-            eprintln!("Failed to pull CLI install script - {}", e);
+            log::error!("Failed to pull CLI install script - {}", e);
             return e.exitcode();
         }
     };
@@ -52,7 +52,7 @@ pub async fn run(args: UpdateArgs) -> exitcode::ExitCode {
     let tempfile = match tempfile::Builder::new().suffix(".sh").tempfile() {
         Ok(tmp_file) => tmp_file,
         Err(e) => {
-            eprintln!(
+            log::error!(
                 "Failed to create tempfile to use during new version installation - {}",
                 e
             );
@@ -61,7 +61,7 @@ pub async fn run(args: UpdateArgs) -> exitcode::ExitCode {
     };
 
     if let Err(e) = tokio::fs::write(tempfile.path(), install_script.as_bytes()).await {
-        eprintln!("Failed to populate contents of install script - {}", e);
+        log::error!("Failed to populate contents of install script - {}", e);
         return exitcode::IOERR;
     }
 
@@ -75,7 +75,7 @@ pub async fn run(args: UpdateArgs) -> exitcode::ExitCode {
     match result {
         Ok(output) => output.code().unwrap_or_else(|| exitcode::USAGE),
         Err(e) => {
-            eprintln!("Failed to install latest version of Cages CLI - {}", e);
+            log::error!("Failed to install latest version of Cages CLI - {}", e);
             return exitcode::SOFTWARE;
         }
     }
