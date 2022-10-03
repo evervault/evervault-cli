@@ -132,18 +132,81 @@ pub fn prepare_build_args(build_args: &Vec<String>) -> Option<Vec<String>> {
     Some(formatted_args)
 }
 
-pub fn get_progress_bar(start_msg: &str) -> ProgressBar {
+fn get_progress_bar(start_msg: &str, upload: bool) -> ProgressBar {
     let progress_bar = ProgressBar::new_spinner();
     progress_bar.enable_steady_tick(std::time::Duration::from_millis(80));
-    progress_bar.set_style(
-        ProgressStyle::default_spinner()
-            .tick_strings(&["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷", "[INFO]"])
-            .template("{spinner:.green} {msg}")
-            .expect("Failed to create progress bar template from hardcoded template"),
-    );
+    if upload {
+        progress_bar.set_style(ProgressStyle::default_bar()
+        .template("Uploading Cage to Evervault {bar:40.green/blue} {bytes} ({percent}%) [{elapsed_precise}]")
+        .expect("Failed to create progress bar template from hardcoded template")
+        .progress_chars("##-"));
+    } else {
+        progress_bar.set_style(
+            ProgressStyle::default_spinner()
+                .tick_strings(&["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷", "[INFO]"])
+                .template("{spinner:.green} {msg}")
+                .expect("Failed to create progress bar template from hardcoded template"),
+        );
+    }
     progress_bar.set_message(start_msg.to_string());
     progress_bar
 }
+
+struct Tty { progress_bar: ProgressBar }
+struct NonTty {}
+
+impl<'a, W: ProgressLogger + ?Sized + 'a> ProgressLogger for Box<W> {
+    fn update_progress(&self, message: &str) -> () {
+        (**self).update_progress(message)
+    }
+    fn finish_with_message(&self, message: &'static str) -> () {
+        (**self).finish_with_message(message) 
+    }
+
+    fn finish(&self) {
+        (**self).finish() 
+    }
+}
+pub trait ProgressLogger {
+    fn update_progress(&self, message: &str) -> ();
+    fn finish_with_message(&self, message: &'static str) -> ();
+    fn finish(&self);
+}
+
+impl ProgressLogger for Tty {
+    fn update_progress(&self, message: &str) {
+        self.progress_bar.set_message(message.to_string());
+    }
+    fn finish_with_message(&self, message: & 'static str) -> () {
+        self.progress_bar.finish_with_message(message) 
+    }
+    fn finish(&self) -> () {
+        self.progress_bar.finish();
+    }
+}
+
+impl ProgressLogger for NonTty {
+    fn update_progress(&self, message: &str) {
+        log::info!("{}", message.to_string())
+    }
+    fn finish_with_message(&self, message: &'static str) {
+        log::info!("{}", message.to_string()) 
+    }
+    fn finish(&self) -> () {
+        // no op
+    }
+}
+
+pub fn get_tracker(first_message: &str, upload: bool) -> Box<dyn ProgressLogger> {
+    if false {
+        let progress_bar = get_progress_bar(first_message, upload);
+        Box::new(Tty { progress_bar })
+    } else {
+        log::info!("{}", first_message);
+        Box::new(NonTty {})
+    }
+}
+
 
 #[cfg(test)]
 mod test {

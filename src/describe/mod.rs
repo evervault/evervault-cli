@@ -1,6 +1,6 @@
 pub mod error;
 
-use crate::common::{get_progress_bar, resolve_output_path};
+use crate::common::{resolve_output_path, get_tracker};
 use crate::docker::{error::DockerError, utils::verify_docker_is_running};
 use crate::enclave;
 use error::DescribeError;
@@ -15,7 +15,7 @@ pub fn describe_eif(eif_path: &str) -> Result<enclave::DescribeEif, DescribeErro
         return Err(DockerError::DaemonNotRunning.into());
     }
 
-    let describe_progress = get_progress_bar("Getting PCRs from existing EIF");
+    let describe_progress = get_tracker("Getting PCRs from existing EIF", false);
 
     let supplied_path: Option<&str> = None;
     let output_path = resolve_output_path(supplied_path).unwrap();
