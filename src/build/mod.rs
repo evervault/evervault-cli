@@ -384,7 +384,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
         let paths = std::fs::read_dir(output_dir.path().to_str().unwrap().to_string()).unwrap();
 
         for path in paths {
-            println!("Name: {}", path.unwrap().path().display())
+            log::info!("Name: {}", path.unwrap().path().display())
         }
 
         assert!(output_dir

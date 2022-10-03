@@ -85,7 +85,7 @@ pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
     {
         Ok(cage_ref) => cage_ref,
         Err(e) => {
-            eprintln!("Error creating Cage record — {:?}", e);
+            log::error!("Error creating Cage record — {:?}", e);
             return e.exitcode();
         }
     };
@@ -119,13 +119,13 @@ pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
     let serialized_config = match toml::ser::to_vec(&initial_config) {
         Ok(bytes) => bytes,
         Err(e) => {
-            eprintln!("Error serializing cage.toml — {:?}", e);
+            log::error!("Error serializing cage.toml — {:?}", e);
             return exitcode::SOFTWARE;
         }
     };
 
     if let Err(e) = std::fs::write(config_path, serialized_config) {
-        eprintln!("Error writing cage.toml — {:?}", e);
+        log::error!("Error writing cage.toml — {:?}", e);
         exitcode::IOERR
     } else {
         log::info!("Cage.toml initialized successfully. You can now deploy a Cage using the deploy command");
