@@ -19,6 +19,7 @@ impl CliError for DeleteError {
             Self::CageConfigError(config_err) => config_err.exitcode(),
             Self::IoError(_) => exitcode::IOERR,
             Self::ApiError(api_err) => api_err.exitcode(),
+            Self::MissingUuid => exitcode::DATAERR,
         }
     }
 }

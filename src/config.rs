@@ -186,7 +186,6 @@ pub struct ValidatedCageBuildConfig {
     pub disable_tls_termination: bool,
 }
 
-
 impl ValidatedCageBuildConfig {
     pub fn signing_info(&self) -> &ValidatedSigningInfo {
         &self.signing
