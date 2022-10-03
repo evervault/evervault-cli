@@ -10,10 +10,9 @@ use indicatif::ProgressBar;
 pub async fn delete_cage(config: &str, api_key: &str) -> Result<(), DeleteError> {
     let cage_config = CageConfig::try_from_filepath(config)?;
 
-
     let cage_uuid = match cage_config.uuid {
         Some(uuid) => uuid,
-        None => return Err(DeleteError::MissingUuid)
+        None => return Err(DeleteError::MissingUuid),
     };
 
     let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
