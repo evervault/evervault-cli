@@ -1,7 +1,7 @@
 use crate::api;
 use crate::api::{client::ApiClient, AuthMode};
 use crate::common::CliError;
-use crate::config::{CageConfig, ValidatedCageBuildConfig};
+use crate::config::CageConfig;
 use crate::get_api_key;
 
 use chrono::TimeZone;
@@ -27,15 +27,22 @@ pub async fn run(log_args: LogArgs) -> i32 {
 
     let cage_uuid = match log_args.cage_uuid.clone() {
         Some(cage_uuid) => cage_uuid,
-        None => match CageConfig::try_from_filepath(&log_args.config)
-            .and_then(|config| ValidatedCageBuildConfig::try_from(config.as_ref()))
-        {
-            Ok(config) => config.cage_uuid().to_string(),
-            Err(e) => {
-                eprintln!("An error occurred while resolving your Cage toml.\n\nPlease make sure you have a cage.toml file in the current directory, or have supplied a path with the --config flag.");
-                return e.exitcode();
+        None => {
+            let cage_uuid = match CageConfig::try_from_filepath(&log_args.config) {
+                Ok(config) => config.uuid,
+                Err(e) => {
+                    eprintln!("An error occurred while resolving your Cage toml.\n\nPlease make sure you have a cage.toml file in the current directory, or have supplied a path with the --config flag.");
+                    return e.exitcode();
+                }
+            };
+            match cage_uuid {
+                Some(uuid) => uuid,
+                None => {
+                    log::error!("Cage uuid is missing from toml");
+                    return exitcode::DATAERR;
+                }
             }
-        },
+        }
     };
 
     let now = std::time::SystemTime::now();
