@@ -1,13 +1,13 @@
 use crate::api;
 use crate::api::{cage::CagesClient, cage::CreateCageDeploymentIntentRequest};
-use crate::common::{resolve_output_path, OutputPath, get_tracker, ProgressLogger};
+use crate::common::{resolve_output_path, OutputPath};
 use crate::config::ValidatedCageBuildConfig;
 use crate::describe::describe_eif;
 use crate::enclave::{EIFMeasurements, ENCLAVE_FILENAME};
+use crate::progress::{get_tracker, ProgressLogger};
 use std::io::Write;
 mod error;
 use error::DeployError;
-use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Body;
 use std::path::PathBuf;
 use tokio::fs::File;
@@ -24,7 +24,7 @@ pub async fn deploy_eif(
     output_path: OutputPath,
     eif_measurements: EIFMeasurements,
 ) -> Result<(), DeployError> {
-    let progress_bar = get_tracker("Zipping Cage...", false);
+    let progress_bar = get_tracker("Zipping Cage...", None);
     create_zip_archive_for_eif(output_path.path())?;
     progress_bar.finish_with_message("Cage zipped.");
 
@@ -64,7 +64,7 @@ pub async fn deploy_eif(
     };
 
     let progress_bar_for_build =
-        get_tracker("Building Cage Docker Image on Evervault Infra...", false);
+        get_tracker("Building Cage Docker Image on Evervault Infra...", None);
     watch_build(
         cage_api.clone(),
         deployment_intent.cage_uuid(),
@@ -72,10 +72,11 @@ pub async fn deploy_eif(
         &progress_bar_for_build,
     )
     .await;
-    
-    
-    let progress_bar_for_deploy =
-        get_tracker("Deploying Cage into a Trusted Execution Environment...", false);
+
+    let progress_bar_for_deploy = get_tracker(
+        "Deploying Cage into a Trusted Execution Environment...",
+        None,
+    );
 
     timed_operation(
         "Cage Deployment",
@@ -94,7 +95,7 @@ async fn watch_build<'a>(
     cage_api: CagesClient,
     cage_uuid: &str,
     deployment_uuid: &str,
-    progress_bar: &'a Box<dyn ProgressLogger>,
+    progress_bar: &'a Box<dyn ProgressLogger + Send + Sync>,
 ) {
     loop {
         match cage_api
@@ -183,11 +184,7 @@ async fn create_zip_upload_stream(
     impl core::future::Future<Output = ()>,
 > {
     let mut stream = FramedRead::new(zip_file, BytesCodec::new());
-    let progress_bar = ProgressBar::new(zip_len_bytes);
-    progress_bar.set_style(ProgressStyle::default_bar()
-        .template("Uploading Cage to Evervault {bar:40.green/blue} {bytes} ({percent}%) [{elapsed_precise}]")
-        .expect("Failed to create progress bar template from hardcoded template")
-        .progress_chars("##-"));
+    let progress_bar = get_tracker("Uploading Cage to Evervault", Some(zip_len_bytes));
     async_stream::stream! {
         let mut bytes_sent = 0;
         while let Some(bytes) = stream.next().await {
