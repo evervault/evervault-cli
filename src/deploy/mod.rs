@@ -142,7 +142,7 @@ async fn watch_deployment(
                         "Deploying Cage into a Trusted Execution Environment. This will take a few minutes. ({})",
                         deployment_response.get_detailed_status()
                     );
-                    progress_bar.set_message(msg)
+                    progress_bar.set_message(&msg)
                 }
             }
             Err(e) => {
