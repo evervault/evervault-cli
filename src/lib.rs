@@ -9,6 +9,7 @@ pub mod deploy;
 pub mod describe;
 pub mod docker;
 pub mod enclave;
+pub mod progress;
 
 #[cfg(test)]
 pub mod test_utils;

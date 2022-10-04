@@ -8,6 +8,7 @@ use crate::{
     deploy::{deploy_eif, get_eif},
     enclave::EIFMeasurements,
 };
+use atty::Stream;
 use clap::Parser;
 
 /// Deploy a Cage from a toml file.
@@ -123,7 +124,15 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         return e.exitcode();
     };
 
-    log::info!("Your Cage is now available at https://{}", cage.domain());
+    if atty::is(Stream::Stdout) {
+        log::info!("Your Cage is now available at https://{}", cage.domain());
+    } else {
+        let success_msg = serde_json::json!({
+            "status": "success",
+            "cageDomain": cage.domain()
+        });
+        println!("{}", serde_json::to_string(&success_msg).unwrap());
+    };
     exitcode::OK
 }
 

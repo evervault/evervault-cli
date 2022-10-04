@@ -1,4 +1,3 @@
-use indicatif::{ProgressBar, ProgressStyle};
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -130,19 +129,6 @@ pub fn prepare_build_args(build_args: &Vec<String>) -> Option<Vec<String>> {
             acc
         });
     Some(formatted_args)
-}
-
-pub fn get_progress_bar(start_msg: &str) -> ProgressBar {
-    let progress_bar = ProgressBar::new_spinner();
-    progress_bar.enable_steady_tick(std::time::Duration::from_millis(80));
-    progress_bar.set_style(
-        ProgressStyle::default_spinner()
-            .tick_strings(&["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷", "[INFO]"])
-            .template("{spinner:.green} {msg}")
-            .expect("Failed to create progress bar template from hardcoded template"),
-    );
-    progress_bar.set_message(start_msg.to_string());
-    progress_bar
 }
 
 #[cfg(test)]
