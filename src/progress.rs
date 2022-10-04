@@ -33,8 +33,8 @@ struct Tty {
 struct NonTty {}
 
 impl<'a, W: ProgressLogger + ?Sized + 'a> ProgressLogger for Box<W> {
-    fn update_progress(&self, message: &str) -> () {
-        (**self).update_progress(message)
+    fn set_message(&self, message: &str) -> () {
+        (**self).set_message(message)
     }
     fn finish_with_message(&self, message: &'static str) -> () {
         (**self).finish_with_message(message)
@@ -49,14 +49,14 @@ impl<'a, W: ProgressLogger + ?Sized + 'a> ProgressLogger for Box<W> {
     }
 }
 pub trait ProgressLogger {
-    fn update_progress(&self, message: &str);
+    fn set_message(&self, message: &str);
     fn finish_with_message(&self, message: &'static str);
     fn set_position(&self, bytes: u64);
     fn finish(&self);
 }
 
 impl ProgressLogger for Tty {
-    fn update_progress(&self, message: &str) {
+    fn set_message(&self, message: &str) {
         self.progress_bar.set_message(message.to_string());
     }
     fn finish_with_message(&self, message: &'static str) -> () {
@@ -72,7 +72,7 @@ impl ProgressLogger for Tty {
 }
 
 impl ProgressLogger for NonTty {
-    fn update_progress(&self, message: &str) {
+    fn set_message(&self, message: &str) {
         log::info!("{}", message.to_string())
     }
     fn finish_with_message(&self, message: &'static str) {
