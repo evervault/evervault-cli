@@ -77,18 +77,16 @@ pub async fn build_enclave_image_file(
         &context_path,
         verbose,
         docker_build_args,
-    )
-    .map_err(|e| BuildError::DockerBuildError(e))?;
+    )?;
 
     log::debug!("Building Nitro CLI image…");
 
-    enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose)
-        .map_err(|e| BuildError::DockerBuildError(e))?;
+    enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose)?;
 
     log::info!("Converting docker image to EIF…");
     enclave::run_conversion_to_enclave(output_path.path(), verbose)
         .map(|built_enc| (built_enc, output_path))
-        .map_err(|e| BuildError::EnclaveConversionError(e))
+        .map_err(|e| e.into())
 }
 
 async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(

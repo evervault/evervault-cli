@@ -1,6 +1,6 @@
+use super::error::CommandError;
 use std::ffi::OsStr;
 use std::process::{Command, ExitStatus, Output, Stdio};
-use thiserror::Error;
 
 pub struct CommandConfig {
     verbose: bool,
@@ -22,12 +22,6 @@ impl CommandConfig {
             Stdio::null()
         }
     }
-}
-
-#[derive(Debug, Error)]
-pub enum CommandError {
-    #[error("An error occurred while executing a docker command — {0}")]
-    IoError(#[from] std::io::Error),
 }
 
 pub fn build_image(
