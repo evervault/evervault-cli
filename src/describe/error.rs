@@ -10,7 +10,7 @@ pub enum DescribeError {
     #[error("Could not find eif at {0}")]
     EIFNotFound(std::path::PathBuf),
     #[error(transparent)]
-    EnclaveError(#[from] EnclaveError)
+    EnclaveError(#[from] EnclaveError),
 }
 
 impl CliError for DescribeError {

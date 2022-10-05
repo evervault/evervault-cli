@@ -60,7 +60,7 @@ impl std::fmt::Display for EnclaveError {
             f,
             "{}",
             match self.context.as_deref() {
-                Some(context) => format!("{context}\n\n{error_msg}"),
+                Some(context) => format!("{context}\n{error_msg}"),
                 None => error_msg,
             }
         )

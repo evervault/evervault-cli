@@ -238,7 +238,6 @@ pub async fn timed_operation<T: std::future::Future>(
 mod tests {
     use super::*;
     use crate::test_utils;
-    use std::thread::sleep;
     use std::time::Duration;
 
     #[tokio::test]
