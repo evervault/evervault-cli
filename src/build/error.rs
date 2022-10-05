@@ -1,17 +1,18 @@
 use crate::common::{CliError, OutputPathError};
 use crate::config::SigningInfoError;
 use crate::docker::error::DockerError;
+use crate::enclave::error::EnclaveError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum BuildError {
     #[error("Context directory ({0}) does not exist")]
     ContextDirectoryDoesNotExist(String),
-    #[error("Failed to access output directory — {0:?}")]
+    #[error("Failed to access output directory — {0}")]
     FailedToAccessOutputDir(#[from] OutputPathError),
     #[error("Invalid signing info provided. {0}")]
     InvalidSigningInfo(#[from] SigningInfoError),
-    #[error("{0}")]
+    #[error(transparent)]
     DockerError(#[from] DockerError),
     #[error(
         "Failed to access dockerfile at {0}. You can specify the dockerfile using the -f flag."
@@ -23,6 +24,8 @@ pub enum BuildError {
     DockerBuildError(String),
     #[error("An error occurred while converting your image to an enclave — {0}")]
     EnclaveConversionError(String),
+    #[error(transparent)]
+    EnclaveError(#[from] EnclaveError),
 }
 
 impl CliError for BuildError {
@@ -36,6 +39,7 @@ impl CliError for BuildError {
             }
             Self::DockerError(_) | Self::DockerBuildError(_) => exitcode::SOFTWARE,
             Self::EnclaveConversionError(_) => exitcode::SOFTWARE,
+            Self::EnclaveError(e) => e.exitcode(),
         }
     }
 }

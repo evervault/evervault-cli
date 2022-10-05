@@ -199,8 +199,11 @@ async fn create_zip_upload_stream(
     }
 }
 
-pub fn get_eif<S: AsRef<str>>(eif_path: S) -> Result<(EIFMeasurements, OutputPath), DeployError> {
-    let eif = describe_eif(eif_path.as_ref())?;
+pub fn get_eif<S: AsRef<str>>(
+    eif_path: S,
+    verbose: bool,
+) -> Result<(EIFMeasurements, OutputPath), DeployError> {
+    let eif = describe_eif(eif_path.as_ref(), verbose)?;
     let output_path = resolve_output_path(None::<&str>)?;
     let output_p = format!("{}/enclave.eif", output_path.path().to_str().unwrap());
     std::fs::copy(eif_path.as_ref(), output_p)?;
