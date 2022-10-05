@@ -42,7 +42,9 @@ pub fn build_user_image(
     if build_image_status.success() {
         Ok(())
     } else {
-        Err(EnclaveError::new_build_error(build_image_status.code().unwrap()))
+        Err(EnclaveError::new_build_error(
+            build_image_status.code().unwrap(),
+        ))
     }
 }
 
@@ -169,7 +171,9 @@ pub fn build_nitro_cli_image(
     if build_image_status.success() {
         Ok(())
     } else {
-        Err(EnclaveError::new_build_error(build_image_status.code().unwrap()))
+        Err(EnclaveError::new_build_error(
+            build_image_status.code().unwrap(),
+        ))
     }
 }
 
