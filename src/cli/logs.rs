@@ -1,7 +1,7 @@
 use crate::api;
 use crate::api::{client::ApiClient, AuthMode};
 use crate::common::CliError;
-use crate::config::{CageConfig, ValidatedCageBuildConfig};
+use crate::config::CageConfig;
 use crate::get_api_key;
 
 use chrono::TimeZone;
@@ -27,22 +27,29 @@ pub async fn run(log_args: LogArgs) -> i32 {
 
     let cage_uuid = match log_args.cage_uuid.clone() {
         Some(cage_uuid) => cage_uuid,
-        None => match CageConfig::try_from_filepath(&log_args.config)
-            .and_then(|config| ValidatedCageBuildConfig::try_from(config.as_ref()))
-        {
-            Ok(config) => config.cage_uuid().to_string(),
-            Err(e) => {
-                eprintln!("An error occurred while resolving your Cage toml.\n\nPlease make sure you have a cage.toml file in the current directory, or have supplied a path with the --config flag.");
-                return e.exitcode();
+        None => {
+            let cage_uuid = match CageConfig::try_from_filepath(&log_args.config) {
+                Ok(config) => config.uuid,
+                Err(e) => {
+                    log::error!("An error occurred while resolving your Cage toml.\n\nPlease make sure you have a cage.toml file in the current directory, or have supplied a path with the --config flag.");
+                    return e.exitcode();
+                }
+            };
+            match cage_uuid {
+                Some(uuid) => uuid,
+                None => {
+                    log::error!("Cage uuid is missing from toml");
+                    return exitcode::DATAERR;
+                }
             }
-        },
+        }
     };
 
     let now = std::time::SystemTime::now();
     let end_time = match now.duration_since(std::time::UNIX_EPOCH).ok() {
         Some(end_time) => end_time,
         None => {
-            eprintln!("Failed to compute current time");
+            log::error!("Failed to compute current time");
             return exitcode::OSERR;
         }
     };
@@ -53,7 +60,7 @@ pub async fn run(log_args: LogArgs) -> i32 {
     {
         Some(start_time) => start_time,
         None => {
-            eprintln!("Failed to compute start time.");
+            log::error!("Failed to compute start time.");
             return exitcode::SOFTWARE;
         }
     };
@@ -68,7 +75,7 @@ pub async fn run(log_args: LogArgs) -> i32 {
     {
         Ok(logs) => logs,
         Err(e) => {
-            eprintln!("Failed to retrieve logs for Cage - {:?}", e);
+            log::error!("Failed to retrieve logs for Cage - {:?}", e);
             return e.exitcode();
         }
     };
@@ -79,7 +86,7 @@ pub async fn run(log_args: LogArgs) -> i32 {
     let logs_end = format_timestamp(end_time);
 
     if cage_logs.log_events().is_empty() {
-        println!("No logs found between {logs_start} and {logs_end}",);
+        log::info!("No logs found between {logs_start} and {logs_end}",);
         return exitcode::OK;
     }
 
@@ -89,7 +96,7 @@ pub async fn run(log_args: LogArgs) -> i32 {
         "Retrieved {} logs from {logs_start} to {logs_end}",
         cage_logs.log_events().len()
     )) {
-        eprintln!("An error occurred while displaying your Cage's logs.");
+        log::error!("An error occurred while displaying your Cage's logs.");
         return exitcode::TEMPFAIL;
     }
 
@@ -114,7 +121,7 @@ pub async fn run(log_args: LogArgs) -> i32 {
         });
 
     if let Err(e) = minus::page_all(output) {
-        eprintln!("An error occurred while paginating your log data - {:?}", e);
+        log::error!("An error occurred while paginating your log data - {:?}", e);
         return exitcode::SOFTWARE;
     } else {
         return exitcode::OK;
