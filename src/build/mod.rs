@@ -194,6 +194,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         Directive::new_env("EV_CAGE_NAME", build_config.cage_name()),
         Directive::new_env("EV_APP_UUID", build_config.app_uuid()),
         Directive::new_env("EV_TEAM_UUID", build_config.team_uuid()),
+        Directive::new_env("DATA_PLANE_HEALTH_CHECKS", "true"),
         // Add bootstrap script to configure enclave before starting services
         Directive::new_run(crate::docker::utils::write_command_to_script(
             bootstrap_script_content,
@@ -273,6 +274,7 @@ RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /data-plan
 ENV EV_CAGE_NAME=test
 ENV EV_APP_UUID=3241
 ENV EV_TEAM_UUID=teamid
+ENV DATA_PLANE_HEALTH_CHECKS=true
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
@@ -350,6 +352,7 @@ RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /data-plan
 ENV EV_CAGE_NAME=test
 ENV EV_APP_UUID=3241
 ENV EV_TEAM_UUID=teamid
+ENV DATA_PLANE_HEALTH_CHECKS=true
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
