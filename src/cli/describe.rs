@@ -9,13 +9,17 @@ pub struct DescribeArgs {
     /// Path to the EIF to descibe.
     #[clap(default_value = "./enclave.eif")]
     pub eif_path: String,
+
+    /// Disable verbose logging
+    #[clap(long)]
+    pub quiet: bool,
 }
 
 pub async fn run(describe_args: DescribeArgs) -> exitcode::ExitCode {
-    let description = match describe_eif(&describe_args.eif_path) {
+    let description = match describe_eif(&describe_args.eif_path, !describe_args.quiet) {
         Ok(measurements) => measurements,
         Err(e) => {
-            log::error!("Failed to describe eif — {}", e);
+            log::error!("{}", e);
             return e.exitcode();
         }
     };
