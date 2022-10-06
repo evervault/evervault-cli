@@ -6,12 +6,14 @@ use crate::enclave;
 use crate::progress::get_tracker;
 use error::DescribeError;
 
-pub fn describe_eif(eif_path: &str) -> Result<enclave::DescribeEif, DescribeError> {
-    let absolute_path = std::path::Path::new(eif_path).canonicalize().unwrap();
-    if !absolute_path.exists() {
-        return Err(DescribeError::EIFNotFound(absolute_path));
+pub fn describe_eif(eif_path: &str, verbose: bool) -> Result<enclave::DescribeEif, DescribeError> {
+    let eif_path = std::path::Path::new(eif_path);
+    if !eif_path.exists() {
+        return Err(DescribeError::EIFNotFound(eif_path.to_path_buf()));
     }
-
+    let absolute_path = eif_path
+        .canonicalize()
+        .map_err(|_| DescribeError::EIFNotFound(eif_path.to_path_buf()))?;
     if !verify_docker_is_running()? {
         return Err(DockerError::DaemonNotRunning.into());
     }
@@ -20,9 +22,9 @@ pub fn describe_eif(eif_path: &str) -> Result<enclave::DescribeEif, DescribeErro
 
     let supplied_path: Option<&str> = None;
     let output_path = resolve_output_path(supplied_path).unwrap();
-    enclave::build_nitro_cli_image(output_path.path(), None, false).unwrap();
+    enclave::build_nitro_cli_image(output_path.path(), None, verbose)?;
 
-    let description = enclave::describe_eif(&absolute_path).unwrap();
+    let description = enclave::describe_eif(&absolute_path, verbose)?;
     describe_progress.finish_with_message("PCRs retrieved.");
 
     Ok(description)
