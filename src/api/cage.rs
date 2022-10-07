@@ -216,14 +216,14 @@ pub enum CageState {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Cage {
-    uuid: String,
-    name: String,
-    team_uuid: String,
-    app_uuid: String,
-    domain: String,
-    state: CageState,
-    created_at: String,
-    updated_at: String,
+    pub uuid: String,
+    pub name: String,
+    pub team_uuid: String,
+    pub app_uuid: String,
+    pub domain: String,
+    pub state: CageState,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 impl Cage {

@@ -1,5 +1,5 @@
 use crate::api;
-use crate::api::{client::ApiClient, AuthMode};
+use crate::api::{cage::Cage, client::ApiClient, AuthMode};
 use crate::common::CliError;
 use crate::config::{default_dockerfile, CageConfig, EgressSettings, SigningInfo};
 use crate::get_api_key;
@@ -90,6 +90,10 @@ pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
         }
     };
 
+    init_local_config(init_args, created_cage).await
+}
+
+async fn init_local_config(init_args: InitArgs, created_cage: Cage) -> exitcode::ExitCode {
     let output_path = std::path::Path::new(init_args.output_dir.as_str());
     let config_path = output_path.join("cage.toml");
 
@@ -130,5 +134,57 @@ pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
     } else {
         log::info!("Cage.toml initialized successfully. You can now deploy a Cage using the deploy command");
         exitcode::OK
+    }
+}
+
+#[cfg(test)]
+mod init_tests {
+    use super::*;
+    use crate::api::cage::CageState;
+
+    use std::fs::read;
+    use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn init_local_config_test() {
+        let output_dir = TempDir::new().unwrap();
+        let sample_cage = Cage {
+            uuid: "1234".into(),
+            name: "hello-cage".into(),
+            team_uuid: "1234".into(),
+            app_uuid: "1234".into(),
+            domain: "hello.com".into(),
+            state: CageState::Pending,
+            created_at: "00:00:00".into(),
+            updated_at: "00:00:00".into(),
+        };
+        let init_args = InitArgs {
+            output_dir: output_dir.path().to_str().unwrap().to_string(),
+            cage_name: "hello".to_string(),
+            debug: false,
+            egress: true,
+            dockerfile: Some("Dockerfile".into()),
+            disable_tls_termination: false,
+            gen_signing_credentials: false,
+            cert_path: None,
+            key_path: None,
+        };
+        init_local_config(init_args, sample_cage).await;
+        let config_path = output_dir.path().join("cage.toml");
+        assert!(config_path.exists());
+        let config_content = String::from_utf8(read(config_path).unwrap()).unwrap();
+        println!("cage_config_content: {}", config_content);
+        let expected_config_content = r#"name = "hello"
+uuid = "1234"
+app_uuid = "1234"
+team_uuid = "1234"
+debug = false
+dockerfile = "Dockerfile"
+disable_tls_termination = false
+
+[egress]
+enabled = true
+"#;
+        assert_eq!(config_content, expected_config_content);
     }
 }
