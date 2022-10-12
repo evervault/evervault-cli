@@ -65,6 +65,7 @@ pub async fn deploy_eif(
 
     let progress_bar_for_build =
         get_tracker("Building Cage Docker Image on Evervault Infra...", None);
+    
     watch_build(
         cage_api.clone(),
         deployment_intent.cage_uuid(),
@@ -124,7 +125,8 @@ async fn watch_deployment(
     deployment_uuid: &str,
     progress_bar: impl ProgressLogger,
 ) -> Result<(), DeployError> {
-    loop {
+      let mut most_recent_deployment_status: Option<String> = None;
+      loop {
         match cage_api
             .get_cage_deployment_by_uuid(cage_uuid, deployment_uuid)
             .await
@@ -138,11 +140,19 @@ async fn watch_deployment(
                     log::error!("{}", &deployment_response.get_failure_reason());
                     return Err(DeployError::DeploymentError);
                 } else {
-                    let msg = format!(
-                        "Deploying Cage into a Trusted Execution Environment. This will take a few minutes. ({})",
-                        deployment_response.get_detailed_status()
-                    );
-                    progress_bar.set_message(&msg)
+                    let detailed_status = deployment_response.get_detailed_status();
+                    let is_new_status = most_recent_deployment_status
+                      .as_deref()
+                      .map(|last_status| detailed_status.as_str() != last_status)
+                      .unwrap_or(true);
+                    if is_new_status {
+                      let msg = format!(
+                          "Deploying Cage into a Trusted Execution Environment. This will take a few minutes. ({})",
+                          detailed_status
+                      );
+                      progress_bar.set_message(&msg);
+                      most_recent_deployment_status = Some(detailed_status);
+                    }
                 }
             }
             Err(e) => {
