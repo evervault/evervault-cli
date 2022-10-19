@@ -6,12 +6,18 @@ use crate::progress::{get_tracker, ProgressLogger};
 mod error;
 use error::DeleteError;
 
-pub async fn delete_cage(config: &str, api_key: &str) -> Result<(), DeleteError> {
+pub async fn delete_cage(
+    config: &str,
+    cage_uuid: Option<&str>,
+    api_key: &str,
+    background: bool,
+) -> Result<(), DeleteError> {
     let cage_config = CageConfig::try_from_filepath(config)?;
 
-    let cage_uuid = match cage_config.uuid {
-        Some(uuid) => uuid,
-        None => return Err(DeleteError::MissingUuid),
+    let cage_uuid = match (cage_uuid, cage_config.uuid) {
+        (Some(given_cage_uuid), _) => given_cage_uuid.to_string(),
+        (_, Some(config_cage_uuid)) => config_cage_uuid,
+        _ => return Err(DeleteError::MissingUuid),
     };
 
     let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
@@ -24,9 +30,11 @@ pub async fn delete_cage(config: &str, api_key: &str) -> Result<(), DeleteError>
         }
     };
 
-    let progress_bar = get_tracker("Deleting Cage...", None);
+    if !background {
+        let progress_bar = get_tracker("Deleting Cage...", None);
 
-    watch_deletion(cage_api, deleted_cage.uuid(), progress_bar).await;
+        watch_deletion(cage_api, deleted_cage.uuid(), progress_bar).await;
+    }
     Ok(())
 }
 
