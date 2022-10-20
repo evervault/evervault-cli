@@ -1,4 +1,4 @@
-use crate::api::{self, client::ApiClient, AuthMode};
+use crate::api::{self,  AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::common::prepare_build_args;
 use crate::get_api_key;
@@ -119,7 +119,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         );
     }
 
-    if let Err(e) = deploy_eif(&validated_config, &cage_api, output_path, eif_measurements).await {
+    if let Err(e) = deploy_eif(&validated_config, cage_api, output_path, eif_measurements).await {
         log::error!("{}", e);
         return e.exitcode();
     };

@@ -1,4 +1,4 @@
-use crate::api::{client::ApiClient, AuthMode};
+use crate::api::AuthMode;
 use crate::common::CliError;
 use crate::config::{read_and_validate_config, BuildTimeConfig};
 use crate::{api, get_api_key};
