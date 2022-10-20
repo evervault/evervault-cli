@@ -5,7 +5,7 @@ use thiserror::Error;
 pub enum DeleteError {
     #[error("An error occurred while reading the cage config — {0}")]
     CageConfigError(#[from] crate::config::CageConfigError),
-    #[error("Could not parse uuid from toml")]
+    #[error("No Cage Uuid given. You can provide one by using either the --cage-uuid flag, or using the --config flag to point to a Cage.toml")]
     MissingUuid,
     #[error("An IO error occurred {0}")]
     IoError(#[from] std::io::Error),
