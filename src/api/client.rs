@@ -33,10 +33,6 @@ impl std::convert::From<AuthMode> for GenericApiClient {
 }
 
 impl ApiClient for GenericApiClient {
-    fn new(auth_mode: AuthMode) -> Self {
-        Self::from(auth_mode)
-    }
-
     fn auth(&self) -> &AuthMode {
         &self.auth
     }
@@ -56,7 +52,6 @@ pub enum ApiClientError {
 }
 
 pub trait ApiClient {
-    fn new(auth_mode: AuthMode) -> Self;
     fn auth(&self) -> &AuthMode;
     fn update_auth(&mut self, auth: AuthMode) -> Result<(), ApiClientError>;
     fn client(&self) -> &Client;

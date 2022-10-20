@@ -9,12 +9,6 @@ pub struct CagesClient {
 }
 
 impl ApiClient for CagesClient {
-    fn new(auth_mode: AuthMode) -> Self {
-        Self {
-            inner: GenericApiClient::from(auth_mode),
-        }
-    }
-
     fn auth(&self) -> &AuthMode {
         self.inner.auth()
     }
@@ -34,6 +28,12 @@ impl ApiClient for CagesClient {
 }
 
 impl CagesClient {
+    pub fn new(auth_mode: AuthMode) -> Self {
+        Self {
+            inner: GenericApiClient::from(auth_mode),
+        }
+    }
+
     pub async fn create_cage(&self, cage_create_payload: CreateCageRequest) -> ApiResult<Cage> {
         let create_cage_url = format!("{}/", self.base_url());
         self.post(&create_cage_url)
