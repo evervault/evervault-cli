@@ -1,17 +1,32 @@
 use crate::api;
 use crate::api::cage::CagesClient;
 use crate::api::{client::ApiClient, AuthMode};
-use crate::config::CageConfig;
+use crate::config::{CageConfig, CageConfigError};
 use crate::progress::{get_tracker, ProgressLogger};
 mod error;
 use error::DeleteError;
 
-pub async fn delete_cage(config: &str, api_key: &str) -> Result<(), DeleteError> {
-    let cage_config = CageConfig::try_from_filepath(config)?;
+fn resolve_cage_uuid(
+    given_uuid: Option<&str>,
+    config_path: &str,
+) -> Result<Option<String>, CageConfigError> {
+    if let Some(given_uuid) = given_uuid {
+        return Ok(Some(given_uuid.to_string()));
+    }
+    let config = CageConfig::try_from_filepath(config_path)?;
+    Ok(config.uuid)
+}
 
-    let cage_uuid = match cage_config.uuid {
-        Some(uuid) => uuid,
-        None => return Err(DeleteError::MissingUuid),
+pub async fn delete_cage(
+    config: &str,
+    cage_uuid: Option<&str>,
+    api_key: &str,
+    background: bool,
+) -> Result<(), DeleteError> {
+    let maybe_cage_uuid = resolve_cage_uuid(cage_uuid, config)?;
+    let cage_uuid = match maybe_cage_uuid {
+        Some(given_cage_uuid) => given_cage_uuid,
+        _ => return Err(DeleteError::MissingUuid),
     };
 
     let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
@@ -24,9 +39,11 @@ pub async fn delete_cage(config: &str, api_key: &str) -> Result<(), DeleteError>
         }
     };
 
-    let progress_bar = get_tracker("Deleting Cage...", None);
+    if !background {
+        let progress_bar = get_tracker("Deleting Cage...", None);
 
-    watch_deletion(cage_api, deleted_cage.uuid(), progress_bar).await;
+        watch_deletion(cage_api, deleted_cage.uuid(), progress_bar).await;
+    }
     Ok(())
 }
 
