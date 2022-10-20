@@ -6,12 +6,15 @@ use crate::progress::{get_tracker, ProgressLogger};
 mod error;
 use error::DeleteError;
 
-fn resolve_cage_uuid(given_uuid: Option<&str>, config_path: &str) -> Result<Option<String>, CageConfigError> {
-  if let Some(given_uuid) = given_uuid {
-    return Ok(Some(given_uuid.to_string()));
-  }
-  let config = CageConfig::try_from_filepath(config_path)?;
-  Ok(config.uuid)
+fn resolve_cage_uuid(
+    given_uuid: Option<&str>,
+    config_path: &str,
+) -> Result<Option<String>, CageConfigError> {
+    if let Some(given_uuid) = given_uuid {
+        return Ok(Some(given_uuid.to_string()));
+    }
+    let config = CageConfig::try_from_filepath(config_path)?;
+    Ok(config.uuid)
 }
 
 pub async fn delete_cage(
