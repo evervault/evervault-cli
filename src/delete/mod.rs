@@ -1,8 +1,8 @@
 use crate::api;
 use crate::api::cage::CagesClient;
-use crate::api::{client::ApiClient, AuthMode};
+use crate::api::AuthMode;
 use crate::config::{CageConfig, CageConfigError};
-use crate::progress::{get_tracker, ProgressLogger};
+use crate::progress::{get_tracker, poll_fn_and_report_status, ProgressLogger, StatusReport};
 mod error;
 use error::DeleteError;
 
@@ -48,20 +48,29 @@ pub async fn delete_cage(
 }
 
 async fn watch_deletion(cage_api: CagesClient, cage_uuid: &str, progress_bar: impl ProgressLogger) {
-    loop {
+    async fn check_delete_status(
+        cage_api: CagesClient,
+        args: Vec<String>,
+    ) -> Result<StatusReport, DeleteError> {
+        let cage_uuid = args.get(0).unwrap();
         match cage_api.get_cage(cage_uuid).await {
-            Ok(cage_response) => {
-                if cage_response.is_deleted() {
-                    progress_bar.finish_with_message("Cage deleted!");
-                    break;
-                }
+            Ok(cage_response) if cage_response.is_deleted() => {
+                Ok(StatusReport::Complete("Cage deleted!".to_string()))
             }
+            Ok(_) => Ok(StatusReport::NoOp),
             Err(e) => {
-                progress_bar.finish();
                 log::error!("Unable to retrieve deletion status. Error: {:?}", e);
-                break;
+                Ok(StatusReport::Failed)
             }
-        };
-        tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
+        }
     }
+
+    let check_delete_args = vec![cage_uuid.to_string()];
+    let _ = poll_fn_and_report_status(
+        cage_api,
+        check_delete_args,
+        check_delete_status,
+        progress_bar,
+    )
+    .await;
 }

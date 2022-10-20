@@ -5,11 +5,6 @@ pub struct AssetsClient {
 }
 
 impl ApiClient for AssetsClient {
-    fn new(auth_mode: super::AuthMode) -> Self {
-        let client = GenericApiClient::new(auth_mode);
-        Self { inner: client }
-    }
-
     fn client(&self) -> &reqwest::Client {
         &self.inner.client()
     }

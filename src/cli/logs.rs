@@ -1,5 +1,5 @@
 use crate::api;
-use crate::api::{client::ApiClient, AuthMode};
+use crate::api::AuthMode;
 use crate::common::CliError;
 use crate::config::CageConfig;
 use crate::get_api_key;
