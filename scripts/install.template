@@ -61,20 +61,8 @@ fi
 
 if [ -f "$INSTALL_PATH" ]; then
   if [ -z ${CAGE_CLI_FORCE_INSTALL+x} ]; then
-    echo "Looks like you already have the Evervault Cage CLI installed. Would you like to update? (y/n)"
-    # read in 2 characters to get a response + return char, check if leading char is y/n
-    y=$(dd bs=1 count=2 2>/dev/null)
-    response=`echo $y | cut -c1-1`
-    if [ "$response" = "y" ]; then
-      echo "Proceeding with update..."
-      PERFORM_INSTALL=true
-    elif [ -n "$ONBOARDING_TOKEN" ]; then
-      echo "Continuing without update..."
-      PERFORM_INSTALL=false
-    else
-      echo "Exiting..."
-      exit 1
-    fi
+    echo "Looks like you already have the Evervault Cage CLI installed. You can update by running ev-cage update"
+    exit 0
   else
     echo "Proceeding with update..."
     PERFORM_INSTALL=true
