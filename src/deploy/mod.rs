@@ -4,7 +4,7 @@ use crate::common::{resolve_output_path, OutputPath};
 use crate::config::ValidatedCageBuildConfig;
 use crate::describe::describe_eif;
 use crate::enclave::{EIFMeasurements, ENCLAVE_FILENAME};
-use crate::progress::{get_tracker, ProgressLogger, poll_fn_and_report_status, StatusReport};
+use crate::progress::{get_tracker, poll_fn_and_report_status, ProgressLogger, StatusReport};
 use std::io::Write;
 mod error;
 use error::DeployError;
@@ -64,17 +64,19 @@ pub async fn deploy_eif(
     };
 
     let progress_bar_for_build =
-    get_tracker("Building Cage Docker Image on Evervault Infra...", None);
-    
+        get_tracker("Building Cage Docker Image on Evervault Infra...", None);
+
     watch_build(
         cage_api.clone(),
         deployment_intent.cage_uuid(),
         deployment_intent.deployment_uuid(),
         progress_bar_for_build,
-      )
-      .await;
-      
-    log::info!("Deploying Cage into a Trusted Execution Environment. This will take a few minutes.");
+    )
+    .await;
+
+    log::info!(
+        "Deploying Cage into a Trusted Execution Environment. This will take a few minutes."
+    );
     let progress_bar_for_deploy = get_tracker(
         "Deploying Cage into a Trusted Execution Environment...",
         None,
@@ -99,22 +101,34 @@ async fn watch_build(
     deployment_uuid: &str,
     progress_bar: impl ProgressLogger,
 ) {
-  async fn check_build_status(cage_api: CagesClient, args: Vec<String>) -> Result<StatusReport, DeployError> {
-    let cage_uuid = args.get(0).unwrap();
-    let deployment_uuid = args.get(1).unwrap();
-    match cage_api.get_cage_deployment_by_uuid(cage_uuid, deployment_uuid).await {
-      Ok(deployment_response) if deployment_response.is_built() => {
-        Ok(StatusReport::complete("Cage built on Evervault!".to_string()))
-      },
-      Ok(_) => Ok(StatusReport::no_op()),
-      Err(e) => {
-        log::error!("Unable to retrieve build status. Error: {:?}", e);
-        Ok(StatusReport::Failed)
-      }
+    async fn check_build_status(
+        cage_api: CagesClient,
+        args: Vec<String>,
+    ) -> Result<StatusReport, DeployError> {
+        let cage_uuid = args.get(0).unwrap();
+        let deployment_uuid = args.get(1).unwrap();
+        match cage_api
+            .get_cage_deployment_by_uuid(cage_uuid, deployment_uuid)
+            .await
+        {
+            Ok(deployment_response) if deployment_response.is_built() => Ok(
+                StatusReport::complete("Cage built on Evervault!".to_string()),
+            ),
+            Ok(_) => Ok(StatusReport::no_op()),
+            Err(e) => {
+                log::error!("Unable to retrieve build status. Error: {:?}", e);
+                Ok(StatusReport::Failed)
+            }
+        }
     }
-  }
-  let get_deployment_args = vec![cage_uuid.to_string(), deployment_uuid.to_string()];
-  let _ = poll_fn_and_report_status(cage_api, get_deployment_args, check_build_status, progress_bar).await;
+    let get_deployment_args = vec![cage_uuid.to_string(), deployment_uuid.to_string()];
+    let _ = poll_fn_and_report_status(
+        cage_api,
+        get_deployment_args,
+        check_build_status,
+        progress_bar,
+    )
+    .await;
 }
 
 async fn watch_deployment(
@@ -123,33 +137,42 @@ async fn watch_deployment(
     deployment_uuid: &str,
     progress_bar: impl ProgressLogger,
 ) -> Result<(), DeployError> {
-  async fn check_deployment_status(cage_api: CagesClient, args: Vec<String>) -> Result<StatusReport, DeployError> {
-    let cage_uuid = args.get(0).unwrap();
-    let deployment_uuid = args.get(1).unwrap();
-    match cage_api
-      .get_cage_deployment_by_uuid(cage_uuid, deployment_uuid)
-      .await 
-      {
-        Ok(deployment_response) if deployment_response.is_finished() => {
-          Ok(StatusReport::complete("Cage deployed!".to_string()))
-        },
-        Ok(deployment_response) if deployment_response.is_failed() => {
-          log::error!("{}", &deployment_response.get_failure_reason());
-          Err(DeployError::DeploymentError)
-        },
-        Ok(deployment_response) => {
-          let detailed_status = deployment_response.get_detailed_status();
-          Ok(StatusReport::update(detailed_status))
-        },
-        Err(e) => {
-          log::error!("Unable to retrieve deployment status. Error: {:?}", e);
-          return Ok(StatusReport::Failed);
+    async fn check_deployment_status(
+        cage_api: CagesClient,
+        args: Vec<String>,
+    ) -> Result<StatusReport, DeployError> {
+        let cage_uuid = args.get(0).unwrap();
+        let deployment_uuid = args.get(1).unwrap();
+        match cage_api
+            .get_cage_deployment_by_uuid(cage_uuid, deployment_uuid)
+            .await
+        {
+            Ok(deployment_response) if deployment_response.is_finished() => {
+                Ok(StatusReport::complete("Cage deployed!".to_string()))
+            }
+            Ok(deployment_response) if deployment_response.is_failed() => {
+                log::error!("{}", &deployment_response.get_failure_reason());
+                Err(DeployError::DeploymentError)
+            }
+            Ok(deployment_response) => {
+                let detailed_status = deployment_response.get_detailed_status();
+                Ok(StatusReport::update(detailed_status))
+            }
+            Err(e) => {
+                log::error!("Unable to retrieve deployment status. Error: {:?}", e);
+                return Ok(StatusReport::Failed);
+            }
         }
-      }
-  }
+    }
 
-  let get_deployment_args = vec![cage_uuid.to_string(), deployment_uuid.to_string()];
-  poll_fn_and_report_status(cage_api, get_deployment_args, check_deployment_status, progress_bar).await
+    let get_deployment_args = vec![cage_uuid.to_string(), deployment_uuid.to_string()];
+    poll_fn_and_report_status(
+        cage_api,
+        get_deployment_args,
+        check_deployment_status,
+        progress_bar,
+    )
+    .await
 }
 
 fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::ZipResult<()> {

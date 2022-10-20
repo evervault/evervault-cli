@@ -81,7 +81,7 @@ impl ProgressLogger for NonTty {
         log::info!("{}", message.to_string())
     }
     fn finish_with_message(&self, message: &str) {
-      log::info!("{}", message.to_string())
+        log::info!("{}", message.to_string())
     }
     fn finish(&self) -> () {
         // no op
@@ -107,66 +107,73 @@ pub fn get_tracker(
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum StatusReport {
-  Update(String),
-  Complete(String),
-  NoOp,
-  Failed
+    Update(String),
+    Complete(String),
+    NoOp,
+    Failed,
 }
 
 impl StatusReport {
-  pub fn update(msg: String) -> Self {
-    Self::Update(msg)
-  }
-
-  pub fn complete(msg: String) -> Self {
-    Self::Complete(msg)
-  }
-
-  pub fn no_op() -> Self {
-    Self::NoOp
-  }
-
-  pub fn get_msg(&self) -> Option<String> {
-    match self {
-      Self::Update(msg) | Self::Complete(msg) => Some(msg.clone()),
-      _ => None
+    pub fn update(msg: String) -> Self {
+        Self::Update(msg)
     }
-  }
+
+    pub fn complete(msg: String) -> Self {
+        Self::Complete(msg)
+    }
+
+    pub fn no_op() -> Self {
+        Self::NoOp
+    }
+
+    pub fn get_msg(&self) -> Option<String> {
+        match self {
+            Self::Update(msg) | Self::Complete(msg) => Some(msg.clone()),
+            _ => None,
+        }
+    }
 }
 
 // It should be possible to resolve the lifetimes to allow this work over borrows for every value instead of cloning/heap allocating
-pub async fn poll_fn_and_report_status<E, F, Fut>(api_client: CagesClient, poll_args: Vec<String>, poll_fn: F, progress_bar: impl ProgressLogger) -> Result<(), E>
+pub async fn poll_fn_and_report_status<E, F, Fut>(
+    api_client: CagesClient,
+    poll_args: Vec<String>,
+    poll_fn: F,
+    progress_bar: impl ProgressLogger,
+) -> Result<(), E>
 where
-  E: CliError,
-  F: Fn(CagesClient, Vec<String>) -> Fut,
-  Fut: std::future::Future<Output = Result<StatusReport, E>>
+    E: CliError,
+    F: Fn(CagesClient, Vec<String>) -> Fut,
+    Fut: std::future::Future<Output = Result<StatusReport, E>>,
 {
-  let mut most_recent_update: Option<String> = None;
-  let is_new_update = |current_status: Option<&str>, new_msg: &str| -> bool {
-    current_status.map(|given_msg| given_msg != new_msg).unwrap_or(true)
-  };
-  loop {
-    match poll_fn(api_client.clone(), poll_args.clone()).await {
-      Ok(StatusReport::Update(msg)) => {
-        if is_new_update(most_recent_update.as_deref(), msg.as_str()) {
-          progress_bar.set_message(&msg);
-          most_recent_update = Some(msg);
-        }
-      },
-      Ok(StatusReport::Complete(msg)) => {
-        progress_bar.finish_with_message(&msg);
-        return Ok(());
-      },
-      Ok(StatusReport::Failed) => {
-        progress_bar.finish();
-        return Ok(());
-      },
-      Ok(StatusReport::NoOp) => {},
-      Err(e) => {
-        progress_bar.finish();
-        return Err(e);
-      }
+    let mut most_recent_update: Option<String> = None;
+    let is_new_update = |current_status: Option<&str>, new_msg: &str| -> bool {
+        current_status
+            .map(|given_msg| given_msg != new_msg)
+            .unwrap_or(true)
     };
-    tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
-  }
+    loop {
+        match poll_fn(api_client.clone(), poll_args.clone()).await {
+            Ok(StatusReport::Update(msg)) => {
+                if is_new_update(most_recent_update.as_deref(), msg.as_str()) {
+                    progress_bar.set_message(&msg);
+                    most_recent_update = Some(msg);
+                }
+            }
+            Ok(StatusReport::Complete(msg)) => {
+                progress_bar.finish_with_message(&msg);
+                return Ok(());
+            }
+            Ok(StatusReport::Failed) => {
+                progress_bar.finish();
+                return Ok(());
+            }
+            Ok(StatusReport::NoOp) => {}
+            Err(e) => {
+                progress_bar.finish();
+                return Err(e);
+            }
+        };
+        tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
+    }
 }
