@@ -3,11 +3,21 @@ use crate::api::{cage::Cage, AuthMode};
 use crate::common::CliError;
 use crate::config::{default_dockerfile, CageConfig, EgressSettings, SigningInfo};
 use crate::get_api_key;
-use clap::Parser;
+use clap::{Parser, ArgGroup};
 
 /// Initialize a Cage.toml in the current directory
 #[derive(Debug, Parser)]
 #[clap(name = "init", about)]
+#[clap(group(
+  ArgGroup::new("signing-cert")
+    .arg("cert-path")
+    .requires("key-path")
+))]
+#[clap(group(
+  ArgGroup::new("signing-key")
+    .arg("key-path")
+    .requires("cert-path")
+))]
 pub struct InitArgs {
     /// Directory to write the Cage toml to. Defaults to the current directory.
     #[clap(short = 'o', long = "output", default_value = ".")]
@@ -22,24 +32,20 @@ pub struct InitArgs {
     pub debug: bool,
 
     /// Flag to enable egress on your Cage
-    #[clap(long = "egress-enabled")]
+    #[clap(long = "egress")]
     pub egress: bool,
 
     /// Dockerfile to build the Cage
     #[clap(short = 'f', long = "file")]
     pub dockerfile: Option<String>,
 
-    /// Path to the signing cert to use for the Cage
+    /// Path to the signing cert to use for the Cage. If provided, the private-key must also be set.
     #[clap(long = "signing-cert")]
     pub cert_path: Option<String>,
 
-    /// Path to the signing key to use for the Cage
+    /// Path to the signing key to use for the Cage. If provided, the signing-cert must also be set.
     #[clap(long = "private-key")]
     pub key_path: Option<String>,
-
-    /// Flag to enable cert generation during init. This will use the default certificate.
-    #[clap(long = "generate-signing")]
-    pub gen_signing_credentials: bool,
 
     /// Flag to disable tls termination. This will pass the raw TCP streams directly to your service.
     #[clap(long = "disable-tls-termination")]
@@ -97,13 +103,12 @@ async fn init_local_config(init_args: InitArgs, created_cage: Cage) -> exitcode:
     let output_path = std::path::Path::new(init_args.output_dir.as_str());
     let config_path = output_path.join("cage.toml");
 
-    let gen_signing_credentials = init_args.gen_signing_credentials;
     let output_dir = init_args.output_dir.clone();
 
     let mut initial_config: CageConfig = init_args.into();
     initial_config.annotate(created_cage);
 
-    if gen_signing_credentials && initial_config.signing.is_none() {
+    if initial_config.signing.is_none() {
         log::info!("Generating signing credentials for cage");
         match crate::cert::create_new_cert(
             output_dir.as_str(),
@@ -165,9 +170,8 @@ mod init_tests {
             egress: true,
             dockerfile: Some("Dockerfile".into()),
             disable_tls_termination: false,
-            gen_signing_credentials: false,
-            cert_path: None,
-            key_path: None,
+            cert_path: Some("./cert.pem".to_string()),
+            key_path: Some("./key.pem".to_string()),
         };
         init_local_config(init_args, sample_cage).await;
         let config_path = output_dir.path().join("cage.toml");
@@ -184,6 +188,10 @@ disable_tls_termination = false
 
 [egress]
 enabled = true
+
+[signing]
+cert_path = "./cert.pem"
+key_path = "./key.pem"
 "#;
         assert_eq!(config_content, expected_config_content);
     }
