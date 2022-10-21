@@ -3,7 +3,7 @@ use crate::api::{cage::Cage, AuthMode};
 use crate::common::CliError;
 use crate::config::{default_dockerfile, CageConfig, EgressSettings, SigningInfo};
 use crate::get_api_key;
-use clap::{Parser, ArgGroup};
+use clap::{ArgGroup, Parser};
 
 /// Initialize a Cage.toml in the current directory
 #[derive(Debug, Parser)]
