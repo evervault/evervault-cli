@@ -119,7 +119,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         );
     }
 
-    if let Err(e) = deploy_eif(&validated_config, cage_api, output_path, eif_measurements).await {
+    if let Err(e) = deploy_eif(&validated_config, cage_api, output_path, &eif_measurements).await {
         log::error!("{}", e);
         return e.exitcode();
     };
@@ -129,7 +129,8 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     } else {
         let success_msg = serde_json::json!({
             "status": "success",
-            "cageDomain": cage.domain()
+            "cageDomain": cage.domain(),
+            "measurements": &eif_measurements
         });
         println!("{}", serde_json::to_string(&success_msg).unwrap());
     };

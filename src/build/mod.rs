@@ -71,7 +71,7 @@ pub async fn build_enclave_image_file(
         ev_user_dockerfile_path.display()
     );
 
-    log::info!("Building docker image…");
+    log::info!("Building docker image...");
     enclave::build_user_image(
         &ev_user_dockerfile_path,
         &context_path,
@@ -79,11 +79,11 @@ pub async fn build_enclave_image_file(
         docker_build_args,
     )?;
 
-    log::debug!("Building Nitro CLI image…");
+    log::debug!("Building Nitro CLI image...");
 
     enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose)?;
 
-    log::info!("Converting docker image to EIF…");
+    log::info!("Converting docker image to EIF...");
     enclave::run_conversion_to_enclave(output_path.path(), verbose)
         .map(|built_enc| (built_enc, output_path))
         .map_err(|e| e.into())
