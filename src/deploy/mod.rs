@@ -74,9 +74,6 @@ pub async fn deploy_eif(
     )
     .await;
 
-    log::info!(
-        "Deploying Cage into a Trusted Execution Environment. This will take a few minutes."
-    );
     let progress_bar_for_deploy = get_tracker(
         "Deploying Cage into a Trusted Execution Environment...",
         None,
