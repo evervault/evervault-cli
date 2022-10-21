@@ -19,7 +19,7 @@ fn get_progress_bar(start_msg: &str, upload_len: Option<u64>) -> ProgressBar {
             progress_bar.enable_steady_tick(std::time::Duration::from_millis(80));
             progress_bar.set_style(
                 ProgressStyle::default_spinner()
-                    .tick_strings(&["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷", "[INFO]"])
+                    .tick_strings(&["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"])
                     .template("{spinner:.green} {msg}")
                     .expect("Failed to create progress bar template from hardcoded template"),
             );
@@ -65,7 +65,8 @@ impl ProgressLogger for Tty {
         self.progress_bar.set_message(message.to_string());
     }
     fn finish_with_message(&self, message: &str) -> () {
-        self.progress_bar.finish_with_message(message.to_string())
+        self.progress_bar.finish_and_clear();
+        log::info!("{message}");
     }
     fn finish(&self) -> () {
         self.progress_bar.finish();
@@ -78,10 +79,10 @@ impl ProgressLogger for Tty {
 
 impl ProgressLogger for NonTty {
     fn set_message(&self, message: &str) {
-        log::info!("{}", message.to_string())
+        log::info!("{message}")
     }
     fn finish_with_message(&self, message: &str) {
-        log::info!("{}", message.to_string())
+        log::info!("{message}")
     }
     fn finish(&self) -> () {
         // no op
