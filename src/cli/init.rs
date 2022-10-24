@@ -190,8 +190,8 @@ disable_tls_termination = false
 enabled = true
 
 [signing]
-cert_path = "./cert.pem"
-key_path = "./key.pem"
+certPath = "./cert.pem"
+keyPath = "./key.pem"
 "#;
         assert_eq!(config_content, expected_config_content);
     }
