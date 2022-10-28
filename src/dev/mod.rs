@@ -68,9 +68,7 @@ fn decrypt(client: &CryptoClient, value: &mut Value) {
     } else if value.is_string() {
         // all encrypted values are strings
         let to_decrypt = convert_value_to_string(&value); // convert from serde value string to std string
-        println!("Going to decrypt: {to_decrypt:?}");
         if let Ok(decrypted) = client.decrypt(to_decrypt) {
-            println!("Decrypted: {decrypted:?}");
             *value = decrypted;
         }
     }
