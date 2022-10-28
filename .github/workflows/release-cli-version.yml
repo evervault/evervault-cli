@@ -42,6 +42,8 @@ jobs:
         uses: davidnugent2425/cargo-static-build@master
         with:
           cmd: mkdir ${{ env.BIN_DIR }} ; mkdir ${{ env.RELEASE_DIR }} ; cargo build --release --target ${{ env.LINUX_TARGET }} ; mv ./target/${{ env.LINUX_TARGET }}/release/ev-cage ./${{ env.BIN_DIR }}/ev-cage ; 7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+        env:
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
 
       - name: Upload as artifact
         uses: actions/upload-artifact@v2
@@ -65,6 +67,8 @@ jobs:
           target: ${{ env.MACOS_TARGET }}
 
       - run: cargo build --release --target ${{ env.MACOS_TARGET }}
+        env:
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
 
       - name: Compress macos binary
         uses: svenstaro/upx-action@v2
@@ -128,6 +132,8 @@ jobs:
 
       - name: Build CLI for Windows
         run: cargo build --release --target ${{ env.WINDOWS_TARGET }}
+        env:
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
 
       - name: Setup directories
         shell: bash
