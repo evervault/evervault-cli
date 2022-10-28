@@ -4,6 +4,7 @@ pub mod cert;
 pub mod delete;
 pub mod deploy;
 pub mod describe;
+pub mod dev;
 pub mod init;
 pub mod list;
 pub mod logs;
@@ -16,6 +17,7 @@ pub enum Command {
     Delete(delete::DeleteArgs),
     Describe(describe::DescribeArgs),
     Deploy(deploy::DeployArgs),
+    Dev(dev::DevArgs),
     Init(init::InitArgs),
     List(list::List),
     Logs(logs::LogArgs),
