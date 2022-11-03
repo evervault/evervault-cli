@@ -22,7 +22,7 @@ pub async fn deploy_eif(
     validated_config: &ValidatedCageBuildConfig,
     cage_api: CagesClient,
     output_path: OutputPath,
-    eif_measurements: EIFMeasurements,
+    eif_measurements: &EIFMeasurements,
 ) -> Result<(), DeployError> {
     let progress_bar = get_tracker("Zipping Cage...", None);
     create_zip_archive_for_eif(output_path.path())?;
@@ -74,9 +74,6 @@ pub async fn deploy_eif(
     )
     .await;
 
-    log::info!(
-        "Deploying Cage into a Trusted Execution Environment. This will take a few minutes."
-    );
     let progress_bar_for_deploy = get_tracker(
         "Deploying Cage into a Trusted Execution Environment...",
         None,

@@ -51,7 +51,7 @@ pub fn run(cert_args: CertArgs) -> exitcode::ExitCode {
                 };
 
             if atty::is(Stream::Stdout) {
-                log::info!("Signing cert successfully generated…");
+                log::info!("Signing cert successfully generated...");
                 log::info!("> Certificate saved to {}", cert_path.display());
                 log::info!("> Key saved to {}", key_path.display());
             } else {
