@@ -1,8 +1,9 @@
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::routing::post;
+use axum::{Json, Router, Server};
 use rust_crypto::backend::{CryptoClient as _, Datatype};
 use serde_json::Value;
-use tide::http::mime;
-/// Create a local mock crypto API for development
-use tide::Request;
 
 type CryptoClient = rust_crypto::backend::ies_secp256r1_openssl::Client;
 fn create_key_pair() -> CryptoClient {
@@ -12,21 +13,29 @@ fn create_key_pair() -> CryptoClient {
 
 pub async fn run_mock_crypto_api(port: u16) {
     let addr = format!("127.0.0.1:{port}");
-    let crypto_api = get_server();
+    let session_key_pair = create_key_pair();
+    let router = Router::new()
+        .route(
+            "/encrypt",
+            post({
+                let client = session_key_pair.clone();
+                move |body| encryption_handler(body, client)
+            }),
+        )
+        .route(
+            "/decrypt",
+            post({
+                let client = session_key_pair.clone();
+                move |body| decryption_handler(body, client)
+            }),
+        )
+        .route("/attestation-doc", post(attestation_handler));
+
     println!("Starting mock crypto api on port: {port}");
-    crypto_api
-        .listen(&addr)
+    Server::bind(&addr.parse().unwrap())
+        .serve(router.into_make_service())
         .await
         .expect("Could not start crypto api");
-}
-
-fn get_server() -> tide::Server<rust_crypto::backend::ies_secp256r1_openssl::Client> {
-    let session_key_pair = create_key_pair();
-    let mut app = tide::with_state(session_key_pair);
-    app.at("/encrypt").post(encryption_handler);
-    app.at("/decrypt").post(decryption_handler);
-    app.at("/attestation-doc").post(attestation_handler);
-    app
 }
 
 fn encrypt(client: &CryptoClient, value: &mut Value) {
@@ -81,51 +90,33 @@ fn convert_value_to_string(value: &Value) -> String {
         .unwrap_or_else(|| serde_json::to_string(&value).unwrap())
 }
 
-async fn encryption_handler(mut request: Request<CryptoClient>) -> tide::Result {
-    let client = request.state().clone();
-    if let Ok(mut payload) = request.body_json().await {
-        encrypt(&client, &mut payload);
-        let res = tide::Response::builder(200)
-            .content_type(mime::JSON)
-            .body(payload)
-            .build();
-        Ok(res)
-    } else {
-        let res = tide::Response::builder(400)
-            .content_type(mime::JSON)
-            .body(
-                serde_json::json!({ "message": "Failed to parse encrypt request payload as JSON" }),
-            )
-            .build();
-        Ok(res)
-    }
+async fn encryption_handler(Json(mut payload): Json<Value>, client: CryptoClient) -> Json<Value> {
+    encrypt(&client, &mut payload);
+    Json(payload)
 }
 
-async fn decryption_handler(mut request: Request<CryptoClient>) -> tide::Result {
-    let client = request.state().clone();
-    if let Ok(mut payload) = request.body_json().await {
-        decrypt(&client, &mut payload);
-        let res = tide::Response::builder(200)
-            .content_type(mime::JSON)
-            .body(payload)
-            .build();
-        Ok(res)
-    } else {
-        let res = tide::Response::builder(400)
-            .content_type(mime::JSON)
-            .body(
-                serde_json::json!({ "message": "Failed to parse decrypt request payload as JSON" }),
-            )
-            .build();
-        Ok(res)
-    }
+async fn decryption_handler(Json(mut payload): Json<Value>, client: CryptoClient) -> Json<Value> {
+    decrypt(&client, &mut payload);
+    Json(payload)
 }
 
-async fn attestation_handler(_: Request<CryptoClient>) -> tide::Result {
-    let pcr0 = std::env::var("PCR0").expect("No key given");
-    let pcr1 = std::env::var("PCR1").expect("No cert given");
-    let pcr2 = std::env::var("PCR2").expect("No key given");
-    let pcr8 = std::env::var("PCR8").expect("No cert given");
+fn default_pcr_measure() -> String {
+    "000".to_string()
+}
+
+async fn attestation_handler() -> Response {
+    let pcr0 = std::env::var("PCR0")
+        .ok()
+        .unwrap_or_else(default_pcr_measure);
+    let pcr1 = std::env::var("PCR1")
+        .ok()
+        .unwrap_or_else(default_pcr_measure);
+    let pcr2 = std::env::var("PCR2")
+        .ok()
+        .unwrap_or_else(default_pcr_measure);
+    let pcr8 = std::env::var("PCR8")
+        .ok()
+        .unwrap_or_else(default_pcr_measure);
     let ad = serde_json::json!({
       "Measurements": {
         "PCR0": pcr0,
@@ -135,16 +126,7 @@ async fn attestation_handler(_: Request<CryptoClient>) -> tide::Result {
       }
     });
     match serde_cbor::to_vec(&ad) {
-        Ok(attestation_doc) => {
-            let res = tide::Response::builder(200).body(attestation_doc).build();
-            Ok(res)
-        }
-        Err(_) => {
-            let res = tide::Response::builder(500)
-        .content_type(mime::JSON)
-        .body(serde_json::json!({ "message": "An internal error occurred while generating a mock attestation document" }))
-        .build();
-            Ok(res)
-        }
+        Ok(attestation_doc) => attestation_doc.into_response(),
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
 }
