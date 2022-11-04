@@ -287,7 +287,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
             let expected_directive = expected_directive.to_string();
             let processed_directive = processed_directive.to_string();
             if expected_directive.contains("cage-build-assets") {
-                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled/tls-termination-enabled?t="));
+                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.com/runtime/latest/data-plane/egress-disabled/tls-termination-enabled?t="));
                 assert!(processed_directive.ends_with("-O /data-plane && chmod +x /data-plane"));
             } else {
                 assert_eq!(expected_directive, processed_directive);
@@ -365,7 +365,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
             let expected_directive = expected_directive.to_string();
             let processed_directive = processed_directive.to_string();
             if expected_directive.contains("cage-build-assets") {
-                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled/tls-termination-enabled?t="));
+                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.com/runtime/latest/data-plane/egress-disabled/tls-termination-enabled?t="));
                 assert!(processed_directive.ends_with("-O /data-plane && chmod +x /data-plane"));
             } else {
                 assert_eq!(expected_directive, processed_directive);
