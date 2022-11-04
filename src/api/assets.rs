@@ -10,8 +10,8 @@ impl ApiClient for AssetsClient {
     }
 
     fn base_url(&self) -> String {
-        std::env::var("EV_ASSETS_URL")
-            .unwrap_or(String::from("https://cage-build-assets.evervault.com"))
+        let domain = std::env::var("EV_DOMAIN").unwrap_or(String::from("evervault.com"));
+        format!("https://cage-build-assets.{}", domain)
     }
 
     fn auth(&self) -> &super::AuthMode {
