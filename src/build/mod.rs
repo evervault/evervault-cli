@@ -142,15 +142,12 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .duration_since(std::time::UNIX_EPOCH)
         .expect("System time is before the unix epoch")
         .as_secs();
-    #[cfg(not(debug_assertions))]
+
+    let ev_domain = std::env::var("EV_DOMAIN").unwrap_or(String::from("evervault.com"));
+
     let data_plane_url = format!(
-        "https://cage-build-assets.evervault.com/runtime/latest/data-plane/{}?t={}",
-        build_config.get_dataplane_feature_label(),
-        epoch
-    );
-    #[cfg(debug_assertions)]
-    let data_plane_url = format!(
-        "https://cage-build-assets.evervault.io/runtime/latest/data-plane/{}?t={}",
+        "https://cage-build-assets.{}/runtime/latest/data-plane/{}?t={}",
+        ev_domain,
         build_config.get_dataplane_feature_label(),
         epoch
     );
