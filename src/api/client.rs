@@ -57,7 +57,8 @@ pub trait ApiClient {
     fn client(&self) -> &Client;
 
     fn base_url(&self) -> String {
-        std::env::var("EV_API_URL").unwrap_or(String::from("https://api.evervault.com"))
+        let domain = std::env::var("EV_DOMAIN").unwrap_or(String::from("evervault.com"));
+        format!("https://api.{}", domain)
     }
 
     fn user_agent(&self) -> String {
