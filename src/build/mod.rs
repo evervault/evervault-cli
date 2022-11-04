@@ -142,15 +142,12 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .duration_since(std::time::UNIX_EPOCH)
         .expect("System time is before the unix epoch")
         .as_secs();
-    #[cfg(not(debug_assertions))]
+
+    let ev_domain = std::env::var("EV_DOMAIN").unwrap_or(String::from("evervault.com"));
+
     let data_plane_url = format!(
-        "https://cage-build-assets.evervault.com/runtime/latest/data-plane/{}?t={}",
-        build_config.get_dataplane_feature_label(),
-        epoch
-    );
-    #[cfg(debug_assertions)]
-    let data_plane_url = format!(
-        "https://cage-build-assets.evervault.io/runtime/latest/data-plane/{}?t={}",
+        "https://cage-build-assets.{}/runtime/latest/data-plane/{}?t={}",
+        ev_domain,
         build_config.get_dataplane_feature_label(),
         epoch
     );
@@ -290,7 +287,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
             let expected_directive = expected_directive.to_string();
             let processed_directive = processed_directive.to_string();
             if expected_directive.contains("cage-build-assets") {
-                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled/tls-termination-enabled?t="));
+                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.com/runtime/latest/data-plane/egress-disabled/tls-termination-enabled?t="));
                 assert!(processed_directive.ends_with("-O /data-plane && chmod +x /data-plane"));
             } else {
                 assert_eq!(expected_directive, processed_directive);
@@ -368,7 +365,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
             let expected_directive = expected_directive.to_string();
             let processed_directive = processed_directive.to_string();
             if expected_directive.contains("cage-build-assets") {
-                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled/tls-termination-enabled?t="));
+                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.com/runtime/latest/data-plane/egress-disabled/tls-termination-enabled?t="));
                 assert!(processed_directive.ends_with("-O /data-plane && chmod +x /data-plane"));
             } else {
                 assert_eq!(expected_directive, processed_directive);
