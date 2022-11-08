@@ -7,6 +7,7 @@ pub mod config;
 pub mod delete;
 pub mod deploy;
 pub mod describe;
+pub mod dev;
 pub mod docker;
 pub mod enclave;
 pub mod progress;
