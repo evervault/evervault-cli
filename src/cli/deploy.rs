@@ -39,10 +39,6 @@ pub struct DeployArgs {
     #[clap(long = "private-key")]
     pub private_key: Option<String>,
 
-    /// Write latest attestation information to cage.toml config file
-    #[clap(short = 'w', long = "write")]
-    pub write: bool,
-
     /// Disable verbose output
     #[clap(long)]
     pub quiet: bool,
@@ -111,13 +107,11 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
             .expect("Failed to serialize Cage attestation measures.")
     );
 
-    if deploy_args.write {
-        crate::common::update_cage_config_with_eif_measurements(
-            &mut cage_config,
-            &deploy_args.config,
-            &eif_measurements,
-        );
-    }
+    crate::common::update_cage_config_with_eif_measurements(
+        &mut cage_config,
+        &deploy_args.config,
+        &eif_measurements,
+    );
 
     if let Err(e) = deploy_eif(&validated_config, cage_api, output_path, &eif_measurements).await {
         log::error!("{}", e);
