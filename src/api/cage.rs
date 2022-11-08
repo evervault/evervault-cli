@@ -167,6 +167,7 @@ impl CreateCageDeploymentIntentRequest {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateCageRequest {
     name: String,
     is_time_bound: bool,
