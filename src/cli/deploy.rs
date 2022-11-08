@@ -101,6 +101,10 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         Err(e) => return e,
     };
 
+    if cage_config.debug {
+        crate::common::log_debug_mode_attestation_warning();
+    }
+
     log::info!(
         "Deploying Cage with the following attestation measurements: {}",
         serde_json::to_string_pretty(&eif_measurements)
