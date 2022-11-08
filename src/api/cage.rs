@@ -169,11 +169,15 @@ impl CreateCageDeploymentIntentRequest {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CreateCageRequest {
     name: String,
+    is_time_bound: bool,
 }
 
-impl std::convert::From<String> for CreateCageRequest {
-    fn from(cage_name: String) -> Self {
-        Self { name: cage_name }
+impl CreateCageRequest {
+    pub fn new(cage_name: String, is_time_bound: bool) -> Self {
+        Self {
+            name: cage_name,
+            is_time_bound,
+        }
     }
 }
 
