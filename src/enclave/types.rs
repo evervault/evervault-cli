@@ -67,13 +67,13 @@ impl EIFMeasurements {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PCRs {
     #[serde(rename = "PCR0")]
-    pcr0: String,
+    pub pcr0: String,
     #[serde(rename = "PCR1")]
-    pcr1: String,
+    pub pcr1: String,
     #[serde(rename = "PCR2")]
-    pcr2: String,
+    pub pcr2: String,
     #[serde(rename = "PCR8")]
-    pcr8: Option<String>,
+    pub pcr8: Option<String>,
 }
 
 // Struct for deserializing the output from the nitro cli
