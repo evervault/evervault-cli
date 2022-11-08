@@ -1,4 +1,5 @@
 use crate::api;
+use crate::api::cage::CreateCageRequest;
 use crate::api::{cage::Cage, AuthMode};
 use crate::common::CliError;
 use crate::config::{default_dockerfile, CageConfig, EgressSettings, SigningInfo};
@@ -50,6 +51,10 @@ pub struct InitArgs {
     /// Flag to disable tls termination. This will pass the raw TCP streams directly to your service.
     #[clap(long = "disable-tls-termination")]
     pub disable_tls_termination: bool,
+
+    /// Flag to make your Cage delete after 6 hours
+    #[clap(long = "self-destruct")]
+    pub is_time_bound: bool,
 }
 
 impl std::convert::Into<CageConfig> for InitArgs {
@@ -85,10 +90,9 @@ pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
     let api_key = get_api_key!();
     let cages_client = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.clone()));
 
-    let created_cage = match cages_client
-        .create_cage(init_args.cage_name.clone().into())
-        .await
-    {
+    let create_cage_request =
+        CreateCageRequest::new(init_args.cage_name.clone(), init_args.is_time_bound);
+    let created_cage = match cages_client.create_cage(create_cage_request).await {
         Ok(cage_ref) => cage_ref,
         Err(e) => {
             log::error!("Error creating Cage record — {:?}", e);
@@ -172,6 +176,7 @@ mod init_tests {
             disable_tls_termination: false,
             cert_path: Some("./cert.pem".to_string()),
             key_path: Some("./key.pem".to_string()),
+            is_time_bound: false,
         };
         init_local_config(init_args, sample_cage).await;
         let config_path = output_dir.path().join("cage.toml");
