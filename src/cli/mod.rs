@@ -1,4 +1,5 @@
 use clap::Subcommand;
+pub mod attest;
 pub mod build;
 pub mod cert;
 pub mod delete;
@@ -22,4 +23,5 @@ pub enum Command {
     List(list::List),
     Logs(logs::LogArgs),
     Update(update::UpdateArgs),
+    Attest(attest::AttestArgs),
 }

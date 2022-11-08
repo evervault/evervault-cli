@@ -1,4 +1,5 @@
 pub mod api;
+pub mod attest;
 pub mod build;
 pub mod cert;
 pub mod cli;

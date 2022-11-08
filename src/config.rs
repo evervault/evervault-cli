@@ -284,6 +284,25 @@ impl CageConfig {
         let cage_config_content = std::fs::read(config_path)?;
         Ok(toml::de::from_slice(cage_config_content.as_slice())?)
     }
+
+    pub fn get_cage_domain(&self) -> Result<String, CageConfigError> {
+        if self.uuid.is_none() {
+            return Err(CageConfigError::MissingField("cage_uuid".to_string()));
+        }
+        Ok(format!(
+            "{}.{}.cages.evervault.com",
+            self.name(),
+            self.app_uuid
+                .as_ref()
+                .ok_or(CageConfigError::MissingField("app_uuid".to_string()))?
+        ))
+    }
+
+    pub fn get_attestation(&self) -> Result<&EIFMeasurements, CageConfigError> {
+        self.attestation
+            .as_ref()
+            .ok_or(CageConfigError::MissingField("attestation".to_string()))
+    }
 }
 
 impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
