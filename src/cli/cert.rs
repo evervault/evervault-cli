@@ -62,7 +62,7 @@ pub fn run(cert_args: CertArgs) -> exitcode::ExitCode {
                         "privateKey": key_path
                     }
                 });
-                log::info!("{}", serde_json::to_string(&success_msg).unwrap());
+                println!("{}", serde_json::to_string(&success_msg).unwrap());
             };
         }
     }

@@ -61,7 +61,7 @@ async fn list_cages(cage_client: &api::cage::CagesClient) -> exitcode::ExitCode 
     };
 
     let serialized_cages = serde_json::to_string_pretty(&cages).unwrap();
-    log::info!("{}", serialized_cages);
+    println!("{}", serialized_cages);
     exitcode::OK
 }
 
@@ -92,7 +92,7 @@ async fn list_deployments(
         }
     };
 
-    let serialized_cages = serde_json::to_string_pretty(&cages).unwrap();
-    log::info!("{}", serialized_cages);
+    let serialized_deployments = serde_json::to_string_pretty(&cages).unwrap();
+    println!("{}", serialized_deployments);
     exitcode::OK
 }
