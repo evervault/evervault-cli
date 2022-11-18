@@ -22,9 +22,29 @@ pub struct DeleteArgs {
     /// Perform the Cage deletion in the background
     #[clap(long)]
     pub background: bool,
+
+    #[clap(long)]
+    pub force: bool,
 }
 
 pub async fn run(delete_args: DeleteArgs) -> exitcode::ExitCode {
+    let should_del = match dialoguer::Confirm::new()
+        .with_prompt("Are you sure you want to delete this Cage?")
+        .default(false)
+        .interact()
+    {
+        Ok(should_delete) => should_delete,
+        Err(_) => {
+            log::error!("An error occurred while attempting to confirm this Cage delete.");
+            return exitcode::IOERR;
+        }
+    };
+
+    if !should_del {
+        log::info!("Phew! Exiting early...");
+        return exitcode::OK;
+    }
+
     let api_key = get_api_key!();
     match delete_cage(
         delete_args.config.as_str(),
