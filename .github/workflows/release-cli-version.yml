@@ -124,6 +124,8 @@ jobs:
 
       - name: Fetch dependencies
         run: cargo fetch
+        env:
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
 
       - uses: actions-rs/toolchain@v1
         with:
