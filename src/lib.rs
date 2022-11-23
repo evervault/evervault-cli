@@ -1,4 +1,5 @@
 pub mod api;
+#[cfg(not(target_os = "windows"))]
 pub mod attest;
 pub mod build;
 pub mod cert;
