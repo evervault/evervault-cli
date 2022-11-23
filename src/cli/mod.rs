@@ -1,4 +1,5 @@
 use clap::Subcommand;
+#[cfg(not(target_os = "windows"))]
 pub mod attest;
 pub mod build;
 pub mod cert;
@@ -23,5 +24,6 @@ pub enum Command {
     List(list::List),
     Logs(logs::LogArgs),
     Update(update::UpdateArgs),
+    #[cfg(not(target_os = "windows"))]
     Attest(attest::AttestArgs),
 }

@@ -104,33 +104,18 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Setup Perl
-        uses: shogo82148/actions-setup-perl@v1
-        with:
-          distribution: strawberry
-
-      - name: Inject Version with Perl
-        run: |
-          perl -p -i -e's/0.0.0-dev/${{ needs.get-version.outputs.version }}/' ./Cargo.toml
-
       - name: Install Rust
         run: rustup update --no-self-update stable && rustup default stable
-
-      - name: Set vcpkg root
-        run: echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
-
-      - name: Install OpenSSL
-        run: vcpkg install openssl:x64-windows
-
-      - name: Fetch dependencies
-        run: cargo fetch
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
 
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           target: ${{ env.WINDOWS_TARGET }}
+
+      - name: Fetch dependencies
+        run: cargo fetch
+        env:
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
 
       - name: Build CLI for Windows
         run: cargo build --release --target ${{ env.WINDOWS_TARGET }}
