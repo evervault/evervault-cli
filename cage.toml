@@ -1,0 +1,14 @@
+name = "test-access"
+uuid = "cage_0f2ef070ac30"
+app_uuid = "app_c8d016abcda6"
+team_uuid = "team_0486c21dd511"
+debug = false
+dockerfile = "./Dockerfile"
+disable_tls_termination = false
+
+[egress]
+enabled = false
+
+[signing]
+certPath = "/Users/hannah/code/nitro-cages-onboarding/examples/hello-cage/cert.pem"
+keyPath = "/Users/hannah/code/nitro-cages-onboarding/examples/hello-cage/key.pem"

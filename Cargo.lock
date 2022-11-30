@@ -557,6 +557,7 @@ dependencies = [
  "atty",
  "aws-nitro-enclaves-nsm-api",
  "axum",
+ "base64",
  "bytes",
  "chrono",
  "clap",
@@ -1678,9 +1679,9 @@ dependencies = [
 
 [[package]]
 name = "rust-crypto"
-version = "0.1.3"
+version = "0.1.5"
 source = "registry+https://dl.cloudsmith.io/qb1b3KaN9Yg0lKI9/evervault/rust-libraries/cargo/index.git"
-checksum = "611cb975f2e9cb0ea35d3ec3cf974e69fa39d5fa5371a6db313ba2871bfe5feb"
+checksum = "df1ff02636d161b5c6a9f6ae93b6d1c9008dc9ad533401cdff03353ddea37980"
 dependencies = [
  "base-x",
  "base64",
