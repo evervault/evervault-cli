@@ -7,6 +7,8 @@ pub mod delete;
 pub mod deploy;
 pub mod describe;
 pub mod dev;
+pub mod encrypt;
+pub mod env;
 pub mod init;
 pub mod list;
 pub mod logs;
@@ -26,4 +28,6 @@ pub enum Command {
     Update(update::UpdateArgs),
     #[cfg(not(target_os = "windows"))]
     Attest(attest::AttestArgs),
+    Env(env::EnvArgs),
+    Encrypt(encrypt::EncryptArgs),
 }

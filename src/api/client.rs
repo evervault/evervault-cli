@@ -58,7 +58,18 @@ pub trait ApiClient {
 
     fn base_url(&self) -> String {
         let domain = std::env::var("EV_DOMAIN").unwrap_or(String::from("evervault.com"));
-        format!("https://api.{}", domain)
+        format!("https://api.{}", domain);
+        "http://api.localhost:3000".to_string()
+    }
+
+    fn keys_url(&self) -> String {
+        let production_base = "evervault.com".to_string();
+        // if self.base_url() == production_base {
+        //     "https://keys.evervault.com".to_string()
+        // } else {
+        //     "https://keys.evervault.io".to_string()
+        // }
+        "http://api.localhost:3000".to_string()
     }
 
     fn user_agent(&self) -> String {

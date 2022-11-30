@@ -12,6 +12,8 @@ pub mod describe;
 pub mod dev;
 pub mod docker;
 pub mod enclave;
+pub mod encrypt;
+pub mod env;
 pub mod progress;
 
 #[cfg(test)]
