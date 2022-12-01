@@ -1,6 +1,6 @@
 use crate::api::cage::{AddSecretRequest, CagesClient, CageEnv};
 use crate::cli::encrypt::CurveName;
-use crate::cli::env::Action;
+use crate::cli::env::EnvCommands;
 use crate::config::{CageConfig, CageConfigError};
 use crate::encrypt::{self, encrypt};
 use rust_crypto::EvervaultCryptoError;
@@ -23,46 +23,55 @@ pub enum EnvError {
 }
 
 pub async fn env(
-    name: String,
-    secret: String,
-    config_path: String,
-    curve: CurveName,
     client: CagesClient,
-    action: Action,
+    action: EnvCommands,
 ) -> Result<Option<CageEnv>, EnvError> {
-    let cage_config = CageConfig::try_from_filepath(&config_path)?;
-
-    let (app_uuid, team_uuid) = if cage_config.app_uuid.is_none() || cage_config.team_uuid.is_none()
-    {
-        return Err(EnvError::MissingAppInfo);
-    } else {
-        (
-            cage_config.app_uuid.unwrap(),
-            cage_config.team_uuid.unwrap(),
-        )
-    };
 
     match action {
-        Action::Add => {
+        EnvCommands::Add(command) => {
+            let details = get_cage_details(command.config)?;
             let encrypted_secret =
-                encrypt(secret.clone(), team_uuid.clone(), app_uuid.clone(), curve).await?;
+                encrypt(command.secret, details.team_uuid, details.app_uuid, command.curve).await?;
             let request = AddSecretRequest {
-                name,
+                name: command.name,
                 secret: encrypted_secret,
             };
             client
-                .add_env_var(cage_config.uuid.unwrap(), request)
+                .add_env_var(details.uuid, request)
                 .await?;
             Ok(None)        
         }
-        Action::Delete => {
+        EnvCommands::Delete(command) => {
+            let details = get_cage_details(command.config)?;
             client
-                .delete_env_var(cage_config.uuid.unwrap(), name)
+                .delete_env_var(details.uuid, command.name)
                 .await?;
             Ok(None)    
         }
-        Action::Get => {
-            Ok(Some(client.get_cage_env(cage_config.uuid.unwrap()).await?))
+        EnvCommands::Get(command) => {
+            let details = get_cage_details(command.config)?;
+            Ok(Some(client.get_cage_env(details.uuid).await?))
         }
+    }
+}
+
+pub struct CageInfo {
+    pub uuid: String,
+    pub team_uuid: String,
+    pub app_uuid: String
+}
+
+fn get_cage_details(config_path: String) -> Result<CageInfo, EnvError>{
+    let cage_config = CageConfig::try_from_filepath(&config_path)?;
+
+    if cage_config.app_uuid.is_none() || cage_config.team_uuid.is_none() || cage_config.uuid.is_none()
+    {
+        return Err(EnvError::MissingAppInfo);
+    } else {
+        Ok(CageInfo{
+            app_uuid: cage_config.app_uuid.unwrap(),
+            team_uuid: cage_config.team_uuid.unwrap(),
+            uuid: cage_config.uuid.unwrap()
+        })
     }
 }

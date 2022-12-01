@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 use crate::{
     api::{cage::CagesClient, AuthMode},
@@ -8,21 +8,35 @@ use crate::{
 use super::encrypt::CurveName;
 use crate::env::env;
 
-#[derive(Clone, Debug, clap::ArgEnum)]
-pub enum Action {
+#[derive(Clone, Debug, clap::ArgEnum, Subcommand)]
+pub enum EnvAction {
     Add,
     Delete,
     Get
 }
 
+/// Manage Cage environment
+#[derive(Debug, Parser)]
+#[clap(name = "cert", about)]
+pub struct EnvArgs {
+    #[clap(subcommand)]
+    action: EnvCommands,
+}
+
+
+#[derive(Debug, Subcommand)]
+pub enum EnvCommands {
+    /// Create a new Cage signing certificate
+    #[clap()]
+    Add(AddEnvArgs),
+    Delete(DeleteEnvArgs),
+    Get(GetEnvArgs),
+}
+
 /// Add secret to Cage env
 #[derive(Debug, Parser)]
 #[clap(name = "env", about)]
-pub struct EnvArgs {
-
-    /// Enviroment action: add, get, delete
-    #[clap(arg_enum)]
-    pub action: Action,
+pub struct AddEnvArgs {
 
     /// Name of environment variable
     pub name: String,
@@ -30,7 +44,7 @@ pub struct EnvArgs {
     /// Environment variable value
     pub secret: String,
 
-    /// The curve to use (nist of koblitz) default value is nist
+    /// The curve to use (nist or koblitz) default value is nist
     #[clap(value_enum, default_value = "nist")]
     pub curve: CurveName,
 
@@ -39,15 +53,36 @@ pub struct EnvArgs {
     pub config: String,
 }
 
+/// Add delete secret from Cage env
+#[derive(Debug, Parser)]
+#[clap(name = "env", about)]
+pub struct DeleteEnvArgs {
+
+    /// Name of environment variable
+    pub name: String,
+
+    /// Path to cage.toml config file
+    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    pub config: String,
+}
+
+/// Get secrets from Cage env
+#[derive(Debug, Parser)]
+#[clap(name = "env", about)]
+pub struct GetEnvArgs {
+
+    /// Path to cage.toml config file
+    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    pub config: String,
+}
+
+
 pub async fn run(env_args: EnvArgs) -> exitcode::ExitCode {
+    
     let api_key = get_api_key!();
     let cages_client = CagesClient::new(AuthMode::ApiKey(api_key));
 
     match env(
-        env_args.name,
-        env_args.secret,
-        env_args.config,
-        env_args.curve,
         cages_client,
         env_args.action,
     )
