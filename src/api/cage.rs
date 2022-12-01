@@ -108,7 +108,6 @@ impl CagesClient {
 
     pub async fn get_cage_env(&self, cage_uuid: String) -> ApiResult<CageEnv> {
         let get_env_url = format!("{}/{}/secrets", self.base_url(), cage_uuid);
-        println!("url {}", get_env_url);
         self.get(&get_env_url)
             .send()
             .await
