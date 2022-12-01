@@ -85,11 +85,16 @@ pub async fn run(env_args: EnvArgs) -> exitcode::ExitCode {
             Some(env) => {
                 let success_msg = serde_json::json!(env);
                 println!("{}", serde_json::to_string(&success_msg).unwrap());
+                exitcode::OK
             }
-            None => log::info!("Environment updated successfully"),
+            None => {
+                log::info!("Environment updated successfully");
+                exitcode::OK
+            },
         },
-        Err(e) => log::error!("Error updating environment {}", e),
-    };
-
-    exitcode::OK
+        Err(e) => {
+            log::error!("Error updating environment {}", e);
+            exitcode::SOFTWARE
+        },
+    }
 }

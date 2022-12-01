@@ -15,7 +15,7 @@ pub enum EnvError {
     EvervaultCryptoError(#[from] EvervaultCryptoError),
     #[error("App and team uuid need to be provided in cage.toml or as args")]
     MissingAppInfo,
-    #[error("An error occured during enryption — {0}")]
+    #[error("An error occured during encryption — {0}")]
     EncryptError(#[from] encrypt::EncryptError),
     #[error("An error occured reading cage.toml — {0}")]
     CageConfigError(#[from] CageConfigError),
