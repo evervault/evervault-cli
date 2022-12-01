@@ -11,7 +11,6 @@ pub enum CurveName {
 #[derive(Debug, Parser)]
 #[clap(name = "encrypt", about)]
 pub struct EncryptArgs {
-
     // Plaintext value to encrypt
     #[clap(long = "value")]
     pub value: String,
