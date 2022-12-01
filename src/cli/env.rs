@@ -12,7 +12,7 @@ use crate::env::env;
 pub enum EnvAction {
     Add,
     Delete,
-    Get
+    Get,
 }
 
 /// Manage Cage environment
@@ -22,7 +22,6 @@ pub struct EnvArgs {
     #[clap(subcommand)]
     action: EnvCommands,
 }
-
 
 #[derive(Debug, Subcommand)]
 pub enum EnvCommands {
@@ -37,12 +36,15 @@ pub enum EnvCommands {
 #[derive(Debug, Parser)]
 #[clap(name = "env", about)]
 pub struct AddEnvArgs {
-
     /// Name of environment variable
     pub name: String,
 
     /// Environment variable value
     pub secret: String,
+
+    /// Whether to encrypt env var, default is true
+    #[clap(long = "egress")]
+    pub skip_encryption: bool,
 
     /// The curve to use (nist or koblitz) default value is nist
     #[clap(value_enum, default_value = "nist")]
@@ -57,7 +59,6 @@ pub struct AddEnvArgs {
 #[derive(Debug, Parser)]
 #[clap(name = "env", about)]
 pub struct DeleteEnvArgs {
-
     /// Name of environment variable
     pub name: String,
 
@@ -70,30 +71,22 @@ pub struct DeleteEnvArgs {
 #[derive(Debug, Parser)]
 #[clap(name = "env", about)]
 pub struct GetEnvArgs {
-
     /// Path to cage.toml config file
     #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
     pub config: String,
 }
 
-
 pub async fn run(env_args: EnvArgs) -> exitcode::ExitCode {
-    
     let api_key = get_api_key!();
     let cages_client = CagesClient::new(AuthMode::ApiKey(api_key));
 
-    match env(
-        cages_client,
-        env_args.action,
-    )
-    .await
-    {
+    match env(cages_client, env_args.action).await {
         Ok(result) => match result {
             Some(env) => {
                 let success_msg = serde_json::json!(env);
                 println!("{}", serde_json::to_string(&success_msg).unwrap());
             }
-            None => log::info!("Environment updated successfully")
+            None => log::info!("Environment updated successfully"),
         },
         Err(e) => log::error!("Error updating environment {}", e),
     };

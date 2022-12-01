@@ -238,7 +238,6 @@ pub struct Secret {
     pub secret: String,
 }
 
-
 impl CreateCageRequest {
     pub fn new(cage_name: String, is_time_bound: bool) -> Self {
         Self {
