@@ -76,6 +76,45 @@ impl CagesClient {
             .await
     }
 
+    pub async fn get_app_keys(
+        &self,
+        team_uuid: &str,
+        app_uuid: &str,
+    ) -> ApiResult<GetKeysResponse> {
+        let get_cage_url = format!("{}/{}/apps/{}", self.keys_url(), team_uuid, app_uuid);
+        self.get(&get_cage_url)
+            .send()
+            .await
+            .handle_json_response()
+            .await
+    }
+
+    pub async fn add_env_var(&self, cage_uuid: String, payload: AddSecretRequest) -> ApiResult<()> {
+        let add_env_url = format!("{}/{}/secrets", self.base_url(), cage_uuid);
+        self.put(&add_env_url)
+            .json(&payload)
+            .send()
+            .await
+            .handle_no_op_response()
+    }
+
+    pub async fn delete_env_var(&self, cage_uuid: String, name: String) -> ApiResult<()> {
+        let delete_env_url = format!("{}/{}/secrets/{}", self.base_url(), cage_uuid, name);
+        self.delete(&delete_env_url)
+            .send()
+            .await
+            .handle_no_op_response()
+    }
+
+    pub async fn get_cage_env(&self, cage_uuid: String) -> ApiResult<CageEnv> {
+        let get_env_url = format!("{}/{}/secrets", self.base_url(), cage_uuid);
+        self.get(&get_env_url)
+            .send()
+            .await
+            .handle_json_response()
+            .await
+    }
+
     pub async fn get_cage_deployment_by_uuid(
         &self,
         cage_uuid: &str,
@@ -171,6 +210,31 @@ impl CreateCageDeploymentIntentRequest {
 pub struct CreateCageRequest {
     name: String,
     is_time_bound: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddSecretRequest {
+    pub name: String,
+    pub secret: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CageSecrets {
+    pub name: String,
+    pub secret: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CageEnv {
+    pub secrets: Vec<Secret>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Secret {
+    pub name: String,
+    pub secret: String,
 }
 
 impl CreateCageRequest {
@@ -370,6 +434,14 @@ pub struct GetCageResponse {
     cage: Cage,
     #[serde(rename = "teeCageDeployments")]
     deployments: Vec<DeploymentsForGetCage>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetKeysResponse {
+    pub ecdh_p256_key_uncompressed: String,
+    pub ecdh_p256_key: String,
+    pub ecdh_key: String,
 }
 
 impl GetCageResponse {

@@ -7,7 +7,7 @@ Build, deploy and manage Cages
 ```
 > cargo build 
 > ln -s /<PATH-TO-CAGE-CLI-DIR>/cage-cli/target/debug/ev-cage /usr/local/bin/ev-cage 
-> ev-cage init --name <name> --generate-signing -f <dockerfile_path> --api-key <API_KEY> # can also pass --enable-egress here
+> ev-cage init --name <name> --generate-signing -f <dockerfile_path> --api-key <API_KEY> # can also pass --egress here
 > ev-cage deploy --api-key <API_KEY>
 ```
 

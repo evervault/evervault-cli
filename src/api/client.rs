@@ -61,6 +61,15 @@ pub trait ApiClient {
         format!("https://api.{}", domain)
     }
 
+    fn keys_url(&self) -> String {
+        let production_base = "evervault.com".to_string();
+        if self.base_url() == production_base {
+            "https://keys.evervault.com".to_string()
+        } else {
+            "https://keys.evervault.io".to_string()
+        }
+    }
+
     fn user_agent(&self) -> String {
         format!("evervault-cage-cli/{}", env!("CARGO_PKG_VERSION"))
     }
