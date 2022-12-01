@@ -90,11 +90,11 @@ pub async fn run(env_args: EnvArgs) -> exitcode::ExitCode {
             None => {
                 log::info!("Environment updated successfully");
                 exitcode::OK
-            },
+            }
         },
         Err(e) => {
             log::error!("Error updating environment {}", e);
             exitcode::SOFTWARE
-        },
+        }
     }
 }
