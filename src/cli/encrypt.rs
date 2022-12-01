@@ -36,11 +36,11 @@ pub async fn run(encrypt_args: EncryptArgs) -> exitcode::ExitCode {
     .await
     {
         Ok(encrypted_string) => {
-            println!("{}", encrypted_string);
+            log::info!("{}", encrypted_string);
             exitcode::OK
         }
         Err(e) => {
-            println!("{}", e);
+            log::info!("{}", e);
             exitcode::SOFTWARE
         }
     }

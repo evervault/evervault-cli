@@ -84,7 +84,7 @@ pub async fn run(env_args: EnvArgs) -> exitcode::ExitCode {
         Ok(result) => match result {
             Some(env) => {
                 let success_msg = serde_json::json!(env);
-                println!("{}", serde_json::to_string(&success_msg).unwrap());
+                log::info!("{}", serde_json::to_string(&success_msg).unwrap());
                 exitcode::OK
             }
             None => {
