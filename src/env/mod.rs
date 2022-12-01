@@ -1,5 +1,4 @@
 use crate::api::cage::{AddSecretRequest, CagesClient, CageEnv};
-use crate::cli::encrypt::CurveName;
 use crate::cli::env::EnvCommands;
 use crate::config::{CageConfig, CageConfigError};
 use crate::encrypt::{self, encrypt};

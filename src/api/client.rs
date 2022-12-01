@@ -64,12 +64,11 @@ pub trait ApiClient {
 
     fn keys_url(&self) -> String {
         let production_base = "evervault.com".to_string();
-        // if self.base_url() == production_base {
-        //     "https://keys.evervault.com".to_string()
-        // } else {
-        //     "https://keys.evervault.io".to_string()
-        // }
-        "http://api.localhost:3000".to_string()
+        if self.base_url() == production_base {
+            "https://keys.evervault.com".to_string()
+        } else {
+            "https://keys.evervault.io".to_string()
+        }
     }
 
     fn user_agent(&self) -> String {
