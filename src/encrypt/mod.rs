@@ -28,13 +28,13 @@ pub async fn encrypt(
     curve: CurveName,
 ) -> Result<String, EncryptError> {
     let cage_api = CagesClient::new(AuthMode::NoAuth);
-    //let keys = cage_api.get_app_keys(&team_uuid, &app_uuid).await?;
+    let keys = cage_api.get_app_keys(&team_uuid, &app_uuid).await?;
 
     let result = match curve {
         CurveName::Nist => {
             let client = ies_secp256r1_openssl::Client::new(
                 ies_secp256r1_openssl::EcKey::public_key_from_bytes(&base64::decode(
-                    "Aw9aPPL6XhmvEXkM6Lb0A/mXLVEb5Vs5WeuHTtvQBAi7".to_string(),
+                    keys.ecdh_key,
                 )?)?,
             );
             client.encrypt(value, Datatype::String, false)?
@@ -42,7 +42,7 @@ pub async fn encrypt(
         CurveName::Koblitz => {
             let client = ies_secp256k1_openssl::Client::new(
                 ies_secp256k1_openssl::EcKey::public_key_from_bytes(&base64::decode(
-                    "Aw9aPPL6XhmvEXkM6Lb0A/mXLVEb5Vs5WeuHTtvQBAi7".to_string(),
+                    keys.ecdh_p256_key,
                 )?)?,
             );
             client.encrypt(value, Datatype::String, false)?

@@ -1,5 +1,3 @@
-use std::fmt::Formatter;
-
 use super::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
 use super::AuthMode;
 use reqwest::Client;
