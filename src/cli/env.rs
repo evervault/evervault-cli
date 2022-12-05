@@ -37,17 +37,19 @@ pub enum EnvCommands {
 #[clap(name = "env", about)]
 pub struct AddEnvArgs {
     /// Name of environment variable
+    #[clap(long = "key")]
     pub name: String,
 
     /// Environment variable value
+    #[clap(long = "value")]
     pub secret: String,
 
     /// Whether to encrypt env var, default is true
-    #[clap(long = "egress")]
+    #[clap(long = "skip_encryption")]
     pub skip_encryption: bool,
 
     /// The curve to use (nist or koblitz) default value is nist
-    #[clap(value_enum, default_value = "nist")]
+    #[clap(value_enum, long = "curve", default_value = "nist")]
     pub curve: CurveName,
 
     /// Path to cage.toml config file
@@ -84,7 +86,7 @@ pub async fn run(env_args: EnvArgs) -> exitcode::ExitCode {
         Ok(result) => match result {
             Some(env) => {
                 let success_msg = serde_json::json!(env);
-                log::info!("{}", serde_json::to_string(&success_msg).unwrap());
+                println!("{}", serde_json::to_string_pretty(&success_msg).unwrap());
                 exitcode::OK
             }
             None => {
