@@ -1,13 +1,13 @@
-use rust_crypto::{
-    backend::{ies_secp256k1_openssl, ies_secp256r1_openssl, CryptoClient, Datatype},
-    EvervaultCryptoError,
-};
-use thiserror::Error;
 use crate::config::CageConfigError;
 use crate::{
     api::{cage::CagesClient, AuthMode},
     cli::encrypt::CurveName,
 };
+use rust_crypto::{
+    backend::{ies_secp256k1_openssl, ies_secp256r1_openssl, CryptoClient, Datatype},
+    EvervaultCryptoError,
+};
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum EncryptError {
