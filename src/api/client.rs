@@ -62,8 +62,7 @@ pub trait ApiClient {
     }
 
     fn keys_url(&self) -> String {
-        let production_base = "evervault.com".to_string();
-        if self.base_url() == production_base {
+        if self.base_url().contains("evervault.com") {
             "https://keys.evervault.com".to_string()
         } else {
             "https://keys.evervault.io".to_string()
