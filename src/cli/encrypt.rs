@@ -1,6 +1,6 @@
 use crate::{
     config::CageConfig,
-    encrypt::{self, EncryptError}
+    encrypt::{self, EncryptError},
 };
 use clap::Parser;
 
@@ -34,10 +34,10 @@ pub struct EncryptArgs {
 
 pub async fn run(encrypt_args: EncryptArgs) -> exitcode::ExitCode {
     let (team_uuid, app_uuid) = match get_cage_details(encrypt_args.clone()) {
-        Ok((team_uuid, app_uuid))=> (team_uuid, app_uuid),
+        Ok((team_uuid, app_uuid)) => (team_uuid, app_uuid),
         Err(e) => {
             log::error!("Config error {}", e);
-            return exitcode::SOFTWARE
+            return exitcode::SOFTWARE;
         }
     };
     match encrypt::encrypt(encrypt_args.value, team_uuid, app_uuid, encrypt_args.curve).await {
@@ -56,9 +56,7 @@ fn get_cage_details(encrypt_args: EncryptArgs) -> Result<(String, String), Encry
     if encrypt_args.team_uuid.is_none() || encrypt_args.app_uuid.is_none() {
         let cage_config = CageConfig::try_from_filepath(&encrypt_args.config)?;
 
-        if cage_config.app_uuid.is_none()
-            || cage_config.team_uuid.is_none()
-        {
+        if cage_config.app_uuid.is_none() || cage_config.team_uuid.is_none() {
             return Err(EncryptError::MissingUuid);
         } else {
             Ok((
