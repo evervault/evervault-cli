@@ -3,7 +3,7 @@ use rust_crypto::{
     EvervaultCryptoError,
 };
 use thiserror::Error;
-
+use crate::config::CageConfigError;
 use crate::{
     api::{cage::CagesClient, AuthMode},
     cli::encrypt::CurveName,
@@ -11,14 +11,16 @@ use crate::{
 
 #[derive(Debug, Error)]
 pub enum EncryptError {
-    #[error("Could not find signing key file at {0}")]
-    SigningKeyNotFound(String),
+    #[error("Team uuid and app uuid must be provided as arg or in cage toml")]
+    MissingUuid,
     #[error("An error contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),
     #[error("Error decoding public key — {0}")]
     Base64DecodeError(#[from] base64::DecodeError),
     #[error("An error occurred during decryption — {0}")]
     EvervaultCryptoError(#[from] EvervaultCryptoError),
+    #[error("An error occured reading cage.toml — {0}")]
+    CageConfigError(#[from] CageConfigError),
 }
 
 pub async fn encrypt(
