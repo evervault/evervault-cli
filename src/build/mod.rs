@@ -22,6 +22,7 @@ pub async fn build_enclave_image_file(
     output_dir: Option<&str>,
     verbose: bool,
     docker_build_args: Option<Vec<&str>>,
+    data_plane_version: String,
 ) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
     if !Path::new(&context_path).exists() {
         log::error!(
@@ -55,7 +56,8 @@ pub async fn build_enclave_image_file(
         .await
         .map_err(|_| BuildError::DockerfileAccessError(cage_config.dockerfile().to_string()))?;
 
-    let processed_dockerfile = process_dockerfile(&cage_config, dockerfile).await?;
+    let processed_dockerfile =
+        process_dockerfile(&cage_config, dockerfile, data_plane_version).await?;
 
     // write new dockerfile to fs
     let ev_user_dockerfile_path = output_path.join(Path::new(EV_USER_DOCKERFILE_PATH));
@@ -92,6 +94,7 @@ pub async fn build_enclave_image_file(
 async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     build_config: &ValidatedCageBuildConfig,
     dockerfile_src: R,
+    data_plane_version: String,
 ) -> Result<Vec<Directive>, BuildError> {
     // Decode dockerfile from file
     let instruction_set = DockerfileDecoder::decode_dockerfile_from_src(dockerfile_src).await?;
@@ -146,8 +149,9 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let ev_domain = std::env::var("EV_DOMAIN").unwrap_or(String::from("evervault.com"));
 
     let data_plane_url = format!(
-        "https://cage-build-assets.{}/runtime/latest/data-plane/{}?t={}",
+        "https://cage-build-assets.{}/runtime/{}/data-plane/{}?t={}",
         ev_domain,
+        data_plane_version,
         build_config.get_dataplane_feature_label(),
         epoch
     );
