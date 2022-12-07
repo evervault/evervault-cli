@@ -143,10 +143,10 @@ async fn resolve_eif(
     build_args: Option<Vec<&str>>,
 ) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
     if let Some(path) = eif_path {
-        return get_eif(path, verbose).map_err(|e| {
+        get_eif(path, verbose).map_err(|e| {
             log::error!("Failed to access the EIF at {}", path);
             e.exitcode()
-        });
+        })
     } else {
         let (built_enclave, output_path) =
             build_enclave_image_file(validated_config, context_path, None, verbose, build_args)

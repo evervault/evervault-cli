@@ -394,15 +394,13 @@ impl CageRegionalDeployment {
     }
 
     pub fn get_failure_reason(&self) -> String {
-        self.failure_reason.clone().unwrap_or(String::from(
-            "Error deploying cage. Please contact Evervault Support",
-        ))
+        self.failure_reason.clone().unwrap_or_else(|| String::from("Starting deployment."))
     }
 
     pub fn get_detailed_status(&self) -> String {
         self.detailed_status
             .clone()
-            .unwrap_or(String::from("Starting deployment."))
+            .unwrap_or_else(|| String::from("Starting deployment."))
     }
 }
 

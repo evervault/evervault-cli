@@ -26,9 +26,8 @@ impl Default for GenericApiClient {
 
 impl std::convert::From<AuthMode> for GenericApiClient {
     fn from(auth_mode: AuthMode) -> Self {
-        let mut client = Self::default();
-        client.auth = auth_mode;
-        client
+        let client = Client::builder().timeout(Duration::from_secs(60)).build();
+        GenericApiClient { client: client.unwrap(), auth: auth_mode}
     }
 }
 
@@ -57,7 +56,7 @@ pub trait ApiClient {
     fn client(&self) -> &Client;
 
     fn base_url(&self) -> String {
-        let domain = std::env::var("EV_DOMAIN").unwrap_or(String::from("evervault.com"));
+        let domain = std::env::var("EV_DOMAIN").unwrap_or_else(|_| String::from("evervault.com"));
         format!("https://api.{}", domain)
     }
 

@@ -57,7 +57,7 @@ fn get_cage_details(encrypt_args: EncryptArgs) -> Result<(String, String), Encry
         let cage_config = CageConfig::try_from_filepath(&encrypt_args.config)?;
 
         if cage_config.app_uuid.is_none() || cage_config.team_uuid.is_none() {
-            return Err(EncryptError::MissingUuid);
+            Err(EncryptError::MissingUuid)
         } else {
             Ok((
                 cage_config.team_uuid.unwrap(),

@@ -80,9 +80,9 @@ pub async fn run(log_args: LogArgs) -> i32 {
         }
     };
 
-    let start_time = i64::from_str_radix(cage_logs.start_time(), 10).unwrap();
+    let start_time = cage_logs.start_time().parse::<i64>().unwrap();
     let logs_start = format_timestamp(start_time);
-    let end_time = i64::from_str_radix(cage_logs.end_time(), 10).unwrap();
+    let end_time = cage_logs.end_time().parse::<i64>().unwrap();
     let logs_end = format_timestamp(end_time);
 
     if cage_logs.log_events().is_empty() {
@@ -92,10 +92,10 @@ pub async fn run(log_args: LogArgs) -> i32 {
 
     let mut output = minus::Pager::new();
 
-    if let Err(_) = output.set_prompt(format!(
+    if output.set_prompt(format!(
         "Retrieved {} logs from {logs_start} to {logs_end}",
         cage_logs.log_events().len()
-    )) {
+    )).is_err() {
         log::error!("An error occurred while displaying your Cage's logs.");
         return exitcode::TEMPFAIL;
     }
@@ -122,9 +122,9 @@ pub async fn run(log_args: LogArgs) -> i32 {
 
     if let Err(e) = minus::page_all(output) {
         log::error!("An error occurred while paginating your log data - {:?}", e);
-        return exitcode::SOFTWARE;
+        exitcode::SOFTWARE
     } else {
-        return exitcode::OK;
+        exitcode::OK
     }
 }
 
