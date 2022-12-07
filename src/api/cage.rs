@@ -394,7 +394,9 @@ impl CageRegionalDeployment {
     }
 
     pub fn get_failure_reason(&self) -> String {
-        self.failure_reason.clone().unwrap_or_else(|| String::from("Starting deployment."))
+        self.failure_reason
+            .clone()
+            .unwrap_or_else(|| String::from("Starting deployment."))
     }
 
     pub fn get_detailed_status(&self) -> String {

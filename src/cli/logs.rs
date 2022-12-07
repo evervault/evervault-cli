@@ -92,10 +92,13 @@ pub async fn run(log_args: LogArgs) -> i32 {
 
     let mut output = minus::Pager::new();
 
-    if output.set_prompt(format!(
-        "Retrieved {} logs from {logs_start} to {logs_end}",
-        cage_logs.log_events().len()
-    )).is_err() {
+    if output
+        .set_prompt(format!(
+            "Retrieved {} logs from {logs_start} to {logs_end}",
+            cage_logs.log_events().len()
+        ))
+        .is_err()
+    {
         log::error!("An error occurred while displaying your Cage's logs.");
         return exitcode::TEMPFAIL;
     }
