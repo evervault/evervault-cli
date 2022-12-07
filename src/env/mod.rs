@@ -69,7 +69,7 @@ fn get_cage_details(config_path: String) -> Result<CageInfo, EnvError> {
         || cage_config.team_uuid.is_none()
         || cage_config.uuid.is_none()
     {
-        return Err(EnvError::MissingAppInfo);
+        Err(EnvError::MissingAppInfo)
     } else {
         Ok(CageInfo {
             app_uuid: cage_config.app_uuid.unwrap(),
