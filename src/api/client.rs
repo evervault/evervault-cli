@@ -27,7 +27,10 @@ impl Default for GenericApiClient {
 impl std::convert::From<AuthMode> for GenericApiClient {
     fn from(auth_mode: AuthMode) -> Self {
         let client = Client::builder().timeout(Duration::from_secs(60)).build();
-        GenericApiClient { client: client.unwrap(), auth: auth_mode}
+        GenericApiClient {
+            client: client.unwrap(),
+            auth: auth_mode,
+        }
     }
 }
 

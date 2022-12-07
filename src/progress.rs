@@ -5,7 +5,7 @@ use crate::api::cage::CagesClient;
 use crate::common::CliError;
 
 fn get_progress_bar(start_msg: &str, upload_len: Option<u64>) -> ProgressBar {
-     match upload_len {
+    match upload_len {
         Some(len) => {
             let progress_bar = ProgressBar::new(len);
             progress_bar.set_style(ProgressStyle::default_bar()
