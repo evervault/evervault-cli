@@ -1,3 +1,4 @@
+use crate::api::assets::AssetsClient;
 use crate::build::build_enclave_image_file;
 use crate::common::{prepare_build_args, CliError};
 use crate::config::{read_and_validate_config, BuildTimeConfig};
@@ -77,12 +78,25 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         .as_ref()
         .map(|args| args.iter().map(AsRef::as_ref).collect());
 
+    let cage_build_assets_client = AssetsClient::new();
+    let data_plane_version = match cage_build_assets_client
+        .get_latest_data_plane_version()
+        .await
+    {
+        Ok(version) => version,
+        Err(e) => {
+            log::error!("Failed to retrieve the latest data plane version - {e:?}");
+            return e.exitcode();
+        }
+    };
+
     let built_enclave = match build_enclave_image_file(
         &validated_config,
         &build_args.context_path,
         Some(&build_args.output_dir),
         !build_args.quiet,
         borrowed_args,
+        data_plane_version,
     )
     .await
     {
