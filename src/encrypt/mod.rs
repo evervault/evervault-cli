@@ -36,7 +36,7 @@ pub async fn encrypt(
         CurveName::Nist => {
             let client = ies_secp256r1_openssl::Client::new(
                 ies_secp256r1_openssl::EcKey::public_key_from_bytes(&base64::decode(
-                    keys.ecdh_key,
+                    keys.ecdh_p256_key,
                 )?)?,
             );
             client.encrypt(value, Datatype::String, false)?
@@ -44,7 +44,7 @@ pub async fn encrypt(
         CurveName::Koblitz => {
             let client = ies_secp256k1_openssl::Client::new(
                 ies_secp256k1_openssl::EcKey::public_key_from_bytes(&base64::decode(
-                    keys.ecdh_p256_key,
+                    keys.ecdh_key,
                 )?)?,
             );
             client.encrypt(value, Datatype::String, false)?
