@@ -8,6 +8,8 @@ use clap::Parser;
 pub enum CurveName {
     Koblitz,
     Nist,
+    Secp256r1,
+    Secp256k1,
 }
 
 /// Encrypt a string
@@ -17,8 +19,8 @@ pub struct EncryptArgs {
     // Plaintext value to encrypt
     pub value: String,
 
-    // Curve to use, options are nist or koblitz
-    #[clap(arg_enum, default_value = "nist")]
+    // Curve to use, options are Secp256r1 (alias nist) or Secp256k1 (alias koblitz)
+    #[clap(arg_enum, default_value = "nist", long = "curve")]
     pub curve: CurveName,
 
     #[clap(long = "team_uuid")]
