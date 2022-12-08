@@ -43,7 +43,7 @@ pub fn create_combined_docker_entrypoint(
 // Useful for creating scripts within in Dockerfiles
 pub fn write_command_to_script(command: &str, script_path: &str, arguments: &[&str]) -> String {
     let mut script_writer = Vec::from([r##"printf "#!/bin/sh\n"##, command, r#"\n""#]);
-    if arguments.len() > 0 {
+    if !arguments.is_empty() {
         script_writer.extend(arguments);
     }
 

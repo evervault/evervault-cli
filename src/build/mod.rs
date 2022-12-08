@@ -56,13 +56,12 @@ pub async fn build_enclave_image_file(
         .await
         .map_err(|_| BuildError::DockerfileAccessError(cage_config.dockerfile().to_string()))?;
 
-    let processed_dockerfile =
-        process_dockerfile(&cage_config, dockerfile, data_plane_version).await?;
+    let processed_dockerfile = process_dockerfile(cage_config, dockerfile, data_plane_version).await?;
 
     // write new dockerfile to fs
     let ev_user_dockerfile_path = output_path.join(Path::new(EV_USER_DOCKERFILE_PATH));
     let mut ev_user_dockerfile = std::fs::File::create(&ev_user_dockerfile_path)
-        .map_err(|fs_err| BuildError::FailedToWriteCageDockerfile(fs_err))?;
+        .map_err(BuildError::FailedToWriteCageDockerfile)?;
 
     processed_dockerfile.iter().for_each(|instruction| {
         writeln!(ev_user_dockerfile, "{}", instruction).unwrap();
@@ -76,7 +75,7 @@ pub async fn build_enclave_image_file(
     log::info!("Building docker image...");
     enclave::build_user_image(
         &ev_user_dockerfile_path,
-        &context_path,
+        context_path,
         verbose,
         docker_build_args,
     )?;
@@ -122,11 +121,12 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .filter(remove_unwanted_directives)
         .collect();
 
+    let wait_for_env = r#"while ! grep -q \"EV_API_KEY\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n source /etc/customer-env\n"#;
     let user_service_builder =
         crate::docker::utils::create_combined_docker_entrypoint(last_entrypoint, last_cmd).map(
             |entrypoint| {
                 let entrypoint_script =
-                    format!("sleep 5\\necho \\\"Checking status of data-plane\\\"\\nSVDIR=/etc/service sv check data-plane || exit 1\\necho \\\"Data-plane up and running\\\"\\necho \\\"Booting user service...\\\"\\ncd %s\\nexec {entrypoint}");
+                    format!("sleep 5\\necho \\\"Checking status of data-plane\\\"\\nSVDIR=/etc/service sv check data-plane || exit 1\\necho \\\"Data-plane up and running\\\"\\n{wait_for_env}\\necho \\\"Booting user service...\\\"\\ncd %s\\nexec {entrypoint}");
                 let user_service_runner = format!("{USER_ENTRYPOINT_SERVICE_PATH}/run");
                 let user_service_runit_wrapper = crate::docker::utils::write_command_to_script(
                     entrypoint_script.as_str(),
@@ -264,7 +264,7 @@ RUN touch /hello-script;\
 RUN printf "#!/bin/sh\nif [ \"$( command -v apk )\" ]; then\necho \"Installing using apk\"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ \"$( command -v apt-get )\" ]; then\necho \"Installing using apt-get\"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho \"No suitable installer found. Please contact support: support@evervault.com\"\nexit 1\nfi\n" > /runtime-installer && chmod +x /runtime-installer
 RUN sh /runtime-installer ; rm /runtime-installer
 RUN mkdir -p /etc/service/user-entrypoint
-RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_API_KEY\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n source /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
 RUN wget https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled -O /data-plane && chmod +x /data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
@@ -342,7 +342,7 @@ RUN touch /hello-script;\
 RUN printf "#!/bin/sh\nif [ \"$( command -v apk )\" ]; then\necho \"Installing using apk\"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ \"$( command -v apt-get )\" ]; then\necho \"Installing using apt-get\"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho \"No suitable installer found. Please contact support: support@evervault.com\"\nexit 1\nfi\n" > /runtime-installer && chmod +x /runtime-installer
 RUN sh /runtime-installer ; rm /runtime-installer
 RUN mkdir -p /etc/service/user-entrypoint
-RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_API_KEY\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n source /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
 RUN wget https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled -O /data-plane && chmod +x /data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run

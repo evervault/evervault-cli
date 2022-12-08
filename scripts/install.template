@@ -79,7 +79,7 @@ fi
 eval DOWNLOAD_URL=\$$DOWNLOAD_URL_LOOKUP
 
 if [ "$PERFORM_INSTALL" = true ]; then
-  TEMP_FILE=`mktemp "${TMPDIR:-/tmp}.ev-cage.XXXXXXXX"`
+  TEMP_FILE=`mktemp "${TMPDIR:-/tmp}/ev-cage.XXXXXXXX"`
 fi
 
 cleanup() {

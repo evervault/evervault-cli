@@ -5,7 +5,7 @@ use crate::api::cage::CagesClient;
 use crate::common::CliError;
 
 fn get_progress_bar(start_msg: &str, upload_len: Option<u64>) -> ProgressBar {
-    let bar = match upload_len {
+    match upload_len {
         Some(len) => {
             let progress_bar = ProgressBar::new(len);
             progress_bar.set_style(ProgressStyle::default_bar()
@@ -26,8 +26,7 @@ fn get_progress_bar(start_msg: &str, upload_len: Option<u64>) -> ProgressBar {
             progress_bar.set_message(start_msg.to_string());
             progress_bar
         }
-    };
-    bar
+    }
 }
 
 #[derive(Clone)]
@@ -38,10 +37,10 @@ struct Tty {
 struct NonTty {}
 
 impl<'a, W: ProgressLogger + ?Sized + 'a> ProgressLogger for Box<W> {
-    fn set_message(&self, message: &str) -> () {
+    fn set_message(&self, message: &str) {
         (**self).set_message(message)
     }
-    fn finish_with_message(&self, message: &str) -> () {
+    fn finish_with_message(&self, message: &str) {
         (**self).finish_with_message(message)
     }
 
@@ -64,11 +63,11 @@ impl ProgressLogger for Tty {
     fn set_message(&self, message: &str) {
         self.progress_bar.set_message(message.to_string());
     }
-    fn finish_with_message(&self, message: &str) -> () {
+    fn finish_with_message(&self, message: &str) {
         self.progress_bar.finish_and_clear();
         log::info!("{message}");
     }
-    fn finish(&self) -> () {
+    fn finish(&self) {
         self.progress_bar.finish();
     }
 
@@ -84,7 +83,7 @@ impl ProgressLogger for NonTty {
     fn finish_with_message(&self, message: &str) {
         log::info!("{message}")
     }
-    fn finish(&self) -> () {
+    fn finish(&self) {
         // no op
     }
 

@@ -13,11 +13,11 @@ pub struct AssetsClient {
 
 impl ApiClient for AssetsClient {
     fn client(&self) -> &reqwest::Client {
-        &self.inner.client()
+        self.inner.client()
     }
 
     fn base_url(&self) -> String {
-        let domain = std::env::var("EV_DOMAIN").unwrap_or(String::from("evervault.com"));
+        let domain = std::env::var("EV_DOMAIN").unwrap_or_else(|_| String::from("evervault.com"));
         format!("https://cage-build-assets.{}", domain)
     }
 
@@ -27,6 +27,12 @@ impl ApiClient for AssetsClient {
 
     fn update_auth(&mut self, _: super::AuthMode) -> Result<(), ApiClientError> {
         Err(ApiClientError::AuthModeNotSupported)
+    }
+}
+
+impl Default for AssetsClient {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

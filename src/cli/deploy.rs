@@ -143,10 +143,10 @@ async fn resolve_eif(
     build_args: Option<Vec<&str>>,
 ) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
     if let Some(path) = eif_path {
-        return get_eif(path, verbose).map_err(|e| {
+        get_eif(path, verbose).map_err(|e| {
             log::error!("Failed to access the EIF at {}", path);
             e.exitcode()
-        });
+        })
     } else {
         let cage_build_assets_client = AssetsClient::new();
         let data_plane_version = match cage_build_assets_client

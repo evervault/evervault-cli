@@ -53,7 +53,7 @@ fn encrypt(client: &CryptoClient, value: &mut Value) {
             .for_each(|val| encrypt(client, val));
     } else {
         let mut val = value.clone();
-        let to_encrypt = convert_value_to_string(&value);
+        let to_encrypt = convert_value_to_string(value);
         let encrypted_data_result = client
             .encrypt(to_encrypt, Datatype::try_from(&mut val).unwrap(), true)
             .unwrap();
@@ -76,7 +76,7 @@ fn decrypt(client: &CryptoClient, value: &mut Value) {
             .for_each(|val| decrypt(client, val));
     } else if value.is_string() {
         // all encrypted values are strings
-        let to_decrypt = convert_value_to_string(&value); // convert from serde value string to std string
+        let to_decrypt = convert_value_to_string(value); // convert from serde value string to std string
         if let Ok(decrypted) = client.decrypt(to_decrypt) {
             *value = decrypted;
         }
