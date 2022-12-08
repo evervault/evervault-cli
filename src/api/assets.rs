@@ -2,8 +2,8 @@ use super::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, Hand
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+#[serde(rename_all = "kebab-case")]
 struct RuntimeVersion {
-    #[serde(rename = "kebab-case")]
     data_plane: String,
 }
 
