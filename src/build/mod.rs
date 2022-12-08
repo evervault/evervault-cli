@@ -141,19 +141,13 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         return Err(DockerError::RestrictedPortExposed(exposed_port.unwrap()).into());
     }
 
-    let epoch = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .expect("System time is before the unix epoch")
-        .as_secs();
-
     let ev_domain = std::env::var("EV_DOMAIN").unwrap_or(String::from("evervault.com"));
 
     let data_plane_url = format!(
-        "https://cage-build-assets.{}/runtime/{}/data-plane/{}?t={}",
+        "https://cage-build-assets.{}/runtime/{}/data-plane/{}",
         ev_domain,
         data_plane_version,
-        build_config.get_dataplane_feature_label(),
-        epoch
+        build_config.get_dataplane_feature_label()
     );
 
     let mut data_plane_run_script =
@@ -257,7 +251,10 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
 
         let config = get_config();
 
-        let processed_file = process_dockerfile(&config, &mut readable_contents).await;
+        let data_plane_version = "0.0.0".to_string();
+
+        let processed_file =
+            process_dockerfile(&config, &mut readable_contents, data_plane_version).await;
         assert_eq!(processed_file.is_ok(), true);
         let processed_file = processed_file.unwrap();
 
@@ -268,7 +265,7 @@ RUN printf "#!/bin/sh\nif [ \"$( command -v apk )\" ]; then\necho \"Installing u
 RUN sh /runtime-installer ; rm /runtime-installer
 RUN mkdir -p /etc/service/user-entrypoint
 RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
-RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
+RUN wget https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled -O /data-plane && chmod +x /data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
@@ -292,12 +289,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
         {
             let expected_directive = expected_directive.to_string();
             let processed_directive = processed_directive.to_string();
-            if expected_directive.contains("cage-build-assets") {
-                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.com/runtime/latest/data-plane/egress-disabled/tls-termination-enabled?t="));
-                assert!(processed_directive.ends_with("-O /data-plane && chmod +x /data-plane"));
-            } else {
-                assert_eq!(expected_directive, processed_directive);
-            }
+            assert_eq!(expected_directive, processed_directive);
         }
     }
 
@@ -313,7 +305,9 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
 
         let config = get_config();
 
-        let processed_file = process_dockerfile(&config, &mut readable_contents).await;
+        let data_plane_version = "0.0.0".to_string();
+        let processed_file =
+            process_dockerfile(&config, &mut readable_contents, data_plane_version).await;
         assert_eq!(processed_file.is_err(), true);
 
         assert!(matches!(
@@ -336,7 +330,9 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
 
         let config = get_config();
 
-        let processed_file = process_dockerfile(&config, &mut readable_contents).await;
+        let data_plane_version = "0.0.0".to_string();
+        let processed_file =
+            process_dockerfile(&config, &mut readable_contents, data_plane_version).await;
         assert_eq!(processed_file.is_ok(), true);
         let processed_file = processed_file.unwrap();
 
@@ -347,7 +343,7 @@ RUN printf "#!/bin/sh\nif [ \"$( command -v apk )\" ]; then\necho \"Installing u
 RUN sh /runtime-installer ; rm /runtime-installer
 RUN mkdir -p /etc/service/user-entrypoint
 RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
-RUN wget https://cage-build-assets.evervault.io/runtime/latest/data-plane/egress-disabled -O /data-plane && chmod +x /data-plane
+RUN wget https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled -O /data-plane && chmod +x /data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
@@ -371,12 +367,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
         {
             let expected_directive = expected_directive.to_string();
             let processed_directive = processed_directive.to_string();
-            if expected_directive.contains("cage-build-assets") {
-                assert!(processed_directive.starts_with("RUN wget https://cage-build-assets.evervault.com/runtime/latest/data-plane/egress-disabled/tls-termination-enabled?t="));
-                assert!(processed_directive.ends_with("-O /data-plane && chmod +x /data-plane"));
-            } else {
-                assert_eq!(expected_directive, processed_directive);
-            }
+            assert_eq!(expected_directive, processed_directive);
         }
     }
 
