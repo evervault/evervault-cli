@@ -89,21 +89,19 @@ impl std::convert::TryFrom<&SigningInfo> for ValidatedSigningInfo {
     }
 }
 
-impl<'a> std::convert::TryFrom<&ValidatedSigningInfo> for EnclaveSigningInfo {
+impl std::convert::TryFrom<&ValidatedSigningInfo> for EnclaveSigningInfo {
     type Error = SigningInfoError;
 
     fn try_from(signing_info: &ValidatedSigningInfo) -> Result<Self, Self::Error> {
         let cert_path = std::path::Path::new(signing_info.cert());
         let cert_path_buf = cert_path
             .canonicalize()
-            .map_err(|_| SigningInfoError::SigningCertNotFound(signing_info.cert().to_string()))?
-            .to_path_buf();
+            .map_err(|_| SigningInfoError::SigningCertNotFound(signing_info.cert().to_string()))?;
 
         let key_path = std::path::Path::new(signing_info.key());
         let key_path_buf = key_path
             .canonicalize()
-            .map_err(|_| SigningInfoError::SigningKeyNotFound(signing_info.key().to_string()))?
-            .to_path_buf();
+            .map_err(|_| SigningInfoError::SigningKeyNotFound(signing_info.key().to_string()))?;
 
         Ok(Self::new(cert_path_buf, key_path_buf))
     }
@@ -254,7 +252,7 @@ impl CageConfig {
     }
 
     pub fn set_cert(&mut self, cert: String) {
-        let mut info = self.signing.clone().unwrap_or(SigningInfo::default());
+        let mut info = self.signing.clone().unwrap_or_default();
         info.cert = Some(cert);
         self.signing = Some(info);
     }
@@ -266,7 +264,7 @@ impl CageConfig {
     }
 
     pub fn set_key(&mut self, key: String) {
-        let mut info = self.signing.clone().unwrap_or(SigningInfo::default());
+        let mut info = self.signing.clone().unwrap_or_default();
         info.key = Some(key);
         self.signing = Some(info);
     }
@@ -379,7 +377,7 @@ pub fn read_and_validate_config<B: BuildTimeConfig>(
     config_path: &str,
     args: &B,
 ) -> Result<(CageConfig, ValidatedCageBuildConfig), CageConfigError> {
-    let cage_config = CageConfig::try_from_filepath(&config_path)?;
+    let cage_config = CageConfig::try_from_filepath(config_path)?;
     let merged_config = args.merge_with_config(&cage_config);
 
     let validated_config: ValidatedCageBuildConfig = merged_config.as_ref().try_into()?;

@@ -73,10 +73,10 @@ pub async fn run(args: UpdateArgs) -> exitcode::ExitCode {
         .status();
 
     match result {
-        Ok(output) => output.code().unwrap_or_else(|| exitcode::USAGE),
+        Ok(output) => output.code().unwrap_or(exitcode::USAGE),
         Err(e) => {
             log::error!("Failed to install latest version of Cages CLI - {}", e);
-            return exitcode::SOFTWARE;
+            exitcode::SOFTWARE
         }
     }
 }

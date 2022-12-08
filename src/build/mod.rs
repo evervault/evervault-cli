@@ -55,12 +55,12 @@ pub async fn build_enclave_image_file(
         .await
         .map_err(|_| BuildError::DockerfileAccessError(cage_config.dockerfile().to_string()))?;
 
-    let processed_dockerfile = process_dockerfile(&cage_config, dockerfile).await?;
+    let processed_dockerfile = process_dockerfile(cage_config, dockerfile).await?;
 
     // write new dockerfile to fs
     let ev_user_dockerfile_path = output_path.join(Path::new(EV_USER_DOCKERFILE_PATH));
     let mut ev_user_dockerfile = std::fs::File::create(&ev_user_dockerfile_path)
-        .map_err(|fs_err| BuildError::FailedToWriteCageDockerfile(fs_err))?;
+        .map_err(BuildError::FailedToWriteCageDockerfile)?;
 
     processed_dockerfile.iter().for_each(|instruction| {
         writeln!(ev_user_dockerfile, "{}", instruction).unwrap();
@@ -74,7 +74,7 @@ pub async fn build_enclave_image_file(
     log::info!("Building docker image...");
     enclave::build_user_image(
         &ev_user_dockerfile_path,
-        &context_path,
+        context_path,
         verbose,
         docker_build_args,
     )?;
@@ -143,7 +143,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .expect("System time is before the unix epoch")
         .as_secs();
 
-    let ev_domain = std::env::var("EV_DOMAIN").unwrap_or(String::from("evervault.com"));
+    let ev_domain = std::env::var("EV_DOMAIN").unwrap_or_else(|_| String::from("evervault.com"));
 
     let data_plane_url = format!(
         "https://cage-build-assets.{}/runtime/latest/data-plane/{}?t={}",
