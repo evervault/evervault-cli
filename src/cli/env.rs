@@ -44,12 +44,12 @@ pub struct AddEnvArgs {
     #[clap(long = "value")]
     pub secret: String,
 
-    /// Whether to encrypt env var, default is true
-    #[clap(long = "skip_encryption")]
-    pub skip_encryption: bool,
+    /// Is the env var is a secret, it will be encrypted
+    #[clap(long = "secret")]
+    pub is_secret: bool,
 
-    /// The curve to use (nist or koblitz) default value is nist
-    #[clap(value_enum, long = "curve", default_value = "nist")]
+    /// Curve to use, options are Secp256r1 (alias nist) or Secp256k1 (alias koblitz)
+    #[clap(arg_enum, default_value = "nist")]
     pub curve: CurveName,
 
     /// Path to cage.toml config file
@@ -62,6 +62,7 @@ pub struct AddEnvArgs {
 #[clap(name = "env", about)]
 pub struct DeleteEnvArgs {
     /// Name of environment variable
+    #[clap(long = "key")]
     pub name: String,
 
     /// Path to cage.toml config file
