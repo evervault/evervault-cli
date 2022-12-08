@@ -16,10 +16,10 @@ pub enum CurveName {
 #[derive(Debug, Parser, Clone)]
 #[clap(name = "encrypt", about)]
 pub struct EncryptArgs {
-    // Plaintext value to encrypt
+    /// Plaintext value to encrypt
     pub value: String,
 
-    // Curve to use, options are Secp256r1 (alias nist) or Secp256k1 (alias koblitz)
+    /// Curve to use, options are Secp256r1 (alias nist) or Secp256k1 (alias koblitz)
     #[clap(arg_enum, default_value = "nist", long = "curve")]
     pub curve: CurveName,
 
@@ -29,7 +29,7 @@ pub struct EncryptArgs {
     #[clap(long = "app_uuid")]
     pub app_uuid: Option<String>,
 
-    // Path to cage.toml config file
+    /// Path to cage.toml config file
     #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
     pub config: String,
 }
