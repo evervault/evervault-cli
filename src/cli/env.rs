@@ -44,11 +44,11 @@ pub struct AddEnvArgs {
     #[clap(long = "value")]
     pub secret: String,
 
-    /// Whether to encrypt env var, default is true
-    #[clap(long = "skip-encryption")]
-    pub skip_encryption: bool,
+    /// Is the env var is a secret, it will be encrypted
+    #[clap(long = "secret")]
+    pub is_secret: bool,
 
-    // Curve to use, options are Secp256r1 (alias nist) or Secp256k1 (alias koblitz)
+    /// Curve to use, options are Secp256r1 (alias nist) or Secp256k1 (alias koblitz)
     #[clap(arg_enum, default_value = "nist")]
     pub curve: CurveName,
 
