@@ -116,7 +116,7 @@ macro_rules! get_api_key {
 }
 
 pub fn prepare_build_args(build_args: &Vec<String>) -> Option<Vec<String>> {
-    if build_args.len() == 0 {
+    if build_args.is_empty() {
         return None;
     }
 

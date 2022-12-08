@@ -57,31 +57,31 @@ pub struct InitArgs {
     pub is_time_bound: bool,
 }
 
-impl std::convert::Into<CageConfig> for InitArgs {
-    fn into(self: Self) -> CageConfig {
-        let signing_info = if self.cert_path.is_none() && self.key_path.is_none() {
+impl std::convert::From<InitArgs> for CageConfig {
+    fn from(val: InitArgs) -> Self {
+        let signing_info = if val.cert_path.is_none() && val.key_path.is_none() {
             None
         } else {
             Some(SigningInfo {
-                cert: self.cert_path,
-                key: self.key_path,
+                cert: val.cert_path,
+                key: val.key_path,
             })
         };
 
         CageConfig {
-            name: self.cage_name,
+            name: val.cage_name,
             uuid: None,
             app_uuid: None,
             team_uuid: None,
-            debug: self.debug,
+            debug: val.debug,
             egress: EgressSettings {
-                enabled: self.egress,
+                enabled: val.egress,
                 destinations: None,
             },
-            dockerfile: self.dockerfile.unwrap_or_else(default_dockerfile), // need to manually set default dockerfile
+            dockerfile: val.dockerfile.unwrap_or_else(default_dockerfile), // need to manually set default dockerfile
             signing: signing_info,
             attestation: None,
-            disable_tls_termination: self.disable_tls_termination,
+            disable_tls_termination: val.disable_tls_termination,
         }
     }
 }

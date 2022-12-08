@@ -9,7 +9,7 @@ use std::io::Write;
 mod error;
 use error::DeployError;
 use reqwest::Body;
-use std::path::PathBuf;
+use std::path::Path;
 use tokio::fs::File;
 use tokio::time::timeout;
 use tokio_stream::StreamExt;
@@ -157,7 +157,7 @@ async fn watch_deployment(
             }
             Err(e) => {
                 log::error!("Unable to retrieve deployment status. Error: {:?}", e);
-                return Ok(StatusReport::Failed);
+                Ok(StatusReport::Failed)
             }
         }
     }
@@ -230,7 +230,7 @@ pub fn get_eif<S: AsRef<str>>(
     Ok((eif.measurements.measurements, output_path))
 }
 
-async fn get_eif_size_bytes(output_path: &PathBuf) -> Result<u64, DeployError> {
+async fn get_eif_size_bytes(output_path: &Path) -> Result<u64, DeployError> {
     match tokio::fs::metadata(output_path.join(ENCLAVE_FILENAME)).await {
         Ok(metadata) => Ok(metadata.len()),
         Err(err) => Err(DeployError::EifSizeReadError(err)),

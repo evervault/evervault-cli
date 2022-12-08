@@ -118,7 +118,7 @@ pub fn build_nitro_cli_image(
     );
 
     let required_clean_up = if let Some(signing_info) = signing_info {
-        move_signing_info_into_scope(signing_info, &output_dir)?
+        move_signing_info_into_scope(signing_info, output_dir)?
     } else {
         CleanUpMode::None
     };
@@ -145,7 +145,7 @@ pub fn build_nitro_cli_image(
         };
 
     let signing_info_path = get_signing_info_path(output_dir);
-    let _ = match required_clean_up {
+    match required_clean_up {
         CleanUpMode::Directory => {
             let _ = remove_contents(
                 &get_cert_dest(&signing_info_path),
@@ -160,10 +160,10 @@ pub fn build_nitro_cli_image(
             );
         }
         CleanUpMode::Cert => {
-            let _ = std::fs::remove_file(&get_cert_dest(&signing_info_path));
+            let _ = std::fs::remove_file(get_cert_dest(&signing_info_path));
         }
         CleanUpMode::Key => {
-            let _ = std::fs::remove_file(&get_key_dest(&signing_info_path));
+            let _ = std::fs::remove_file(get_key_dest(&signing_info_path));
         }
         _ => {}
     };
