@@ -56,7 +56,8 @@ pub async fn build_enclave_image_file(
         .await
         .map_err(|_| BuildError::DockerfileAccessError(cage_config.dockerfile().to_string()))?;
 
-    let processed_dockerfile = process_dockerfile(cage_config, dockerfile, data_plane_version).await?;
+    let processed_dockerfile =
+        process_dockerfile(cage_config, dockerfile, data_plane_version).await?;
 
     // write new dockerfile to fs
     let ev_user_dockerfile_path = output_path.join(Path::new(EV_USER_DOCKERFILE_PATH));
