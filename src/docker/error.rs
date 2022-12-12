@@ -7,12 +7,15 @@ use thiserror::Error;
 pub enum CommandError {
     #[error("An error occurred while executing a docker command — {0}")]
     IoError(#[from] std::io::Error),
+    #[error("Failed to capture IO stream")]
+    StdIoCaptureError,
 }
 
 impl CliError for CommandError {
     fn exitcode(&self) -> exitcode::ExitCode {
         match self {
             Self::IoError(io_err) => io_err.raw_os_error().unwrap_or(exitcode::IOERR),
+            Self::StdIoCaptureError => exitcode::IOERR,
         }
     }
 }

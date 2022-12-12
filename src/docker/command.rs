@@ -63,26 +63,26 @@ pub fn build_image_using_kaniko(
         .args(build_image_args)
         .stdout(command_config.output_setting())
         .stderr(command_config.output_setting())
-        .status()?;
+        .output()?;
 
-    Ok(command_status)
+    Ok(command_status.status)
 }
 
 pub fn load_image_into_local_docker_registry(
     image_archive: &PathBuf,
+    verbose: bool,
 ) -> Result<ExitStatus, CommandError> {
+    let command_config = CommandConfig::new(verbose);
     let mut cat_cmd = Command::new("cat")
         .arg(image_archive.as_os_str())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(command_config.output_setting())
         .spawn()?;
-    // TODO: error handling
-    let cat_output = cat_cmd.stdout.take().ok_or_else(|| {
-        CommandError::IoError(std::io::Error::new(
-            std::io::ErrorKind::BrokenPipe,
-            "Failed to open stdout from cat command",
-        ))
-    })?;
+
+    let cat_output = cat_cmd
+        .stdout
+        .take()
+        .ok_or_else(|| CommandError::StdIoCaptureError)?;
     let docker_load_result = Command::new("docker")
         .arg("load")
         .stdin(cat_output)

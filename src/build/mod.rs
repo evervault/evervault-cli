@@ -59,14 +59,10 @@ pub async fn build_enclave_image_file(
     let processed_dockerfile = process_dockerfile(cage_config, dockerfile).await?;
 
     // write new dockerfile to fs
-    let abs_context_path = std::env::current_dir()
-        .unwrap()
-        .join(context_path)
-        .canonicalize()
-        .unwrap();
-    let dockerfile_path = Path::new(EV_USER_DOCKERFILE_PATH);
-    let ev_user_dockerfile_path = abs_context_path.join(dockerfile_path);
-    let mut ev_user_dockerfile = std::fs::File::create(&ev_user_dockerfile_path)
+    let user_dockerfile_path = output_path.path().join(EV_USER_DOCKERFILE_PATH);
+
+    // TODO: fix kaniko dockerfile resolution (dockerfile in mounted volume)
+    let mut ev_user_dockerfile = std::fs::File::create(&user_dockerfile_path)
         .map_err(BuildError::FailedToWriteCageDockerfile)?;
 
     processed_dockerfile.iter().for_each(|instruction| {
@@ -75,14 +71,19 @@ pub async fn build_enclave_image_file(
 
     log::debug!(
         "Processed dockerfile saved at {}.",
-        ev_user_dockerfile_path.display()
+        user_dockerfile_path.display()
     );
 
     log::info!("Building docker image...");
     if reproducible {
-        enclave::build_reproducible_user_image(dockerfile_path, context_path, verbose)?;
+        enclave::build_reproducible_user_image(&user_dockerfile_path, context_path, verbose)?;
     } else {
-        enclave::build_user_image(dockerfile_path, context_path, verbose, docker_build_args)?;
+        enclave::build_user_image(
+            &user_dockerfile_path,
+            context_path,
+            verbose,
+            docker_build_args,
+        )?;
     }
 
     log::debug!("Building Nitro CLI image...");
