@@ -46,6 +46,11 @@ pub struct BuildArgs {
     /// Build time arguments to provide to docker
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
+
+    /// Perform a reproducible build to guarantee consistent checksums.
+    /// Note: reproducible builds are significantly slower, but are recommended for production deployments.
+    #[clap(long = "reproducible")]
+    pub reproducible: bool,
 }
 
 impl BuildTimeConfig for BuildArgs {
@@ -83,6 +88,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         Some(&build_args.output_dir),
         !build_args.quiet,
         borrowed_args,
+        build_args.reproducible,
     )
     .await
     {
