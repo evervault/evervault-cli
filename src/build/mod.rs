@@ -186,7 +186,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         )),
         // set cage name and app uuid as in enclave env vars
         Directive::new_env("EV_CAGE_NAME", build_config.cage_name()),
-        Directive::new_env("EV_CAGE_UUID", build_config.cage_uuid()),
+        Directive::new_env("CAGE_UUID", build_config.cage_uuid()),
         Directive::new_env("EV_APP_UUID", build_config.app_uuid()),
         Directive::new_env("EV_TEAM_UUID", build_config.team_uuid()),
         Directive::new_env("DATA_PLANE_HEALTH_CHECKS", "true"),
@@ -270,7 +270,7 @@ RUN wget https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
-ENV EV_CAGE_UUID=1234
+ENV CAGE_UUID=1234
 ENV EV_APP_UUID=3241
 ENV EV_TEAM_UUID=teamid
 ENV DATA_PLANE_HEALTH_CHECKS=true
@@ -348,7 +348,7 @@ RUN wget https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
-ENV EV_CAGE_UUID=1234
+ENV CAGE_UUID=1234
 ENV EV_APP_UUID=3241
 ENV EV_TEAM_UUID=teamid
 ENV DATA_PLANE_HEALTH_CHECKS=true
