@@ -22,6 +22,7 @@ pub async fn build_enclave_image_file(
     output_dir: Option<&str>,
     verbose: bool,
     docker_build_args: Option<Vec<&str>>,
+    reproducible: bool,
 ) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
     if !Path::new(&context_path).exists() {
         log::error!(
@@ -58,7 +59,13 @@ pub async fn build_enclave_image_file(
     let processed_dockerfile = process_dockerfile(cage_config, dockerfile).await?;
 
     // write new dockerfile to fs
-    let ev_user_dockerfile_path = output_path.join(Path::new(EV_USER_DOCKERFILE_PATH));
+    let abs_context_path = std::env::current_dir()
+        .unwrap()
+        .join(context_path)
+        .canonicalize()
+        .unwrap();
+    let dockerfile_path = Path::new(EV_USER_DOCKERFILE_PATH);
+    let ev_user_dockerfile_path = abs_context_path.join(dockerfile_path);
     let mut ev_user_dockerfile = std::fs::File::create(&ev_user_dockerfile_path)
         .map_err(BuildError::FailedToWriteCageDockerfile)?;
 
@@ -72,12 +79,11 @@ pub async fn build_enclave_image_file(
     );
 
     log::info!("Building docker image...");
-    enclave::build_user_image(
-        &ev_user_dockerfile_path,
-        context_path,
-        verbose,
-        docker_build_args,
-    )?;
+    if reproducible {
+        enclave::build_reproducible_user_image(dockerfile_path, context_path, verbose)?;
+    } else {
+        enclave::build_user_image(dockerfile_path, context_path, verbose, docker_build_args)?;
+    }
 
     log::debug!("Building Nitro CLI image...");
 

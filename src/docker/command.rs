@@ -1,5 +1,6 @@
 use super::error::CommandError;
 use std::ffi::OsStr;
+use std::path::PathBuf;
 use std::process::{Command, ExitStatus, Output, Stdio};
 
 pub struct CommandConfig {
@@ -22,6 +23,73 @@ impl CommandConfig {
             Stdio::null()
         }
     }
+}
+
+pub fn build_image_using_kaniko(
+    dockerfile_path: &PathBuf,
+    output_path: &PathBuf,
+    context_path: &PathBuf,
+    verbose: bool,
+) -> Result<ExitStatus, CommandError> {
+    let command_config = CommandConfig::new(verbose);
+    let kaniko_volumes = format!("{}:/workspace", context_path.display());
+    let output_volume = format!("{}:/output", output_path.display());
+    let kaniko_dockerfile_path = std::path::Path::new("/workspace").join(dockerfile_path);
+    let build_image_args: Vec<&OsStr> = [vec![
+        "run".as_ref(),
+        "--volume".as_ref(),
+        output_volume.as_str().as_ref(),
+        "--volume".as_ref(),
+        kaniko_volumes.as_str().as_ref(),
+        "--rm".as_ref(),
+        "gcr.io/kaniko-project/executor:v1.7.0".as_ref(),
+        "--context".as_ref(),
+        "dir:///workspace/".as_ref(),
+        "--tarPath".as_ref(),
+        "/output/image.tar".as_ref(),
+        "--no-push".as_ref(),
+        "--destination".as_ref(),
+        "cage-image:latest".as_ref(), // TODO: allow users to configure this
+        "--dockerfile".as_ref(),
+        kaniko_dockerfile_path.as_os_str(),
+        // "--reproducible".as_ref(),
+        "--single-snapshot".as_ref(),
+        "--snapshotMode=redo".as_ref(),
+        "--customPlatform=linux/amd64".as_ref(),
+    ]]
+    .concat();
+
+    let command_status = Command::new("docker")
+        .args(build_image_args)
+        .stdout(command_config.output_setting())
+        .stderr(command_config.output_setting())
+        .status()?;
+
+    Ok(command_status)
+}
+
+pub fn load_image_into_local_docker_registry(
+    image_archive: &PathBuf,
+) -> Result<ExitStatus, CommandError> {
+    let mut cat_cmd = Command::new("cat")
+        .arg(image_archive.as_os_str())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()?;
+    // TODO: error handling
+    let cat_output = cat_cmd.stdout.take().ok_or_else(|| {
+        CommandError::IoError(std::io::Error::new(
+            std::io::ErrorKind::BrokenPipe,
+            "Failed to open stdout from cat command",
+        ))
+    })?;
+    let docker_load_result = Command::new("docker")
+        .arg("load")
+        .stdin(cat_output)
+        .stdout(Stdio::null())
+        .stderr(Stdio::inherit())
+        .status()?;
+    Ok(docker_load_result)
 }
 
 pub fn build_image(
