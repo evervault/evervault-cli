@@ -70,7 +70,7 @@ pub fn build_reproducible_user_image(
 
     // Kaniko outputs an image archive directly, but we need to load it into local docker to use the nitro cli
     let image_archive = output_path.path().join("image.tar");
-    let load_output = command::load_image_into_local_docker_registry(&image_archive)?;
+    let load_output = command::load_image_into_local_docker_registry(&image_archive, verbose)?;
     if load_output.success() {
         return Ok(());
     } else {
