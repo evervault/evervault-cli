@@ -1,4 +1,4 @@
-use crate::api::{self, AuthMode};
+use crate::api::{self, assets::AssetsClient, AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::common::prepare_build_args;
 use crate::get_api_key;
@@ -148,13 +148,31 @@ async fn resolve_eif(
             e.exitcode()
         })
     } else {
-        let (built_enclave, output_path) =
-            build_enclave_image_file(validated_config, context_path, None, verbose, build_args)
-                .await
-                .map_err(|build_err| {
-                    log::error!("Failed to build EIF - {}", build_err);
-                    build_err.exitcode()
-                })?;
+        let cage_build_assets_client = AssetsClient::new();
+        let data_plane_version = match cage_build_assets_client
+            .get_latest_data_plane_version()
+            .await
+        {
+            Ok(version) => version,
+            Err(e) => {
+                log::error!("Failed to retrieve the latest data plane version - {e:?}");
+                return Err(e.exitcode());
+            }
+        };
+
+        let (built_enclave, output_path) = build_enclave_image_file(
+            validated_config,
+            context_path,
+            None,
+            verbose,
+            build_args,
+            data_plane_version,
+        )
+        .await
+        .map_err(|build_err| {
+            log::error!("Failed to build EIF - {}", build_err);
+            build_err.exitcode()
+        })?;
         Ok((built_enclave.measurements().to_owned(), output_path))
     }
 }
