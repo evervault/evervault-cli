@@ -21,7 +21,7 @@ pub fn create_new_cert(
     cert_params.not_before =
         rcgen::date_time_ymd(today.year(), today.month() as u8, today.day() as u8);
 
-    let expiry_time = today.add(chrono::Duration::weeks(36));
+    let expiry_time = today.add(chrono::Duration::weeks(52));
     cert_params.not_after = rcgen::date_time_ymd(
         expiry_time.year(),
         expiry_time.month() as u8,
