@@ -7,7 +7,7 @@ use crate::enclave::BuiltEnclave;
 
 pub async fn build_test_cage(
     output_dir: Option<&str>,
-    reproducible: bool
+    reproducible: bool,
 ) -> Result<(BuiltEnclave, OutputPath), BuildError> {
     let dn_string = crate::cert::DistinguishedName::default();
     crate::cert::create_new_cert(".".into(), dn_string).expect("Failed to gen cert in tests");

@@ -55,11 +55,8 @@ pub fn build_reproducible_user_image(
         .join(user_context_path)
         .canonicalize()?;
 
-    let build_output = command::build_image_using_kaniko(
-        output_path,
-        abs_context_path.as_path(),
-        verbose,
-    )?;
+    let build_output =
+        command::build_image_using_kaniko(output_path, abs_context_path.as_path(), verbose)?;
 
     if !build_output.success() {
         return Err(EnclaveError::new_build_error(build_output.code().unwrap()));

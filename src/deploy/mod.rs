@@ -257,7 +257,7 @@ pub async fn timed_operation<T: std::future::Future>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_utils, enclave::PCRs};
+    use crate::{enclave::PCRs, test_utils};
     use std::time::Duration;
 
     #[tokio::test]
@@ -276,9 +276,9 @@ mod tests {
 
         // Compare build measures as certs are generated on the fly to prevent expiry
         let expected_pcrs: PCRs = serde_json::from_str(r#"{
-          "PCR0": "3380f1c698147817dad11848afe942b670fa1afcce7cb82036b3595ba2fd1d340940f16f47f458b84c9cf5de08089432",
+          "PCR0": "326cf2cc191ad4579ee5fb13001515435475c3cb593da246c0bddc67fde2941aeaf355e72ad2c7b39b2f512833dec969",
           "PCR1": "bcdf05fefccaa8e55bf2c8d6dee9e79bbff31e34bf28a99aa19e6b29c37ee80b214a414b7607236edf26fcb78654e63f",
-          "PCR2": "631c29588343c6de24c5d8fd5b6960a9abc93d128e85bf5c86e4a602c9127bcfcc414e46d7bdb51ac86f411df8161980"
+          "PCR2": "dee9a4b0f94d75284d2a3ea9318d6f3bc0b22e100d046c1bf9d138bcb60637798954ec60720ae56726952d0720e8bbb8"
         }"#).unwrap();
         assert_eq!(&eif_pcrs.pcr0, &expected_pcrs.pcr0);
         assert_eq!(&eif_pcrs.pcr1, &expected_pcrs.pcr1);
