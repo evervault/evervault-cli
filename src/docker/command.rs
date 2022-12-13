@@ -1,6 +1,6 @@
 use super::error::CommandError;
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Output, Stdio};
 
 pub struct CommandConfig {
@@ -26,15 +26,15 @@ impl CommandConfig {
 }
 
 pub fn build_image_using_kaniko(
-    dockerfile_path: &PathBuf,
-    output_path: &PathBuf,
-    context_path: &PathBuf,
+    dockerfile_path: &Path,
+    output_path: &Path,
+    context_path: &Path,
     verbose: bool,
 ) -> Result<ExitStatus, CommandError> {
     let command_config = CommandConfig::new(verbose);
     let kaniko_volumes = format!("{}:/workspace", context_path.display());
     let output_volume = format!("{}:/output", output_path.display());
-    let kaniko_dockerfile_path = std::path::Path::new("/workspace").join(dockerfile_path);
+    let kaniko_dockerfile_path = Path::new("/workspace").join(dockerfile_path);
     let build_image_args: Vec<&OsStr> = [vec![
         "run".as_ref(),
         "--volume".as_ref(),
