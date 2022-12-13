@@ -257,21 +257,35 @@ pub async fn timed_operation<T: std::future::Future>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils;
+    use crate::{test_utils, enclave::PCRs};
     use std::time::Duration;
 
     #[tokio::test]
     async fn test_get_eif_size() {
-        let (_, output_path) = test_utils::build_test_cage(None).await.unwrap();
+        let (_, output_path) = test_utils::build_test_cage(None, false).await.unwrap();
         let output_path_as_string = output_path.path().to_str().unwrap().to_string();
-        let _eif_size_bytes = get_eif_size_bytes(output_path.path()).await.unwrap();
-        // when we have fully reproducable builds, this test should check that the size of
-        // the test EIF remains constant. Currently, it varies by a few bytes on each run.
-        // e.g.
-        // assert_eq!(eif_size_bytes, test_utils::TEST_EIF_SIZE_BYTES);
 
         // ensure temp output directory still exists after running function
         assert!(std::path::PathBuf::from(output_path_as_string).exists());
+    }
+
+    #[tokio::test]
+    async fn test_reproducible_cage_builds() {
+        let (build_output, output_path) = test_utils::build_test_cage(None, true).await.unwrap();
+        let eif_pcrs = build_output.measurements().pcrs();
+
+        // Compare build measures as certs are generated on the fly to prevent expiry
+        let expected_pcrs: PCRs = serde_json::from_str(r#"{
+          "PCR0": "3380f1c698147817dad11848afe942b670fa1afcce7cb82036b3595ba2fd1d340940f16f47f458b84c9cf5de08089432",
+          "PCR1": "bcdf05fefccaa8e55bf2c8d6dee9e79bbff31e34bf28a99aa19e6b29c37ee80b214a414b7607236edf26fcb78654e63f",
+          "PCR2": "631c29588343c6de24c5d8fd5b6960a9abc93d128e85bf5c86e4a602c9127bcfcc414e46d7bdb51ac86f411df8161980"
+        }"#).unwrap();
+        assert_eq!(&eif_pcrs.pcr0, &expected_pcrs.pcr0);
+        assert_eq!(&eif_pcrs.pcr1, &expected_pcrs.pcr1);
+        assert_eq!(&eif_pcrs.pcr2, &expected_pcrs.pcr2);
+
+        // ensure temp output directory still exists after running function
+        assert!(output_path.path().exists());
     }
 
     async fn long_operation(duration: Duration) {

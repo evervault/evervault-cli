@@ -1,4 +1,11 @@
 use super::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+#[serde(rename_all = "kebab-case")]
+struct RuntimeVersion {
+    data_plane: String,
+}
 
 pub struct AssetsClient {
     inner: GenericApiClient,
@@ -53,5 +60,15 @@ impl AssetsClient {
             .await
             .handle_text_response()
             .await
+    }
+
+    pub async fn get_latest_data_plane_version(&self) -> ApiResult<String> {
+        let data_plane_version = format!("{}/runtime/latest", self.base_url());
+        self.get(&data_plane_version)
+            .send()
+            .await
+            .handle_json_response::<RuntimeVersion>()
+            .await
+            .map(|version| version.data_plane)
     }
 }

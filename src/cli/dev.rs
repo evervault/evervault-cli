@@ -1,7 +1,7 @@
 use crate::dev::run_mock_crypto_api;
 use clap::Parser;
 
-/// Start a mock crypto API for local testing
+/// Start a mock encryption API for local testing
 #[derive(Debug, Parser)]
 #[clap(name = "dev", about)]
 pub struct DevArgs {

@@ -47,7 +47,6 @@ pub fn build_user_image(
 }
 
 pub fn build_reproducible_user_image(
-    user_dockerfile_path: &std::path::Path,
     user_context_path: &std::path::Path,
     output_path: &std::path::Path,
     verbose: bool,
@@ -57,7 +56,6 @@ pub fn build_reproducible_user_image(
         .canonicalize()?;
 
     let build_output = command::build_image_using_kaniko(
-        user_dockerfile_path,
         output_path,
         abs_context_path.as_path(),
         verbose,

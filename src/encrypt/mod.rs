@@ -33,7 +33,7 @@ pub async fn encrypt(
     let keys = cage_api.get_app_keys(&team_uuid, &app_uuid).await?;
 
     let result = match curve {
-        CurveName::Nist => {
+        CurveName::Nist | CurveName::Secp256r1 => {
             let client = ies_secp256r1_openssl::Client::new(
                 ies_secp256r1_openssl::EcKey::public_key_from_bytes(&base64::decode(
                     keys.ecdh_p256_key,
@@ -41,7 +41,7 @@ pub async fn encrypt(
             );
             client.encrypt(value, Datatype::String, false)?
         }
-        CurveName::Koblitz => {
+        CurveName::Koblitz | CurveName::Secp256k1 => {
             let client = ies_secp256k1_openssl::Client::new(
                 ies_secp256k1_openssl::EcKey::public_key_from_bytes(&base64::decode(
                     keys.ecdh_key,
