@@ -50,7 +50,7 @@ pub fn build_image_using_kaniko(
         "cage-image:latest".as_ref(),
         "--dockerfile".as_ref(),
         "/output/ev-user.Dockerfile".as_ref(),
-        // "--reproducible".as_ref(),
+        "--reproducible".as_ref(),
         "--single-snapshot".as_ref(),
         "--snapshotMode=redo".as_ref(),
         "--customPlatform=linux/amd64".as_ref(),
