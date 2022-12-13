@@ -1,4 +1,3 @@
-use crate::common::OutputPath;
 use crate::docker::command;
 use std::io::Write;
 use std::path::PathBuf;
@@ -22,11 +21,11 @@ pub const ENCLAVE_FILENAME: &str = "enclave.eif";
 
 pub fn build_user_image(
     user_dockerfile_path: &std::path::Path,
-    user_context_path: &str,
+    user_context_path: &std::path::Path,
     verbose: bool,
     docker_build_args: Option<Vec<&str>>,
 ) -> Result<(), EnclaveError> {
-    let mut command_line_args = vec![user_context_path.as_ref()];
+    let mut command_line_args = vec![user_context_path.as_os_str()];
 
     if let Some(build_args) = docker_build_args.as_ref() {
         let mut docker_build_args = build_args.iter().map(AsRef::as_ref).collect();
@@ -49,18 +48,18 @@ pub fn build_user_image(
 
 pub fn build_reproducible_user_image(
     user_dockerfile_path: &std::path::Path,
-    user_context_path: &str,
+    user_context_path: &std::path::Path,
+    output_path: &std::path::Path,
     verbose: bool,
 ) -> Result<(), EnclaveError> {
-    let output_path = OutputPath::from(tempfile::TempDir::new()?);
     let abs_context_path = std::env::current_dir()?
         .join(user_context_path)
         .canonicalize()?;
 
     let build_output = command::build_image_using_kaniko(
-        &user_dockerfile_path.to_path_buf(),
-        output_path.path(),
-        &abs_context_path,
+        user_dockerfile_path,
+        output_path,
+        abs_context_path.as_path(),
         verbose,
     )?;
 
@@ -69,7 +68,7 @@ pub fn build_reproducible_user_image(
     }
 
     // Kaniko outputs an image archive directly, but we need to load it into local docker to use the nitro cli
-    let image_archive = output_path.path().join("image.tar");
+    let image_archive = output_path.join("image.tar");
     let load_output = command::load_image_into_local_docker_registry(&image_archive, verbose)?;
     if load_output.success() {
         return Ok(());

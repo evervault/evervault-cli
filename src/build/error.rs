@@ -6,8 +6,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum BuildError {
-    #[error("Context directory ({0}) does not exist")]
-    ContextDirectoryDoesNotExist(String),
+    #[error("Context path does not exist")]
+    ContextPathDoesNotExist,
     #[error("Failed to access output directory — {0}")]
     FailedToAccessOutputDir(#[from] OutputPathError),
     #[error("Invalid signing info provided. {0}")]
@@ -31,7 +31,7 @@ pub enum BuildError {
 impl CliError for BuildError {
     fn exitcode(&self) -> exitcode::ExitCode {
         match self {
-            Self::ContextDirectoryDoesNotExist(_)
+            Self::ContextPathDoesNotExist
             | Self::InvalidSigningInfo(_)
             | Self::DockerfileAccessError(_) => exitcode::NOINPUT,
             Self::FailedToAccessOutputDir(_) | Self::FailedToWriteCageDockerfile(_) => {
