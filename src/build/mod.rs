@@ -76,11 +76,7 @@ pub async fn build_enclave_image_file(
 
     log::info!("Building docker image...");
     if reproducible {
-        enclave::build_reproducible_user_image(
-            context_path,
-            output_path.path(),
-            verbose,
-        )?;
+        enclave::build_reproducible_user_image(context_path, output_path.path(), verbose)?;
     } else {
         enclave::build_user_image(
             &user_dockerfile_path,
