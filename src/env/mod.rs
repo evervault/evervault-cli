@@ -25,9 +25,7 @@ pub async fn env(client: CagesClient, action: EnvCommands) -> Result<Option<Cage
     match action {
         EnvCommands::Add(command) => {
             let details = get_cage_details(command.config)?;
-            let env_secret = if command.skip_encryption {
-                command.secret
-            } else {
+            let env_secret = if command.is_secret {
                 encrypt(
                     command.secret,
                     details.team_uuid,
@@ -35,6 +33,8 @@ pub async fn env(client: CagesClient, action: EnvCommands) -> Result<Option<Cage
                     command.curve,
                 )
                 .await?
+            } else {
+                command.secret
             };
 
             let request = AddSecretRequest {

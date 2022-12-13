@@ -26,7 +26,6 @@ impl CommandConfig {
 }
 
 pub fn build_image_using_kaniko(
-    dockerfile_path: &Path,
     output_path: &Path,
     context_path: &Path,
     verbose: bool,
@@ -34,7 +33,6 @@ pub fn build_image_using_kaniko(
     let command_config = CommandConfig::new(verbose);
     let kaniko_volumes = format!("{}:/workspace", context_path.display());
     let output_volume = format!("{}:/output", output_path.display());
-    let kaniko_dockerfile_path = Path::new("/workspace").join(dockerfile_path);
     let build_image_args: Vec<&OsStr> = [vec![
         "run".as_ref(),
         "--volume".as_ref(),
@@ -49,9 +47,9 @@ pub fn build_image_using_kaniko(
         "/output/image.tar".as_ref(),
         "--no-push".as_ref(),
         "--destination".as_ref(),
-        "cage-image:latest".as_ref(), // TODO: allow users to configure this
+        "cage-image:latest".as_ref(),
         "--dockerfile".as_ref(),
-        kaniko_dockerfile_path.as_os_str(),
+        "/output/ev-user.Dockerfile".as_ref(),
         // "--reproducible".as_ref(),
         "--single-snapshot".as_ref(),
         "--snapshotMode=redo".as_ref(),
