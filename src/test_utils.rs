@@ -42,5 +42,6 @@ fn get_test_build_args() -> ValidatedCageBuildConfig {
         },
         attestation: None,
         disable_tls_termination: false,
+        api_key_auth: true,
     }
 }

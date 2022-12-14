@@ -52,6 +52,10 @@ pub struct InitArgs {
     #[clap(long = "disable-tls-termination")]
     pub disable_tls_termination: bool,
 
+    /// Disable API key auth for your Cage
+    #[clap(long = "disable-api-key-auth")]
+    pub disable_api_key_auth: bool,
+
     /// Flag to make your Cage delete after 6 hours
     #[clap(long = "self-destruct")]
     pub is_time_bound: bool,
@@ -82,6 +86,7 @@ impl std::convert::From<InitArgs> for CageConfig {
             signing: signing_info,
             attestation: None,
             disable_tls_termination: val.disable_tls_termination,
+            api_key_auth: !val.disable_api_key_auth,
         }
     }
 }
@@ -177,6 +182,7 @@ mod init_tests {
             cert_path: Some("./cert.pem".to_string()),
             key_path: Some("./key.pem".to_string()),
             is_time_bound: false,
+            disable_api_key_auth: false,
         };
         init_local_config(init_args, sample_cage).await;
         let config_path = output_dir.path().join("cage.toml");
@@ -189,6 +195,7 @@ app_uuid = "1234"
 team_uuid = "1234"
 debug = false
 dockerfile = "Dockerfile"
+api_key_auth = true
 disable_tls_termination = false
 
 [egress]
