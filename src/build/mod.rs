@@ -142,7 +142,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         return Err(DockerError::RestrictedPortExposed(exposed_port.unwrap()).into());
     }
 
-    let ev_domain = std::env::var("EV_DOMAIN").unwrap_or(String::from("evervault.com"));
+    let ev_domain = std::env::var("EV_DOMAIN").unwrap_or_else(|_| String::from("evervault.com"));
 
     let data_plane_url = format!(
         "https://cage-build-assets.{}/runtime/{}/data-plane/{}",
@@ -190,6 +190,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         Directive::new_env("EV_APP_UUID", build_config.app_uuid()),
         Directive::new_env("EV_TEAM_UUID", build_config.team_uuid()),
         Directive::new_env("DATA_PLANE_HEALTH_CHECKS", "true"),
+        Directive::new_env("EV_API_KEY_AUTH", &build_config.api_key_auth().to_string()),
         // Add bootstrap script to configure enclave before starting services
         Directive::new_run(crate::docker::utils::write_command_to_script(
             bootstrap_script_content,
@@ -237,6 +238,7 @@ mod test {
                 key: "".into(),
             },
             disable_tls_termination: false,
+            api_key_auth: true,
         }
     }
 
@@ -274,6 +276,7 @@ ENV CAGE_UUID=1234
 ENV EV_APP_UUID=3241
 ENV EV_TEAM_UUID=teamid
 ENV DATA_PLANE_HEALTH_CHECKS=true
+ENV EV_API_KEY_AUTH=true
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
@@ -352,6 +355,7 @@ ENV CAGE_UUID=1234
 ENV EV_APP_UUID=3241
 ENV EV_TEAM_UUID=teamid
 ENV DATA_PLANE_HEALTH_CHECKS=true
+ENV EV_API_KEY_AUTH=true
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;

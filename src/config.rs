@@ -149,6 +149,8 @@ pub struct CageConfig {
     #[serde(default = "default_dockerfile")]
     pub dockerfile: String,
     #[serde(default)]
+    pub api_key_auth: bool,
+    #[serde(default)]
     pub disable_tls_termination: bool,
     pub egress: EgressSettings,
     pub signing: Option<SigningInfo>,
@@ -182,6 +184,7 @@ pub struct ValidatedCageBuildConfig {
     pub signing: ValidatedSigningInfo,
     pub attestation: Option<EIFMeasurements>,
     pub disable_tls_termination: bool,
+    pub api_key_auth: bool,
 }
 
 impl ValidatedCageBuildConfig {
@@ -229,6 +232,10 @@ impl ValidatedCageBuildConfig {
             "tls-termination-enabled"
         };
         format!("{egress_label}/{tls_label}")
+    }
+
+    pub fn api_key_auth(&self) -> bool {
+        self.api_key_auth
     }
 }
 
@@ -336,6 +343,7 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             signing: signing_info.try_into()?,
             attestation: config.attestation.clone(),
             disable_tls_termination: config.disable_tls_termination,
+            api_key_auth: config.api_key_auth,
         })
     }
 }
@@ -425,6 +433,7 @@ mod test {
             },
             signing: None,
             attestation: None,
+            api_key_auth: true,
         };
 
         let test_args = ExampleArgs {
