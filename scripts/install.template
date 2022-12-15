@@ -112,12 +112,12 @@ if [ "$PERFORM_INSTALL" = true ]; then
 fi
 
 extract_via_7zip() {
-   TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}.ev-cage.XXXXXX"`
+   TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}/ev-cage.XXXXXX"`
    7z x "$TEMP_FILE" -so | 7z x -aoa -si -ttar -o"$TARGET_DIR"
 }
 
 extract_via_tar() {
-  TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}.ev-cage.XXXXXX"`
+  TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}/ev-cage.XXXXXX"`
   tar xzf "$TEMP_FILE" -C "$TARGET_DIR"
 }
 
