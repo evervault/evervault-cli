@@ -80,7 +80,7 @@ pub async fn build_enclave_image_file(
         // so the dockerfile has to be placed into `context_path`
         let dockerfile_in_context = context_path.join(EV_USER_DOCKERFILE_PATH);
         if !dockerfile_in_context.exists() {
-          std::fs::copy(user_dockerfile_path, dockerfile_in_context).unwrap();
+            std::fs::copy(user_dockerfile_path, dockerfile_in_context).unwrap();
         }
         enclave::build_reproducible_user_image(context_path, output_path.path(), verbose)?;
     } else {

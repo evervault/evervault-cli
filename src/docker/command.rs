@@ -74,9 +74,9 @@ pub fn load_image_into_local_docker_registry(
     let command_config = CommandConfig::new(verbose);
     let docker_load_result = Command::new("docker")
         .args(vec![
-          "load".as_ref(),
-          "--input".as_ref(),
-          image_archive.as_os_str()
+            "load".as_ref(),
+            "--input".as_ref(),
+            image_archive.as_os_str(),
         ])
         .stdout(command_config.output_setting())
         .stderr(command_config.output_setting())

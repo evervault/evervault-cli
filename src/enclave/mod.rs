@@ -57,8 +57,12 @@ pub fn build_reproducible_user_image(
         .canonicalize()?;
 
     let tag_name = format!("{EV_USER_IMAGE_NAME}:reproducible");
-    let build_output =
-        command::build_image_using_kaniko(output_path, abs_context_path.as_path(), tag_name.as_str(), verbose)?;
+    let build_output = command::build_image_using_kaniko(
+        output_path,
+        abs_context_path.as_path(),
+        tag_name.as_str(),
+        verbose,
+    )?;
 
     if !build_output.success() {
         return Err(EnclaveError::new_build_error(build_output.code().unwrap()));
@@ -210,7 +214,14 @@ pub fn run_conversion_to_enclave(
 ) -> Result<BuiltEnclave, EnclaveError> {
     let mounted_volume = format!("{}:{}", output_dir.display(), IN_CONTAINER_VOLUME_DIR);
     let output_location = format!("{}/{}", IN_CONTAINER_VOLUME_DIR, ENCLAVE_FILENAME);
-    let docker_uri = format!("{EV_USER_IMAGE_NAME}:{}", if reproducible { "reproducible" } else { "latest" });
+    let docker_uri = format!(
+        "{EV_USER_IMAGE_NAME}:{}",
+        if reproducible {
+            "reproducible"
+        } else {
+            "latest"
+        }
+    );
     let nitro_run_args = vec![
         "build-enclave".as_ref(),
         "--output-file".as_ref(),
