@@ -28,18 +28,20 @@ impl CommandConfig {
 pub fn build_image_using_kaniko(
     output_path: &Path,
     context_path: &Path,
+    tag_name: &str,
     verbose: bool,
 ) -> Result<ExitStatus, CommandError> {
     let command_config = CommandConfig::new(verbose);
     let kaniko_volumes = format!("{}:/workspace", context_path.display());
     let output_volume = format!("{}:/output", output_path.display());
-    let build_image_args: Vec<&OsStr> = [vec![
+    let build_image_args: Vec<&OsStr> = vec![
         "run".as_ref(),
         "--volume".as_ref(),
-        output_volume.as_str().as_ref(),
-        "--volume".as_ref(),
         kaniko_volumes.as_str().as_ref(),
+        "--volume".as_ref(),
+        output_volume.as_str().as_ref(),
         "--rm".as_ref(),
+        "--network=host".as_ref(),
         "gcr.io/kaniko-project/executor:v1.7.0".as_ref(),
         "--context".as_ref(),
         "dir:///workspace/".as_ref(),
@@ -47,15 +49,14 @@ pub fn build_image_using_kaniko(
         "/output/image.tar".as_ref(),
         "--no-push".as_ref(),
         "--destination".as_ref(),
-        "cage-image:latest".as_ref(),
+        tag_name.as_ref(),
         "--dockerfile".as_ref(),
-        "/output/ev-user.Dockerfile".as_ref(),
+        "ev-user.Dockerfile".as_ref(),
         "--reproducible".as_ref(),
         "--single-snapshot".as_ref(),
         "--snapshotMode=redo".as_ref(),
         "--customPlatform=linux/amd64".as_ref(),
-    ]]
-    .concat();
+    ];
 
     let command_status = Command::new("docker")
         .args(build_image_args)
@@ -71,21 +72,14 @@ pub fn load_image_into_local_docker_registry(
     verbose: bool,
 ) -> Result<ExitStatus, CommandError> {
     let command_config = CommandConfig::new(verbose);
-    let mut cat_cmd = Command::new("cat")
-        .arg(image_archive.as_os_str())
-        .stdout(Stdio::piped())
-        .stderr(command_config.output_setting())
-        .spawn()?;
-
-    let cat_output = cat_cmd
-        .stdout
-        .take()
-        .ok_or_else(|| CommandError::StdIoCaptureError)?;
     let docker_load_result = Command::new("docker")
-        .arg("load")
-        .stdin(cat_output)
-        .stdout(Stdio::null())
-        .stderr(Stdio::inherit())
+        .args(vec![
+          "load".as_ref(),
+          "--input".as_ref(),
+          image_archive.as_os_str()
+        ])
+        .stdout(command_config.output_setting())
+        .stderr(command_config.output_setting())
         .status()?;
     Ok(docker_load_result)
 }

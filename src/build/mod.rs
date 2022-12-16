@@ -76,6 +76,12 @@ pub async fn build_enclave_image_file(
 
     log::info!("Building docker image...");
     if reproducible {
+        // to perform a reproducible build, the context directory has to be mounted to the docker container for kaniko to have access
+        // so the dockerfile has to be placed into `context_path`
+        let dockerfile_in_context = context_path.join(EV_USER_DOCKERFILE_PATH);
+        if !dockerfile_in_context.exists() {
+          std::fs::copy(user_dockerfile_path, dockerfile_in_context).unwrap();
+        }
         enclave::build_reproducible_user_image(context_path, output_path.path(), verbose)?;
     } else {
         enclave::build_user_image(
@@ -91,7 +97,7 @@ pub async fn build_enclave_image_file(
     enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose)?;
 
     log::info!("Converting docker image to EIF...");
-    enclave::run_conversion_to_enclave(output_path.path(), verbose)
+    enclave::run_conversion_to_enclave(output_path.path(), verbose, reproducible)
         .map(|built_enc| (built_enc, output_path))
         .map_err(|e| e.into())
 }
@@ -168,7 +174,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let injected_directives = vec![
         // install dependencies
         Directive::new_run(crate::docker::utils::write_command_to_script(
-            r#"if [ \"$( command -v apk )\" ]; then\necho \"Installing using apk\"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/*\nelif [ \"$( command -v apt-get )\" ]; then\necho \"Installing using apt-get\"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho \"No suitable installer found. Please contact support: support@evervault.com\"\nexit 1\nfi"#,
+            r#"if [ \"$( command -v apk )\" ]; then\necho \"Installing using apk\"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/* ; rm lib/apk/db/scripts.tar\nelif [ \"$( command -v apt-get )\" ]; then\necho \"Installing using apt-get\"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho \"No suitable installer found. Please contact support: support@evervault.com\"\nexit 1\nfi"#,
             "/runtime-installer",
             &[],
         )),
