@@ -65,16 +65,16 @@ fn write_cert_to_fs(
     cert: rcgen::Certificate,
 ) -> Result<(std::path::PathBuf, std::path::PathBuf), CertError> {
     let output_path = std::path::Path::new(output_path);
-    let path = output_path
-        .canonicalize()
-        .map_err(|_| CertError::OutputPathDoesNotExist)?;
+    if !output_path.exists() {
+      return Err(CertError::OutputPathDoesNotExist);
+    }
 
-    let cert_path = path.join("cert.pem");
+    let cert_path = output_path.join("cert.pem");
     let mut cert_file = std::fs::File::create(cert_path.as_path())?;
     let serialized_cert = cert.serialize_pem()?;
     cert_file.write_all(serialized_cert.as_bytes())?;
 
-    let key_path = path.join("key.pem");
+    let key_path = output_path.join("key.pem");
     let mut key_file = std::fs::File::create(key_path.as_path())?;
     let serialized_key = cert.serialize_private_key_pem();
     key_file.write_all(serialized_key.as_bytes())?;
