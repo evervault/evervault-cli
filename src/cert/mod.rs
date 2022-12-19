@@ -64,7 +64,6 @@ fn write_cert_to_fs(
     output_path: &Path,
     cert: rcgen::Certificate,
 ) -> Result<(PathBuf, PathBuf), CertError> {
-    let output_path = Path::new(output_path);
     if !output_path.exists() {
         return Err(CertError::OutputPathDoesNotExist);
     }
