@@ -147,13 +147,18 @@ async fn watch_deployment(
             Ok(deployment_response) if deployment_response.is_finished() => {
                 Ok(StatusReport::complete("Cage deployed!".to_string()))
             }
-            Ok(deployment_response) if deployment_response.is_failed() => {
-                log::error!("{}", &deployment_response.get_failure_reason());
+            Ok(deployment_response) if deployment_response.is_failed().unwrap_or(false) => {
+                if let Some(reason) = deployment_response.get_failure_reason() {
+                    log::error!("{reason}");
+                }
                 Err(DeployError::DeploymentError)
             }
             Ok(deployment_response) => {
-                let detailed_status = deployment_response.get_detailed_status();
-                Ok(StatusReport::update(detailed_status))
+                let status_report = match deployment_response.get_detailed_status() {
+                    Some(status) => StatusReport::update(status),
+                    None => StatusReport::NoOp,
+                };
+                Ok(status_report)
             }
             Err(e) => {
                 log::error!("Unable to retrieve deployment status. Error: {:?}", e);
