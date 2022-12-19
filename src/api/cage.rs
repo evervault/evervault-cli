@@ -396,7 +396,7 @@ impl CageRegionalDeployment {
     pub fn get_failure_reason(&self) -> String {
         self.failure_reason
             .clone()
-            .unwrap_or_else(|| String::from("Starting deployment."))
+            .unwrap_or_else(|| String::from("An unknown error occurred during deployment."))
     }
 
     pub fn get_detailed_status(&self) -> String {
@@ -474,16 +474,22 @@ impl GetCageDeploymentResponse {
     }
 
     //TODO: Handle multi region deployment failures
-    pub fn is_failed(&self) -> bool {
-        self.tee_cage_regional_deployments[0].is_failed()
+    pub fn is_failed(&self) -> Option<bool> {
+        self.tee_cage_regional_deployments
+            .first()
+            .map(|depl| depl.is_failed())
     }
 
-    pub fn get_failure_reason(&self) -> String {
-        self.tee_cage_regional_deployments[0].get_failure_reason()
+    pub fn get_failure_reason(&self) -> Option<String> {
+        self.tee_cage_regional_deployments
+            .first()
+            .map(|depl| depl.get_failure_reason())
     }
 
-    pub fn get_detailed_status(&self) -> String {
-        self.tee_cage_regional_deployments[0].get_detailed_status()
+    pub fn get_detailed_status(&self) -> Option<String> {
+        self.tee_cage_regional_deployments
+            .first()
+            .map(|depl| depl.get_detailed_status())
     }
 }
 
@@ -540,3 +546,100 @@ impl LogEvent {
 }
 
 pub type DeleteCageResponse = Cage;
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn get_testing_deployment() -> CageDeployment {
+        CageDeployment {
+            uuid: "abc".to_string(),
+            cage_uuid: "def".to_string(),
+            version_uuid: "ghi".to_string(),
+            signing_cert_uuid: "jkl".to_string(),
+            debug_mode: false,
+            started_at: None,
+            completed_at: None,
+        }
+    }
+
+    fn get_testing_version() -> CageVersion {
+        CageVersion {
+            uuid: "abc".to_string(),
+            version: 1,
+            control_plane_img_url: Some("control-plane.com".to_string()),
+            control_plane_version: Some("1.0.0".to_string()),
+            data_plane_version: Some("1.0.0".to_string()),
+            build_status: BuildStatus::Ready,
+            failure_reason: None,
+            started_at: None,
+        }
+    }
+
+    fn get_testing_cert() -> CageSigningCert {
+        CageSigningCert {
+            uuid: "abc".to_string(),
+            app_uuid: "def".to_string(),
+            cert_hash: "ghi".to_string(),
+            not_before: None,
+            not_after: None,
+        }
+    }
+
+    #[test]
+    fn test_empty_regional_deployments() {
+        let deployment = get_testing_deployment();
+        let version = get_testing_version();
+        let cert = get_testing_cert();
+        let deployment_with_empty_regional = GetCageDeploymentResponse {
+            deployment,
+            tee_cage_version: version,
+            tee_cage_signing_cert: cert,
+            tee_cage_regional_deployments: vec![],
+        };
+
+        assert!(deployment_with_empty_regional
+            .get_detailed_status()
+            .is_none());
+        assert!(deployment_with_empty_regional
+            .get_failure_reason()
+            .is_none());
+        assert!(deployment_with_empty_regional.is_failed().is_none());
+    }
+
+    #[test]
+    fn test_populated_regional_deployments() {
+        let deployment = get_testing_deployment();
+        let version = get_testing_version();
+        let cert = get_testing_cert();
+
+        let failure_reason = "An error occurred provisioning your TEE".to_string();
+        let detailed_failure_reason = "Insufficient capacity".to_string();
+        let deployment_with_regional = GetCageDeploymentResponse {
+            deployment,
+            tee_cage_version: version,
+            tee_cage_signing_cert: cert,
+            tee_cage_regional_deployments: vec![CageRegionalDeployment {
+                uuid: "abc".to_string(),
+                deployment_uuid: "def".to_string(),
+                deployment_order: 1,
+                region: "us-east-1".to_string(),
+                failure_reason: Some(failure_reason.clone()),
+                deploy_status: DeployStatus::Failed,
+                started_at: None,
+                completed_at: None,
+                detailed_status: Some(detailed_failure_reason.clone()),
+            }],
+        };
+
+        assert_eq!(deployment_with_regional.is_failed(), Some(true));
+        assert_eq!(
+            deployment_with_regional.get_failure_reason(),
+            Some(failure_reason)
+        );
+        assert_eq!(
+            deployment_with_regional.get_detailed_status(),
+            Some(detailed_failure_reason)
+        );
+    }
+}
