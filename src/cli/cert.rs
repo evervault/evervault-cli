@@ -41,14 +41,15 @@ pub fn run(cert_args: CertArgs) -> exitcode::ExitCode {
                         return e.exitcode();
                     }
                 };
-            let (cert_path, key_path) =
-                match cert::create_new_cert(&new_args.output_dir, distinguished_name) {
-                    Ok(paths) => paths,
-                    Err(e) => {
-                        log::error!("An error occurred while generating your cert - {}", e);
-                        return e.exitcode();
-                    }
-                };
+            let output_path = std::path::Path::new(&new_args.output_dir);
+            let (cert_path, key_path) = match cert::create_new_cert(output_path, distinguished_name)
+            {
+                Ok(paths) => paths,
+                Err(e) => {
+                    log::error!("An error occurred while generating your cert - {}", e);
+                    return e.exitcode();
+                }
+            };
 
             if atty::is(Stream::Stdout) {
                 log::info!("Signing cert successfully generated...");
