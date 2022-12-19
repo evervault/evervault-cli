@@ -3,13 +3,13 @@ use itertools::Itertools;
 use rcgen::CertificateParams;
 use std::io::Write;
 use std::ops::Add;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub mod error;
 pub use error::CertError;
 
 pub fn create_new_cert(
-    output_dir: &str,
+    output_dir: &Path,
     distinguished_name: DistinguishedName,
 ) -> Result<(PathBuf, PathBuf), CertError> {
     let mut cert_params = CertificateParams::new(vec![]);
@@ -61,12 +61,12 @@ fn add_distinguished_name_to_cert_params(
 }
 
 fn write_cert_to_fs(
-    output_path: &str,
+    output_path: &Path,
     cert: rcgen::Certificate,
-) -> Result<(std::path::PathBuf, std::path::PathBuf), CertError> {
-    let output_path = std::path::Path::new(output_path);
+) -> Result<(PathBuf, PathBuf), CertError> {
+    let output_path = Path::new(output_path);
     if !output_path.exists() {
-      return Err(CertError::OutputPathDoesNotExist);
+        return Err(CertError::OutputPathDoesNotExist);
     }
 
     let cert_path = output_path.join("cert.pem");

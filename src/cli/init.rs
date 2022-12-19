@@ -109,20 +109,16 @@ pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
 }
 
 async fn init_local_config(init_args: InitArgs, created_cage: Cage) -> exitcode::ExitCode {
-    let output_path = std::path::Path::new(init_args.output_dir.as_str());
-    let config_path = output_path.join("cage.toml");
-
     let output_dir = init_args.output_dir.clone();
+    let output_path = std::path::Path::new(output_dir.as_str());
+    let config_path = output_path.join("cage.toml");
 
     let mut initial_config: CageConfig = init_args.into();
     initial_config.annotate(created_cage);
 
     if initial_config.signing.is_none() {
         log::info!("Generating signing credentials for cage");
-        match crate::cert::create_new_cert(
-            output_dir.as_str(),
-            crate::cert::DistinguishedName::default(),
-        ) {
+        match crate::cert::create_new_cert(output_path, crate::cert::DistinguishedName::default()) {
             Ok((cert_path, key_path)) => {
                 initial_config.set_cert(format!("{}", cert_path.display()));
                 initial_config.set_key(format!("{}", key_path.display()));
