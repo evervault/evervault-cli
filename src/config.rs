@@ -129,9 +129,10 @@ impl CliError for CageConfigError {
     fn exitcode(&self) -> exitcode::ExitCode {
         match self {
             Self::MissingConfigFile(_) | Self::FailedToAccessConfig(_) => exitcode::NOINPUT,
-            Self::FailedToParseCageConfig(_) | Self::MissingDockerfile | Self::MissingField(_) | Self::LoggingEnabledWithoutTLSTermination() => {
-                exitcode::DATAERR
-            }
+            Self::FailedToParseCageConfig(_)
+            | Self::MissingDockerfile
+            | Self::MissingField(_)
+            | Self::LoggingEnabledWithoutTLSTermination() => exitcode::DATAERR,
             Self::MissingSigningInfo(signing_err) => signing_err.exitcode(),
         }
     }
@@ -307,14 +308,14 @@ impl CageConfig {
             self.name(),
             self.app_uuid
                 .as_ref()
-                .ok_or(CageConfigError::MissingField("app_uuid".to_string()))?
+                .ok_or_else(|| CageConfigError::MissingField("app_uuid".to_string()))?
         ))
     }
 
     pub fn get_attestation(&self) -> Result<&EIFMeasurements, CageConfigError> {
         self.attestation
             .as_ref()
-            .ok_or(CageConfigError::MissingField("attestation".to_string()))
+            .ok_or_else(|| CageConfigError::MissingField("attestation".to_string()))
     }
 }
 
@@ -330,20 +331,23 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
         let app_uuid = config
             .app_uuid
             .clone()
-            .ok_or(CageConfigError::MissingField("App uuid".into()))?;
+            .ok_or_else(|| CageConfigError::MissingField("App uuid".into()))?;
         let cage_uuid = config
             .uuid
             .clone()
-            .ok_or(CageConfigError::MissingField("Cage uuid".into()))?;
+            .ok_or_else(||CageConfigError::MissingField("Cage uuid".into()))?;
         let team_uuid = config
             .team_uuid
             .clone()
-            .ok_or(CageConfigError::MissingField("Team uuid".into()))?;
-        
-        let trx_logging_enabled = match (config.trx_logging_enabled, config.disable_tls_termination) {
+            .ok_or_else(||CageConfigError::MissingField("Team uuid".into()))?;
+
+        let trx_logging_enabled = match (config.trx_logging_enabled, config.disable_tls_termination)
+        {
             (None, true) => Ok(false), // If tls termination off, turn off logging by default
             (None, false) => Ok(true), // If tls termination on, turn on logging by default
-            (Some(logging_enabled), false) if logging_enabled => Err(CageConfigError::LoggingEnabledWithoutTLSTermination()),
+            (Some(logging_enabled), false) if logging_enabled => {
+                Err(CageConfigError::LoggingEnabledWithoutTLSTermination())
+            }
             (Some(logging_enabled), _) => Ok(logging_enabled),
         }?;
 
@@ -359,7 +363,7 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             attestation: config.attestation.clone(),
             disable_tls_termination: config.disable_tls_termination,
             api_key_auth: config.api_key_auth,
-            trx_logging_enabled
+            trx_logging_enabled,
         })
     }
 }
