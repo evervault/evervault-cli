@@ -121,13 +121,15 @@ pub enum CageConfigError {
     MissingDockerfile,
     #[error("{0} was not set in the toml.")]
     MissingField(String),
+    #[error("TLS Termination must be enabled to enabled cage logging.")]
+    LoggingEnabledWithoutTLSTermination(),
 }
 
 impl CliError for CageConfigError {
     fn exitcode(&self) -> exitcode::ExitCode {
         match self {
             Self::MissingConfigFile(_) | Self::FailedToAccessConfig(_) => exitcode::NOINPUT,
-            Self::FailedToParseCageConfig(_) | Self::MissingDockerfile | Self::MissingField(_) => {
+            Self::FailedToParseCageConfig(_) | Self::MissingDockerfile | Self::MissingField(_) | Self::LoggingEnabledWithoutTLSTermination() => {
                 exitcode::DATAERR
             }
             Self::MissingSigningInfo(signing_err) => signing_err.exitcode(),
@@ -150,6 +152,7 @@ pub struct CageConfig {
     pub dockerfile: String,
     #[serde(default)]
     pub api_key_auth: bool,
+    pub trx_logging_enabled: Option<bool>,
     #[serde(default)]
     pub disable_tls_termination: bool,
     pub egress: EgressSettings,
@@ -185,6 +188,7 @@ pub struct ValidatedCageBuildConfig {
     pub attestation: Option<EIFMeasurements>,
     pub disable_tls_termination: bool,
     pub api_key_auth: bool,
+    pub trx_logging_enabled: bool,
 }
 
 impl ValidatedCageBuildConfig {
@@ -236,6 +240,10 @@ impl ValidatedCageBuildConfig {
 
     pub fn api_key_auth(&self) -> bool {
         self.api_key_auth
+    }
+
+    pub fn trx_logging_enabled(&self) -> bool {
+        self.trx_logging_enabled
     }
 }
 
@@ -331,6 +339,13 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             .team_uuid
             .clone()
             .ok_or(CageConfigError::MissingField("Team uuid".into()))?;
+        
+        let trx_logging_enabled = match (config.trx_logging_enabled, config.disable_tls_termination) {
+            (None, true) => Ok(false), // If tls termination off, turn off logging by default
+            (None, false) => Ok(true), // If tls termination on, turn on logging by default
+            (Some(logging_enabled), false) if logging_enabled => Err(CageConfigError::LoggingEnabledWithoutTLSTermination()),
+            (Some(logging_enabled), _) => Ok(logging_enabled),
+        }?;
 
         Ok(ValidatedCageBuildConfig {
             cage_uuid,
@@ -344,6 +359,7 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             attestation: config.attestation.clone(),
             disable_tls_termination: config.disable_tls_termination,
             api_key_auth: config.api_key_auth,
+            trx_logging_enabled
         })
     }
 }
@@ -434,6 +450,7 @@ mod test {
             signing: None,
             attestation: None,
             api_key_auth: true,
+            trx_logging_enabled: Some(true),
         };
 
         let test_args = ExampleArgs {
