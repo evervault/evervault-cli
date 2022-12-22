@@ -191,7 +191,10 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         Directive::new_env("EV_TEAM_UUID", build_config.team_uuid()),
         Directive::new_env("DATA_PLANE_HEALTH_CHECKS", "true"),
         Directive::new_env("EV_API_KEY_AUTH", &build_config.api_key_auth().to_string()),
-        Directive::new_env("EV_TRX_LOGGING_ENABLED", &build_config.trx_logging_enabled().to_string()),
+        Directive::new_env(
+            "EV_TRX_LOGGING_ENABLED",
+            &build_config.trx_logging_enabled().to_string(),
+        ),
         // Add bootstrap script to configure enclave before starting services
         Directive::new_run(crate::docker::utils::write_command_to_script(
             bootstrap_script_content,
@@ -240,7 +243,7 @@ mod test {
             },
             disable_tls_termination: false,
             api_key_auth: true,
-            trx_logging_enabled: true
+            trx_logging_enabled: true,
         }
     }
 
