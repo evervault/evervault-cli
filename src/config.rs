@@ -121,7 +121,7 @@ pub enum CageConfigError {
     MissingDockerfile,
     #[error("{0} was not set in the toml.")]
     MissingField(String),
-    #[error("TLS Termination must be enabled to enabled cage logging.")]
+    #[error("TLS Termination must be enabled to enable cage logging.")]
     LoggingEnabledWithoutTLSTermination(),
 }
 
