@@ -58,7 +58,7 @@ pub struct InitArgs {
 
     /// Disable transaction logging in your Cage
     #[clap(long = "disable-trx-logging")]
-    pub disable_trx_logging: bool,
+    pub trx_logging_disabled: bool,
 
     /// Flag to make your Cage delete after 6 hours
     #[clap(long = "self-destruct")]
@@ -91,7 +91,7 @@ impl std::convert::From<InitArgs> for CageConfig {
             attestation: None,
             disable_tls_termination: val.disable_tls_termination,
             api_key_auth: !val.disable_api_key_auth,
-            trx_logging_enabled: Some(!val.disable_trx_logging),
+            trx_logging: !val.trx_logging_disabled,
         }
     }
 }
