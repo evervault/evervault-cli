@@ -153,7 +153,8 @@ pub struct CageConfig {
     pub dockerfile: String,
     #[serde(default)]
     pub api_key_auth: bool,
-    pub trx_logging_enabled: Option<bool>,
+    #[serde(default)]
+    pub trx_logging: bool,
     #[serde(default)]
     pub disable_tls_termination: bool,
     pub egress: EgressSettings,
@@ -341,14 +342,10 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             .clone()
             .ok_or_else(|| CageConfigError::MissingField("Team uuid".into()))?;
 
-        let trx_logging_enabled = match (config.trx_logging_enabled, config.disable_tls_termination)
-        {
-            (None, true) => Ok(false), // If tls termination off, turn off logging by default
-            (None, false) => Ok(true), // If tls termination on, turn on logging by default
-            (Some(logging_enabled), false) if logging_enabled => {
-                Err(CageConfigError::LoggingEnabledWithoutTLSTermination())
-            }
-            (Some(logging_enabled), _) => Ok(logging_enabled),
+        let trx_logging_enabled = match (config.trx_logging, !config.disable_tls_termination) {
+            (false, _) => Ok(false), // (logging disabled, _) = logging disabled
+            (true, false) => Err(CageConfigError::LoggingEnabledWithoutTLSTermination()), // (logging enabled, tls_termination disabled) = config error (Tls termination needed for logging)
+            (true, true) => Ok(true), // (logging enabled, tls_termination enabled) = logging enabled
         }?;
 
         Ok(ValidatedCageBuildConfig {
