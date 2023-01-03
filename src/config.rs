@@ -451,7 +451,7 @@ mod test {
             signing: None,
             attestation: None,
             api_key_auth: true,
-            trx_logging_enabled: Some(true),
+            trx_logging: true,
         };
 
         let test_args = ExampleArgs {

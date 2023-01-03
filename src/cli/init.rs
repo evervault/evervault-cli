@@ -184,7 +184,7 @@ mod init_tests {
             key_path: Some("./key.pem".to_string()),
             is_time_bound: false,
             disable_api_key_auth: false,
-            disable_trx_logging: false,
+            trx_logging_disabled: false,
         };
         init_local_config(init_args, sample_cage).await;
         let config_path = output_dir.path().join("cage.toml");
@@ -198,7 +198,7 @@ team_uuid = "1234"
 debug = false
 dockerfile = "Dockerfile"
 api_key_auth = true
-trx_logging_enabled = true
+trx_logging = true
 disable_tls_termination = false
 
 [egress]
