@@ -335,11 +335,11 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
         let cage_uuid = config
             .uuid
             .clone()
-            .ok_or_else(||CageConfigError::MissingField("Cage uuid".into()))?;
+            .ok_or_else(|| CageConfigError::MissingField("Cage uuid".into()))?;
         let team_uuid = config
             .team_uuid
             .clone()
-            .ok_or_else(||CageConfigError::MissingField("Team uuid".into()))?;
+            .ok_or_else(|| CageConfigError::MissingField("Team uuid".into()))?;
 
         let trx_logging_enabled = match (config.trx_logging_enabled, config.disable_tls_termination)
         {
