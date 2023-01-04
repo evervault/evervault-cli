@@ -56,6 +56,10 @@ pub struct InitArgs {
     #[clap(long = "disable-api-key-auth")]
     pub disable_api_key_auth: bool,
 
+    /// Disable transaction logging in your Cage
+    #[clap(long = "disable-trx-logging")]
+    pub trx_logging_disabled: bool,
+
     /// Flag to make your Cage delete after 6 hours
     #[clap(long = "self-destruct")]
     pub is_time_bound: bool,
@@ -87,6 +91,7 @@ impl std::convert::From<InitArgs> for CageConfig {
             attestation: None,
             disable_tls_termination: val.disable_tls_termination,
             api_key_auth: !val.disable_api_key_auth,
+            trx_logging: !val.trx_logging_disabled,
         }
     }
 }
@@ -179,6 +184,7 @@ mod init_tests {
             key_path: Some("./key.pem".to_string()),
             is_time_bound: false,
             disable_api_key_auth: false,
+            trx_logging_disabled: false,
         };
         init_local_config(init_args, sample_cage).await;
         let config_path = output_dir.path().join("cage.toml");
@@ -192,6 +198,7 @@ team_uuid = "1234"
 debug = false
 dockerfile = "Dockerfile"
 api_key_auth = true
+trx_logging = true
 disable_tls_termination = false
 
 [egress]
