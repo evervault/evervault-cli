@@ -281,9 +281,9 @@ mod tests {
 
         // Compare build measures as certs are generated on the fly to prevent expiry
         let expected_pcrs: PCRs = serde_json::from_str(r#"{
-          "PCR0": "decf01e30e12037018af97a16e9e6782bb27ac9ddd64a318f8666c7daa49d473fe413b653d9fa4b5f60a8e672262f9be",
+          "PCR0": "271485a2a3fd9ea44f943fc7878d87f94acf6a3d3aa0f441f12669dcc6b0f229e74c7acb8a9ec026a9072b99d7d018f9",
           "PCR1": "bcdf05fefccaa8e55bf2c8d6dee9e79bbff31e34bf28a99aa19e6b29c37ee80b214a414b7607236edf26fcb78654e63f",
-          "PCR2": "7c0badbd9d31b5541e05038c9d93bdd02e83875a788309057308ae5c19bb770016ba1d956611c48bca85974aa76d008e"
+          "PCR2": "af911a813e2cdf9c3f79b7b18258bf010109f1739cdffd32589ba59222babfe3e5aa93e1d2e3d85c8ebd7a398ac39921"
         }"#).unwrap();
         assert_eq!(&eif_pcrs.pcr0, &expected_pcrs.pcr0);
         assert_eq!(&eif_pcrs.pcr1, &expected_pcrs.pcr1);
