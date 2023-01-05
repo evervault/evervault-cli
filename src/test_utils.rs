@@ -14,8 +14,19 @@ pub async fn build_test_cage(
         .expect("Failed to gen cert in tests");
     let build_args = get_test_build_args();
     let assets_client = AssetsClient::new();
-    let data_plane_version = assets_client.get_latest_data_plane_version().await.unwrap();
-    let installer_version = assets_client.get_latest_installer_version().await.unwrap();
+
+    // When testing reproducible builds, use pinned versions to avoid breaking the test on every release.
+    let data_plane_version = if reproducible {
+        "0.0.21".to_string()
+    } else {
+        assets_client.get_latest_data_plane_version().await.unwrap()
+    };
+    let installer_version = if reproducible {
+        "701ea2dbdf708c12172c668af9c1d2b703bfcc95".to_string()
+    } else {
+        assets_client.get_latest_installer_version().await.unwrap()
+    };
+
     build_enclave_image_file(
         &build_args,
         ".",
