@@ -142,6 +142,10 @@ pub fn default_dockerfile() -> String {
     "./Dockerfile".to_string()
 }
 
+pub fn default_true() -> bool {
+    true
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CageConfig {
     pub name: String,
@@ -151,9 +155,9 @@ pub struct CageConfig {
     pub debug: bool,
     #[serde(default = "default_dockerfile")]
     pub dockerfile: String,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub api_key_auth: bool,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub trx_logging: bool,
     #[serde(default)]
     pub disable_tls_termination: bool,
