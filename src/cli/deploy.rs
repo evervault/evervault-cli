@@ -167,6 +167,17 @@ async fn resolve_eif(
             }
         };
 
+        let installer_version = match cage_build_assets_client
+            .get_latest_installer_version()
+            .await
+        {
+            Ok(version) => version,
+            Err(e) => {
+                log::error!("Failed to retrieve the latest data plane version - {e:?}");
+                return Err(e.exitcode());
+            }
+        };
+
         let (built_enclave, output_path) = build_enclave_image_file(
             validated_config,
             context_path,
@@ -175,6 +186,7 @@ async fn resolve_eif(
             build_args,
             reproducible,
             data_plane_version,
+            installer_version,
         )
         .await
         .map_err(|build_err| {

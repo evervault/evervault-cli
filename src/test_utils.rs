@@ -15,6 +15,7 @@ pub async fn build_test_cage(
     let build_args = get_test_build_args();
     let assets_client = AssetsClient::new();
     let data_plane_version = assets_client.get_latest_data_plane_version().await.unwrap();
+    let installer_version = assets_client.get_latest_installer_version().await.unwrap();
     build_enclave_image_file(
         &build_args,
         ".",
@@ -23,6 +24,7 @@ pub async fn build_test_cage(
         None,
         reproducible,
         data_plane_version,
+        installer_version,
     )
     .await
 }
