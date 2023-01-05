@@ -10,7 +10,8 @@ pub async fn build_test_cage(
     reproducible: bool,
 ) -> Result<(BuiltEnclave, OutputPath), BuildError> {
     let dn_string = crate::cert::DistinguishedName::default();
-    crate::cert::create_new_cert(".".into(), dn_string).expect("Failed to gen cert in tests");
+    crate::cert::create_new_cert(std::path::Path::new("."), dn_string)
+        .expect("Failed to gen cert in tests");
     let build_args = get_test_build_args();
     let assets_client = AssetsClient::new();
     let data_plane_version = assets_client.get_latest_data_plane_version().await.unwrap();
@@ -44,5 +45,7 @@ fn get_test_build_args() -> ValidatedCageBuildConfig {
         },
         attestation: None,
         disable_tls_termination: false,
+        api_key_auth: true,
+        trx_logging_enabled: true,
     }
 }

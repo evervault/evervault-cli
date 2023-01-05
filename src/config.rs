@@ -121,15 +121,18 @@ pub enum CageConfigError {
     MissingDockerfile,
     #[error("{0} was not set in the toml.")]
     MissingField(String),
+    #[error("TLS Termination must be enabled to enable cage logging.")]
+    LoggingEnabledWithoutTLSTermination(),
 }
 
 impl CliError for CageConfigError {
     fn exitcode(&self) -> exitcode::ExitCode {
         match self {
             Self::MissingConfigFile(_) | Self::FailedToAccessConfig(_) => exitcode::NOINPUT,
-            Self::FailedToParseCageConfig(_) | Self::MissingDockerfile | Self::MissingField(_) => {
-                exitcode::DATAERR
-            }
+            Self::FailedToParseCageConfig(_)
+            | Self::MissingDockerfile
+            | Self::MissingField(_)
+            | Self::LoggingEnabledWithoutTLSTermination() => exitcode::DATAERR,
             Self::MissingSigningInfo(signing_err) => signing_err.exitcode(),
         }
     }
@@ -137,6 +140,10 @@ impl CliError for CageConfigError {
 
 pub fn default_dockerfile() -> String {
     "./Dockerfile".to_string()
+}
+
+pub fn default_true() -> bool {
+    true
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -148,6 +155,10 @@ pub struct CageConfig {
     pub debug: bool,
     #[serde(default = "default_dockerfile")]
     pub dockerfile: String,
+    #[serde(default = "default_true")]
+    pub api_key_auth: bool,
+    #[serde(default = "default_true")]
+    pub trx_logging: bool,
     #[serde(default)]
     pub disable_tls_termination: bool,
     pub egress: EgressSettings,
@@ -182,6 +193,8 @@ pub struct ValidatedCageBuildConfig {
     pub signing: ValidatedSigningInfo,
     pub attestation: Option<EIFMeasurements>,
     pub disable_tls_termination: bool,
+    pub api_key_auth: bool,
+    pub trx_logging_enabled: bool,
 }
 
 impl ValidatedCageBuildConfig {
@@ -229,6 +242,14 @@ impl ValidatedCageBuildConfig {
             "tls-termination-enabled"
         };
         format!("{egress_label}/{tls_label}")
+    }
+
+    pub fn api_key_auth(&self) -> bool {
+        self.api_key_auth
+    }
+
+    pub fn trx_logging_enabled(&self) -> bool {
+        self.trx_logging_enabled
     }
 }
 
@@ -292,14 +313,14 @@ impl CageConfig {
             self.name(),
             self.app_uuid
                 .as_ref()
-                .ok_or(CageConfigError::MissingField("app_uuid".to_string()))?
+                .ok_or_else(|| CageConfigError::MissingField("app_uuid".to_string()))?
         ))
     }
 
     pub fn get_attestation(&self) -> Result<&EIFMeasurements, CageConfigError> {
         self.attestation
             .as_ref()
-            .ok_or(CageConfigError::MissingField("attestation".to_string()))
+            .ok_or_else(|| CageConfigError::MissingField("attestation".to_string()))
     }
 }
 
@@ -315,15 +336,21 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
         let app_uuid = config
             .app_uuid
             .clone()
-            .ok_or(CageConfigError::MissingField("App uuid".into()))?;
+            .ok_or_else(|| CageConfigError::MissingField("App uuid".into()))?;
         let cage_uuid = config
             .uuid
             .clone()
-            .ok_or(CageConfigError::MissingField("Cage uuid".into()))?;
+            .ok_or_else(|| CageConfigError::MissingField("Cage uuid".into()))?;
         let team_uuid = config
             .team_uuid
             .clone()
-            .ok_or(CageConfigError::MissingField("Team uuid".into()))?;
+            .ok_or_else(|| CageConfigError::MissingField("Team uuid".into()))?;
+
+        let trx_logging_enabled = match (config.trx_logging, !config.disable_tls_termination) {
+            (false, _) => Ok(false), // (logging disabled, _) = logging disabled
+            (true, false) => Err(CageConfigError::LoggingEnabledWithoutTLSTermination()), // (logging enabled, tls_termination disabled) = config error (Tls termination needed for logging)
+            (true, true) => Ok(true), // (logging enabled, tls_termination enabled) = logging enabled
+        }?;
 
         Ok(ValidatedCageBuildConfig {
             cage_uuid,
@@ -336,6 +363,8 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             signing: signing_info.try_into()?,
             attestation: config.attestation.clone(),
             disable_tls_termination: config.disable_tls_termination,
+            api_key_auth: config.api_key_auth,
+            trx_logging_enabled,
         })
     }
 }
@@ -425,6 +454,8 @@ mod test {
             },
             signing: None,
             attestation: None,
+            api_key_auth: true,
+            trx_logging: true,
         };
 
         let test_args = ExampleArgs {

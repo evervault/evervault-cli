@@ -52,6 +52,14 @@ pub struct InitArgs {
     #[clap(long = "disable-tls-termination")]
     pub disable_tls_termination: bool,
 
+    /// Disable API key auth for your Cage
+    #[clap(long = "disable-api-key-auth")]
+    pub disable_api_key_auth: bool,
+
+    /// Disable transaction logging in your Cage
+    #[clap(long = "disable-trx-logging")]
+    pub trx_logging_disabled: bool,
+
     /// Flag to make your Cage delete after 6 hours
     #[clap(long = "self-destruct")]
     pub is_time_bound: bool,
@@ -82,6 +90,8 @@ impl std::convert::From<InitArgs> for CageConfig {
             signing: signing_info,
             attestation: None,
             disable_tls_termination: val.disable_tls_termination,
+            api_key_auth: !val.disable_api_key_auth,
+            trx_logging: !val.trx_logging_disabled,
         }
     }
 }
@@ -104,20 +114,16 @@ pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
 }
 
 async fn init_local_config(init_args: InitArgs, created_cage: Cage) -> exitcode::ExitCode {
-    let output_path = std::path::Path::new(init_args.output_dir.as_str());
-    let config_path = output_path.join("cage.toml");
-
     let output_dir = init_args.output_dir.clone();
+    let output_path = std::path::Path::new(output_dir.as_str());
+    let config_path = output_path.join("cage.toml");
 
     let mut initial_config: CageConfig = init_args.into();
     initial_config.annotate(created_cage);
 
     if initial_config.signing.is_none() {
         log::info!("Generating signing credentials for cage");
-        match crate::cert::create_new_cert(
-            output_dir.as_str(),
-            crate::cert::DistinguishedName::default(),
-        ) {
+        match crate::cert::create_new_cert(output_path, crate::cert::DistinguishedName::default()) {
             Ok((cert_path, key_path)) => {
                 initial_config.set_cert(format!("{}", cert_path.display()));
                 initial_config.set_key(format!("{}", key_path.display()));
@@ -177,6 +183,8 @@ mod init_tests {
             cert_path: Some("./cert.pem".to_string()),
             key_path: Some("./key.pem".to_string()),
             is_time_bound: false,
+            disable_api_key_auth: false,
+            trx_logging_disabled: false,
         };
         init_local_config(init_args, sample_cage).await;
         let config_path = output_dir.path().join("cage.toml");
@@ -189,6 +197,8 @@ app_uuid = "1234"
 team_uuid = "1234"
 debug = false
 dockerfile = "Dockerfile"
+api_key_auth = true
+trx_logging = true
 disable_tls_termination = false
 
 [egress]
