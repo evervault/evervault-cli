@@ -123,7 +123,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .collect();
 
     let wait_for_env = if build_config.disable_tls_termination {
-        "TLS termination is off, not waiting for environment to be ready"
+        "echo TLS termination is off, not waiting for environment to be ready"
     } else {
         r#"while ! grep -q \"EV_API_KEY\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n source /etc/customer-env\n"#
     };
