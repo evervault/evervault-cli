@@ -72,6 +72,7 @@ pub fn build_reproducible_user_image(
     let image_archive = output_path.join("image.tar");
     let load_output = command::load_image_into_local_docker_registry(&image_archive, verbose)?;
     if load_output.success() {
+        let _ = std::fs::remove_file(image_archive);
         return Ok(());
     } else {
         return Err(EnclaveError::new_build_error(load_output.code().unwrap()));
