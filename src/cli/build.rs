@@ -95,6 +95,17 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         }
     };
 
+    let installer_version = match cage_build_assets_client
+        .get_latest_installer_version()
+        .await
+    {
+        Ok(version) => version,
+        Err(e) => {
+            log::error!("Failed to retrieve the latest installer version - {e:?}");
+            return e.exitcode();
+        }
+    };
+
     let built_enclave = match build_enclave_image_file(
         &validated_config,
         &build_args.context_path,
@@ -103,6 +114,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         borrowed_args,
         build_args.reproducible,
         data_plane_version,
+        installer_version,
     )
     .await
     {

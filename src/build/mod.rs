@@ -13,6 +13,7 @@ use tokio::fs::File;
 use tokio::io::AsyncRead;
 
 const EV_USER_DOCKERFILE_PATH: &str = "ev-user.Dockerfile";
+const INSTALLER_DIRECTORY: &str = "/opt/evervault";
 const USER_ENTRYPOINT_SERVICE_PATH: &str = "/etc/service/user-entrypoint";
 const DATA_PLANE_SERVICE_PATH: &str = "/etc/service/data-plane";
 
@@ -24,6 +25,7 @@ pub async fn build_enclave_image_file(
     docker_build_args: Option<Vec<&str>>,
     reproducible: bool,
     data_plane_version: String,
+    installer_version: String,
 ) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
     let context_path = Path::new(&context_path);
     if !context_path.exists() {
@@ -56,8 +58,13 @@ pub async fn build_enclave_image_file(
         .await
         .map_err(|_| BuildError::DockerfileAccessError(cage_config.dockerfile().to_string()))?;
 
-    let processed_dockerfile =
-        process_dockerfile(cage_config, dockerfile, data_plane_version).await?;
+    let processed_dockerfile = process_dockerfile(
+        cage_config,
+        dockerfile,
+        data_plane_version,
+        installer_version,
+    )
+    .await?;
 
     // write new dockerfile to fs
     let user_dockerfile_path = output_path.path().join(EV_USER_DOCKERFILE_PATH);
@@ -106,6 +113,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     build_config: &ValidatedCageBuildConfig,
     dockerfile_src: R,
     data_plane_version: String,
+    installer_version: String,
 ) -> Result<Vec<Directive>, BuildError> {
     // Decode dockerfile from file
     let instruction_set = DockerfileDecoder::decode_dockerfile_from_src(dockerfile_src).await?;
@@ -163,7 +171,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     );
 
     let mut data_plane_run_script =
-        r#"echo \"Booting Evervault data plane...\"\nexec /data-plane"#.to_string();
+        r#"echo \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane"#.to_string();
     if let Some(port) = exposed_port {
         data_plane_run_script = format!("{data_plane_run_script} {port}");
     }
@@ -171,22 +179,25 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let bootstrap_script_content =
         r#"ifconfig lo 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service"#;
 
+    let installer_bundle_url = format!(
+        "https://cage-build-assets.{}/installer/{}.tar.gz",
+        ev_domain, installer_version
+    );
+    let installer_bundle = "runtime-dependencies.tar.gz";
+    let installer_destination = format!("{INSTALLER_DIRECTORY}/{installer_bundle}");
+
     let injected_directives = vec![
         // install dependencies
-        Directive::new_run(crate::docker::utils::write_command_to_script(
-            r#"if [ \"$( command -v apk )\" ]; then\necho \"Installing using apk\"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/* ; rm lib/apk/db/scripts.tar\nelif [ \"$( command -v apt-get )\" ]; then\necho \"Installing using apt-get\"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho \"No suitable installer found. Please contact support: support@evervault.com\"\nexit 1\nfi"#,
-            "/runtime-installer",
-            &[],
-        )),
-        Directive::new_run("sh /runtime-installer ; rm /runtime-installer"),
+        Directive::new_run(format!("mkdir -p {INSTALLER_DIRECTORY}")),
+        Directive::new_add(&installer_bundle_url, &installer_destination),
+        Directive::new_run(format!("cd {INSTALLER_DIRECTORY} ; tar -xzf {installer_bundle} ; sh ./installer.sh ; rm {installer_bundle}")),
         // create user service directory
         Directive::new_run(format!("mkdir -p {USER_ENTRYPOINT_SERVICE_PATH}")),
         // add user service runner
         user_service_builder,
         // add data-plane executable
-        Directive::new_run(format!(
-            "wget {data_plane_url} -O /data-plane && chmod +x /data-plane"
-        )),
+        Directive::new_add(data_plane_url, "/opt/evervault/data-plane".into()),
+        Directive::new_run("chmod +x /opt/evervault/data-plane"),
         // add data-plane service directory
         Directive::new_run(format!("mkdir -p {DATA_PLANE_SERVICE_PATH}")),
         // add data-plane service runner
@@ -271,22 +282,30 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
         let config = get_config();
 
         let data_plane_version = "0.0.0".to_string();
+        let installer_version = "abcdef".to_string();
 
-        let processed_file =
-            process_dockerfile(&config, &mut readable_contents, data_plane_version).await;
+        let processed_file = process_dockerfile(
+            &config,
+            &mut readable_contents,
+            data_plane_version,
+            installer_version,
+        )
+        .await;
         assert_eq!(processed_file.is_ok(), true);
         let processed_file = processed_file.unwrap();
 
         let expected_output_contents = r##"FROM alpine
 RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
-RUN printf "#!/bin/sh\nif [ \"$( command -v apk )\" ]; then\necho \"Installing using apk\"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/* ; rm lib/apk/db/scripts.tar\nelif [ \"$( command -v apt-get )\" ]; then\necho \"Installing using apt-get\"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho \"No suitable installer found. Please contact support: support@evervault.com\"\nexit 1\nfi\n" > /runtime-installer && chmod +x /runtime-installer
-RUN sh /runtime-installer ; rm /runtime-installer
+RUN mkdir -p /opt/evervault
+ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
 RUN mkdir -p /etc/service/user-entrypoint
 RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_API_KEY\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n source /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
-RUN wget https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled -O /data-plane && chmod +x /data-plane
+ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
-RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
+RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
 ENV CAGE_UUID=1234
 ENV EV_APP_UUID=3241
@@ -327,8 +346,14 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
         let config = get_config();
 
         let data_plane_version = "0.0.0".to_string();
-        let processed_file =
-            process_dockerfile(&config, &mut readable_contents, data_plane_version).await;
+        let installer_version = "abcdef".to_string();
+        let processed_file = process_dockerfile(
+            &config,
+            &mut readable_contents,
+            data_plane_version,
+            installer_version,
+        )
+        .await;
         assert_eq!(processed_file.is_err(), true);
 
         assert!(matches!(
@@ -352,21 +377,29 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
         let config = get_config();
 
         let data_plane_version = "0.0.0".to_string();
-        let processed_file =
-            process_dockerfile(&config, &mut readable_contents, data_plane_version).await;
+        let installer_version = "abcdef".to_string();
+        let processed_file = process_dockerfile(
+            &config,
+            &mut readable_contents,
+            data_plane_version,
+            installer_version,
+        )
+        .await;
         assert_eq!(processed_file.is_ok(), true);
         let processed_file = processed_file.unwrap();
 
         let expected_output_contents = r##"FROM alpine
 RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
-RUN printf "#!/bin/sh\nif [ \"$( command -v apk )\" ]; then\necho \"Installing using apk\"\napk update ; apk add net-tools runit ; rm -rf /var/cache/apk/* ; rm lib/apk/db/scripts.tar\nelif [ \"$( command -v apt-get )\" ]; then\necho \"Installing using apt-get\"\napt-get upgrade ; apt-get update ; apt-get -y install net-tools runit wget ; apt-get clean ; rm -rf /var/lib/apt/lists/*\nelse\necho \"No suitable installer found. Please contact support: support@evervault.com\"\nexit 1\nfi\n" > /runtime-installer && chmod +x /runtime-installer
-RUN sh /runtime-installer ; rm /runtime-installer
+RUN mkdir -p /opt/evervault
+ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
 RUN mkdir -p /etc/service/user-entrypoint
 RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_API_KEY\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n source /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
-RUN wget https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled -O /data-plane && chmod +x /data-plane
+ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
-RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
+RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 ENV EV_CAGE_NAME=test
 ENV CAGE_UUID=1234
 ENV EV_APP_UUID=3241
