@@ -79,5 +79,6 @@ impl AssetsClient {
             .await
             .handle_text_response()
             .await
+            .map(|version| version.trim().to_string())
     }
 }
