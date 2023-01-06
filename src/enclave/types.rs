@@ -64,7 +64,7 @@ impl EIFMeasurements {
 }
 
 // Isolated PCRs from remainder of the measures to use in API requests
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct PCRs {
     #[serde(rename = "PCR0")]
     pub pcr0: String,

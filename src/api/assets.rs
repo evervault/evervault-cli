@@ -71,4 +71,14 @@ impl AssetsClient {
             .await
             .map(|version| version.data_plane)
     }
+
+    pub async fn get_latest_installer_version(&self) -> ApiResult<String> {
+        let installer_version = format!("{}/installer/latest", self.base_url());
+        self.get(&installer_version)
+            .send()
+            .await
+            .handle_text_response()
+            .await
+            .map(|version| version.trim().to_string())
+    }
 }

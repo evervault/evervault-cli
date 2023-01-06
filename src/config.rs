@@ -401,6 +401,8 @@ pub trait BuildTimeConfig {
     }
 }
 
+impl BuildTimeConfig for () {}
+
 // Return both config read directly from FS as well as merged & validated config
 pub fn read_and_validate_config<B: BuildTimeConfig>(
     config_path: &str,

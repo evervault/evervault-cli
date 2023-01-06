@@ -4,3 +4,7 @@ target
 *.pem
 .cargo
 .vscode
+*-build.json
+nitro-cli-image.Dockerfile
+ev-user.Dockerfile
+*.eif

@@ -46,6 +46,11 @@ pub struct DeployArgs {
     /// Build time arguments to provide to docker
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
+
+    /// Perform a reproducible build to guarantee consistent checksums.
+    /// Note: reproducible builds are significantly slower, but are recommended for production deployments.
+    #[clap(long = "reproducible")]
+    pub reproducible: bool,
 }
 
 impl BuildTimeConfig for DeployArgs {
@@ -94,6 +99,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         deploy_args.eif_path.as_deref(),
         !deploy_args.quiet,
         build_args,
+        deploy_args.reproducible,
     )
     .await
     {
@@ -141,6 +147,7 @@ async fn resolve_eif(
     eif_path: Option<&str>,
     verbose: bool,
     build_args: Option<Vec<&str>>,
+    reproducible: bool,
 ) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
     if let Some(path) = eif_path {
         get_eif(path, verbose).map_err(|e| {
@@ -160,13 +167,26 @@ async fn resolve_eif(
             }
         };
 
+        let installer_version = match cage_build_assets_client
+            .get_latest_installer_version()
+            .await
+        {
+            Ok(version) => version,
+            Err(e) => {
+                log::error!("Failed to retrieve the latest data plane version - {e:?}");
+                return Err(e.exitcode());
+            }
+        };
+
         let (built_enclave, output_path) = build_enclave_image_file(
             validated_config,
             context_path,
             None,
             verbose,
             build_args,
+            reproducible,
             data_plane_version,
+            installer_version,
         )
         .await
         .map_err(|build_err| {
