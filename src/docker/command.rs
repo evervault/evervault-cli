@@ -27,26 +27,30 @@ impl CommandConfig {
 
 pub fn build_image_using_kaniko(
     output_path: &Path,
+    tar_destination: &Path,
     context_path: &Path,
     tag_name: &str,
     verbose: bool,
 ) -> Result<ExitStatus, CommandError> {
     let command_config = CommandConfig::new(verbose);
-    let kaniko_volumes = format!("{}:/workspace", context_path.display());
+    let context_volume = format!("{}:/workspace", context_path.display());
     let output_volume = format!("{}:/output", output_path.display());
+    let tar_destination_volume = format!("{}:/image", tar_destination.display());
     let build_image_args: Vec<&OsStr> = vec![
         "run".as_ref(),
         "--volume".as_ref(),
-        kaniko_volumes.as_str().as_ref(),
+        context_volume.as_str().as_ref(),
         "--volume".as_ref(),
         output_volume.as_str().as_ref(),
+        "--volume".as_ref(),
+        tar_destination_volume.as_str().as_ref(),
         "--rm".as_ref(),
         "--network=host".as_ref(),
         "gcr.io/kaniko-project/executor:v1.7.0".as_ref(),
         "--context".as_ref(),
         "dir:///workspace/".as_ref(),
         "--tarPath".as_ref(),
-        "/output/image.tar".as_ref(),
+        "/image/image.tar".as_ref(),
         "--no-push".as_ref(),
         "--destination".as_ref(),
         tag_name.as_ref(),
