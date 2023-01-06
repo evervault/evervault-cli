@@ -22,11 +22,7 @@ jobs:
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
       - name: Test project
-        run: cargo test -p ev-cage
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-      - name: Test Reproducible Builds Using Latest Versions
-        run: sh ./tests/compare-reproducible-builds.sh
+        run: cargo test --features test-latest-reproducible -p ev-cage
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
       - name: Format project
