@@ -1,19 +1,18 @@
 #!/bin/sh
 set -e
 
-cargo run -- build --reproducible -c test.cage.toml > first-build.json
-# shasum gives us <SHA> <FILENAME> so need to extract the first word
-FIRST_SHA=`shasum first-build.json | cut -d" " -f1`
+FIRST_PCRS=`cargo run -- build --reproducible -c test.cage.toml | jq .enclaveMeasurements`
 
-cargo run -- build --reproducible -c test.cage.toml > second-build.json
-SECOND_SHA=`shasum second-build.json | cut -d" " -f1`
+SECOND_PCRS=`cargo run -- build --reproducible -c test.cage.toml | jq .enclaveMeasurements`
 
-if [ "$FIRST_SHA" = "$SECOND_SHA" ]; then
+echo "Comparing\n$FIRST_PCRS\nWith\n$SECOND_PCRS"
+if [ "$FIRST_PCRS" = "$SECOND_PCRS" ]; then
   echo "PCRs match!"
   exit 0
 else
   echo "PCRs aren't equal!"
-  echo "$FIRST_SHA $SECOND_SHA"
+  echo "$FIRST_PCRS" > first-build.json
+  echo "$SECOND_PCRS" > second-build.json
   diff first-build.json second-build.json
   exit 1
 fi
