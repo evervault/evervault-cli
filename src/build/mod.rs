@@ -91,6 +91,7 @@ pub async fn build_enclave_image_file(
         }
 
         enclave::build_reproducible_user_image(context_path, output_path.path(), verbose)?;
+        log::debug!("Reproducible image built...");
     } else {
         enclave::build_user_image(
             &user_dockerfile_path,
@@ -98,6 +99,7 @@ pub async fn build_enclave_image_file(
             verbose,
             docker_build_args,
         )?;
+        log::debug!("User image built...");
     }
 
     log::debug!("Building Nitro CLI image...");

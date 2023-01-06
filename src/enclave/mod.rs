@@ -71,6 +71,10 @@ pub fn build_reproducible_user_image(
     )?;
 
     if !build_output.success() {
+        log::debug!(
+            "Reproducible build failed with code: {:?}",
+            build_output.code()
+        );
         return Err(EnclaveError::new_build_error(build_output.code().unwrap()));
     }
 
@@ -80,6 +84,10 @@ pub fn build_reproducible_user_image(
     if load_output.success() {
         return Ok(());
     } else {
+        log::debug!(
+            "Failed to load image into local docker registry: {:?}",
+            load_output.code()
+        );
         return Err(EnclaveError::new_build_error(load_output.code().unwrap()));
     }
 }

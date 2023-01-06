@@ -1,9 +1,11 @@
 #!/bin/sh
 set -e
 
+export EV_LOG=DEBUG
 FIRST_PCRS=`cargo run -- build --reproducible -c test.cage.toml -v | jq .enclaveMeasurements`
 
 SECOND_PCRS=`cargo run -- build --reproducible -c test.cage.toml -v | jq .enclaveMeasurements`
+unset EV_LOG
 
 echo "Comparing\n$FIRST_PCRS\nWith\n$SECOND_PCRS"
 if [ "$FIRST_PCRS" = "$SECOND_PCRS" ]; then
