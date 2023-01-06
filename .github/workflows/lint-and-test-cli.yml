@@ -24,6 +24,8 @@ jobs:
         run: cargo test -p ev-cage
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+      - name: Test Reproducible Builds Using Latest Versions
+        run: sh ./tests/compare-reproducible-builds.sh
       - name: Format project
         run: cargo fmt --check
         env:
@@ -31,4 +33,4 @@ jobs:
       - name: Lint project
         run: cargo clippy
         env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}    
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
