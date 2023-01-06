@@ -203,7 +203,7 @@ pub fn build_nitro_cli_image(
         Ok(())
     } else {
         Err(EnclaveError::new_build_error(
-            build_image_status.code().unwrap(),
+            build_image_status.code().unwrap_or(exitcode::SOFTWARE),
         ))
     }
 }
