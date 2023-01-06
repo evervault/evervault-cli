@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 cargo run -- build --reproducible -c test.cage.toml > first-build.json
 # shasum gives us <SHA> <FILENAME> so need to extract the first word
