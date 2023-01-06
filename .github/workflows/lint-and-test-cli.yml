@@ -2,6 +2,7 @@ on:
   push:
     paths:
       - src/**
+      - tests/**
       - .github/workflows/lint-and-test-cli.yml
 name: Lint and Test CLI
 jobs:
