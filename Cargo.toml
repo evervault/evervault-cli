@@ -47,3 +47,6 @@ tokio-test = "0.4.2"
 [target.'cfg(unix)'.dependencies]
 aws-nitro-enclaves-nsm-api = { version = "0.2.1" }
 attestation-doc-validation = { version = "0.2.0", registry="evervault-rust-libraries" }
+
+[features]
+test-latest-reproducible = []

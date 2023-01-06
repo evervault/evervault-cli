@@ -36,6 +36,10 @@ impl From<u8> for Mode {
 
 #[derive(Clone, Debug)]
 pub enum Directive {
+    Add {
+        source_url: String,
+        destination_path: String,
+    },
     Comment(Bytes),
     Entrypoint {
         mode: Option<Mode>,
@@ -126,6 +130,25 @@ impl Directive {
                         .collect();
                 }
             }
+            Self::Add {
+                source_url,
+                destination_path,
+            } => {
+                let parsed_args = given_arguments
+                    .as_slice()
+                    .split(|byte| &[*byte] == b" ")
+                    .filter_map(|token| std::str::from_utf8(token).ok())
+                    .filter(|parsed_str| parsed_str.len() > 0)
+                    .collect::<Vec<&str>>();
+                *source_url = parsed_args
+                    .get(0)
+                    .ok_or_else(|| DecodeError::IncompleteInstruction)?
+                    .to_string();
+                *destination_path = parsed_args
+                    .get(1)
+                    .ok_or_else(|| DecodeError::IncompleteInstruction)?
+                    .to_string();
+            }
             Self::Expose { port } => {
                 let port_str = std::str::from_utf8(&given_arguments)?;
                 let parsed_port = port_str.parse().map_err(DecodeError::InvalidExposedPort)?;
@@ -140,6 +163,10 @@ impl Directive {
 
     fn arguments(&self) -> Option<String> {
         let formatted_args = match self {
+            Self::Add {
+                source_url,
+                destination_path,
+            } => format!("{source_url} {destination_path}"),
             Self::Comment(bytes)
             | Self::Run(bytes)
             | Self::Other {
@@ -196,11 +223,19 @@ impl Directive {
             arguments: env_string.into(),
         }
     }
+
+    pub fn new_add<S: Into<String>>(source_url: S, destination_path: S) -> Self {
+        Self::Add {
+            source_url: source_url.into(),
+            destination_path: destination_path.into(),
+        }
+    }
 }
 
 impl std::fmt::Display for Directive {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let prefix = match self {
+            Self::Add { .. } => "ADD",
             Self::Comment(_) => "#",
             Self::Entrypoint { .. } => "ENTRYPOINT",
             Self::Cmd { .. } => "CMD",

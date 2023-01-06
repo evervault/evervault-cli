@@ -1,4 +1,4 @@
-use crate::docker::command;
+use crate::{common, docker::command};
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -21,30 +21,74 @@ pub const ENCLAVE_FILENAME: &str = "enclave.eif";
 
 pub fn build_user_image(
     user_dockerfile_path: &std::path::Path,
-    user_context_path: &str,
+    user_context_path: &std::path::Path,
     verbose: bool,
     docker_build_args: Option<Vec<&str>>,
 ) -> Result<(), EnclaveError> {
-    let mut command_line_args = vec![user_context_path.as_ref()];
+    let mut command_line_args = vec![user_context_path.as_os_str()];
 
     if let Some(build_args) = docker_build_args.as_ref() {
         let mut docker_build_args = build_args.iter().map(AsRef::as_ref).collect();
         command_line_args.append(&mut docker_build_args);
     }
 
-    let build_image_status = command::build_image(
+    let tag_name = format!("{EV_USER_IMAGE_NAME}:latest");
+    let build_output = command::build_image(
         user_dockerfile_path,
-        EV_USER_IMAGE_NAME,
+        tag_name.as_str(),
         command_line_args,
         verbose,
     )?;
 
-    if build_image_status.success() {
-        Ok(())
+    if !build_output.success() {
+        return Err(EnclaveError::new_build_error(build_output.code().unwrap()));
+    }
+
+    Ok(())
+}
+
+pub fn build_reproducible_user_image(
+    user_context_path: &std::path::Path,
+    output_path: &std::path::Path,
+    verbose: bool,
+) -> Result<(), EnclaveError> {
+    let abs_context_path = std::env::current_dir()?
+        .join(user_context_path)
+        .canonicalize()?;
+
+    let tar_output_dir = common::resolve_output_path(None::<&str>).map_err(|e| {
+        let enclave_err = EnclaveError::new_fs_error();
+        enclave_err.context(e.to_string())
+    })?;
+
+    let tag_name = format!("{EV_USER_IMAGE_NAME}:reproducible");
+    let build_output = command::build_image_using_kaniko(
+        output_path,
+        tar_output_dir.path().as_path(),
+        abs_context_path.as_path(),
+        tag_name.as_str(),
+        verbose,
+    )?;
+
+    if !build_output.success() {
+        log::debug!(
+            "Reproducible build failed with code: {:?}",
+            build_output.code()
+        );
+        return Err(EnclaveError::new_build_error(build_output.code().unwrap()));
+    }
+
+    // Kaniko outputs an image archive directly, but we need to load it into local docker to use the nitro cli
+    let image_archive = tar_output_dir.path().join("image.tar");
+    let load_output = command::load_image_into_local_docker_registry(&image_archive, verbose)?;
+    if load_output.success() {
+        return Ok(());
     } else {
-        Err(EnclaveError::new_build_error(
-            build_image_status.code().unwrap(),
-        ))
+        log::debug!(
+            "Failed to load image into local docker registry: {:?}",
+            load_output.code()
+        );
+        return Err(EnclaveError::new_build_error(load_output.code().unwrap()));
     }
 }
 
@@ -172,7 +216,7 @@ pub fn build_nitro_cli_image(
         Ok(())
     } else {
         Err(EnclaveError::new_build_error(
-            build_image_status.code().unwrap(),
+            build_image_status.code().unwrap_or(exitcode::SOFTWARE),
         ))
     }
 }
@@ -180,15 +224,24 @@ pub fn build_nitro_cli_image(
 pub fn run_conversion_to_enclave(
     output_dir: &std::path::Path,
     verbose: bool,
+    reproducible: bool,
 ) -> Result<BuiltEnclave, EnclaveError> {
     let mounted_volume = format!("{}:{}", output_dir.display(), IN_CONTAINER_VOLUME_DIR);
     let output_location = format!("{}/{}", IN_CONTAINER_VOLUME_DIR, ENCLAVE_FILENAME);
+    let docker_uri = format!(
+        "{EV_USER_IMAGE_NAME}:{}",
+        if reproducible {
+            "reproducible"
+        } else {
+            "latest"
+        }
+    );
     let nitro_run_args = vec![
         "build-enclave".as_ref(),
         "--output-file".as_ref(),
         output_location.as_str().as_ref(),
         "--docker-uri".as_ref(),
-        EV_USER_IMAGE_NAME.as_ref(),
+        docker_uri.as_str().as_ref(),
         "--signing-certificate".as_ref(),
         "/sign/cert.pem".as_ref(),
         "--private-key".as_ref(),

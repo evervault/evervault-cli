@@ -262,21 +262,60 @@ pub async fn timed_operation<T: std::future::Future>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils;
+    use crate::{enclave::PCRs, test_utils};
     use std::time::Duration;
 
     #[tokio::test]
     async fn test_get_eif_size() {
-        let (_, output_path) = test_utils::build_test_cage(None).await.unwrap();
+        let (_, output_path) = test_utils::build_test_cage(None, false, false)
+            .await
+            .unwrap();
         let output_path_as_string = output_path.path().to_str().unwrap().to_string();
-        let _eif_size_bytes = get_eif_size_bytes(output_path.path()).await.unwrap();
-        // when we have fully reproducable builds, this test should check that the size of
-        // the test EIF remains constant. Currently, it varies by a few bytes on each run.
-        // e.g.
-        // assert_eq!(eif_size_bytes, test_utils::TEST_EIF_SIZE_BYTES);
 
         // ensure temp output directory still exists after running function
         assert!(std::path::PathBuf::from(output_path_as_string).exists());
+    }
+
+    #[tokio::test]
+    async fn test_reproducible_cage_builds_with_pinned_version() {
+        let (build_output, output_path) =
+            test_utils::build_test_cage(None, true, true).await.unwrap();
+        let eif_pcrs = build_output.measurements().pcrs();
+
+        // Compare build measures as certs are generated on the fly to prevent expiry
+        let expected_pcrs: PCRs = serde_json::from_str(r#"{
+          "PCR0": "271485a2a3fd9ea44f943fc7878d87f94acf6a3d3aa0f441f12669dcc6b0f229e74c7acb8a9ec026a9072b99d7d018f9",
+          "PCR1": "bcdf05fefccaa8e55bf2c8d6dee9e79bbff31e34bf28a99aa19e6b29c37ee80b214a414b7607236edf26fcb78654e63f",
+          "PCR2": "af911a813e2cdf9c3f79b7b18258bf010109f1739cdffd32589ba59222babfe3e5aa93e1d2e3d85c8ebd7a398ac39921"
+        }"#).unwrap();
+        assert_eq!(&eif_pcrs.pcr0, &expected_pcrs.pcr0);
+        assert_eq!(&eif_pcrs.pcr1, &expected_pcrs.pcr1);
+        assert_eq!(&eif_pcrs.pcr2, &expected_pcrs.pcr2);
+
+        // ensure temp output directory still exists after running function
+        assert!(output_path.path().exists());
+    }
+
+    #[cfg(feature = "test-latest-reproducible")]
+    #[tokio::test]
+    async fn test_reproducible_cage_builds_using_latest() {
+        let (first_build_output, first_output_path) =
+            test_utils::build_test_cage(None, true, false)
+                .await
+                .unwrap();
+        let first_eif_pcrs = first_build_output.measurements().pcrs();
+        // ensure temp output directory still exists after running function
+        assert!(first_output_path.path().exists());
+
+        let (second_build_output, second_output_path) =
+            test_utils::build_test_cage(None, true, false)
+                .await
+                .unwrap();
+        let second_eif_pcrs = second_build_output.measurements().pcrs();
+        assert!(second_output_path.path().exists());
+        assert_eq!(&first_eif_pcrs.pcr0, &second_eif_pcrs.pcr0);
+        assert_eq!(&first_eif_pcrs.pcr1, &second_eif_pcrs.pcr1);
+        assert_eq!(&first_eif_pcrs.pcr2, &second_eif_pcrs.pcr2);
     }
 
     async fn long_operation(duration: Duration) {
