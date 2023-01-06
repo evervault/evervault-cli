@@ -267,7 +267,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_eif_size() {
-        let (_, output_path) = test_utils::build_test_cage(None, false).await.unwrap();
+        let (_, output_path) = test_utils::build_test_cage(None, false, false)
+            .await
+            .unwrap();
         let output_path_as_string = output_path.path().to_str().unwrap().to_string();
 
         // ensure temp output directory still exists after running function
@@ -275,8 +277,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_reproducible_cage_builds() {
-        let (build_output, output_path) = test_utils::build_test_cage(None, true).await.unwrap();
+    async fn test_reproducible_cage_builds_with_pinned_version() {
+        let (build_output, output_path) =
+            test_utils::build_test_cage(None, true, true).await.unwrap();
         let eif_pcrs = build_output.measurements().pcrs();
 
         // Compare build measures as certs are generated on the fly to prevent expiry
@@ -291,6 +294,28 @@ mod tests {
 
         // ensure temp output directory still exists after running function
         assert!(output_path.path().exists());
+    }
+
+    #[cfg(feature = "test-latest-reproducible")]
+    #[tokio::test]
+    async fn test_reproducible_cage_builds_using_latest() {
+        let (first_build_output, first_output_path) =
+            test_utils::build_test_cage(None, true, false)
+                .await
+                .unwrap();
+        let first_eif_pcrs = first_build_output.measurements().pcrs();
+        // ensure temp output directory still exists after running function
+        assert!(first_output_path.path().exists());
+
+        let (second_build_output, second_output_path) =
+            test_utils::build_test_cage(None, true, false)
+                .await
+                .unwrap();
+        let second_eif_pcrs = second_build_output.measurements().pcrs();
+        assert!(second_output_path.path().exists());
+        assert_eq!(&first_eif_pcrs.pcr0, &second_eif_pcrs.pcr0);
+        assert_eq!(&first_eif_pcrs.pcr1, &second_eif_pcrs.pcr1);
+        assert_eq!(&first_eif_pcrs.pcr2, &second_eif_pcrs.pcr2);
     }
 
     async fn long_operation(duration: Duration) {

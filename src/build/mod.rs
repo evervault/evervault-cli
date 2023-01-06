@@ -434,7 +434,9 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
     async fn test_choose_output_dir() {
         let output_dir = TempDir::new().unwrap();
 
-        let _ = test_utils::build_test_cage(Some(output_dir.path().to_str().unwrap()), false).await;
+        let _ =
+            test_utils::build_test_cage(Some(output_dir.path().to_str().unwrap()), false, false)
+                .await;
 
         let paths = std::fs::read_dir(output_dir.path().to_str().unwrap().to_string()).unwrap();
 
