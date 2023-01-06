@@ -1,0 +1,16 @@
+name = "test-cage"
+uuid = "1234"
+app_uuid = "4321"
+team_uuid = "teamid"
+debug = false
+dockerfile = "./sample-user.Dockerfile"
+api_key_auth = true
+trx_logging_enabled = true
+disable_tls_termination = false
+
+[egress]
+enabled = false
+
+[signing]
+certPath = "./cert.pem"
+keyPath = "./key.pem"

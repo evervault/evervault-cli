@@ -58,9 +58,16 @@ pub fn build_image_using_kaniko(
         "--customPlatform=linux/amd64".as_ref(),
     ];
 
+    // Kaniko pipes the output of RUN directives to stdout, which prevents programmatic use of the PCRs
+    // If stdout is being piped, then set the stdout stream to null
+    let is_stdout_piped = atty::isnt(atty::Stream::Stdout);
     let command_status = Command::new("docker")
         .args(build_image_args)
-        .stdout(command_config.output_setting())
+        .stdout(if is_stdout_piped {
+            Stdio::null()
+        } else {
+            command_config.output_setting()
+        })
         .stderr(command_config.output_setting())
         .output()?;
 
@@ -72,13 +79,18 @@ pub fn load_image_into_local_docker_registry(
     verbose: bool,
 ) -> Result<ExitStatus, CommandError> {
     let command_config = CommandConfig::new(verbose);
+    let is_stdout_piped = atty::isnt(atty::Stream::Stdout);
     let docker_load_result = Command::new("docker")
         .args(vec![
             "load".as_ref(),
             "--input".as_ref(),
             image_archive.as_os_str(),
         ])
-        .stdout(command_config.output_setting())
+        .stdout(if is_stdout_piped {
+            Stdio::null()
+        } else {
+            command_config.output_setting()
+        })
         .stderr(command_config.output_setting())
         .status()?;
     Ok(docker_load_result)

@@ -2,7 +2,7 @@ use crate::api::assets::AssetsClient;
 use crate::build::build_enclave_image_file;
 use crate::build::error::BuildError;
 use crate::common::OutputPath;
-use crate::config::{EgressSettings, ValidatedCageBuildConfig, ValidatedSigningInfo};
+use crate::config::{read_and_validate_config, ValidatedCageBuildConfig};
 use crate::enclave::BuiltEnclave;
 
 pub async fn build_test_cage(
@@ -41,24 +41,7 @@ pub async fn build_test_cage(
 }
 
 fn get_test_build_args() -> ValidatedCageBuildConfig {
-    ValidatedCageBuildConfig {
-        cage_name: "test-cage".into(),
-        cage_uuid: "1234".into(),
-        app_uuid: "4321".into(),
-        team_uuid: "teamid".into(),
-        debug: false,
-        egress: EgressSettings {
-            enabled: false,
-            destinations: None,
-        },
-        dockerfile: "./sample-user.Dockerfile".to_string(),
-        signing: ValidatedSigningInfo {
-            cert: "./cert.pem".into(),
-            key: "./key.pem".into(),
-        },
-        attestation: None,
-        disable_tls_termination: false,
-        api_key_auth: true,
-        trx_logging_enabled: true,
-    }
+    let (_cage_config, validated_config) = read_and_validate_config("./test.cage.toml", &())
+        .expect("Testing config failed to validate");
+    validated_config
 }
