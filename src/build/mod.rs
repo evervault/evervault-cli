@@ -89,6 +89,7 @@ pub async fn build_enclave_image_file(
         if !dockerfile_in_context.exists() {
             std::fs::copy(user_dockerfile_path, dockerfile_in_context).unwrap();
         }
+
         enclave::build_reproducible_user_image(context_path, output_path.path(), verbose)?;
     } else {
         enclave::build_user_image(

@@ -1,4 +1,4 @@
-use crate::docker::command;
+use crate::{common, docker::command};
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -56,9 +56,15 @@ pub fn build_reproducible_user_image(
         .join(user_context_path)
         .canonicalize()?;
 
+    let tar_output_dir = common::resolve_output_path(None::<&str>).map_err(|e| {
+        let enclave_err = EnclaveError::new_fs_error();
+        enclave_err.context(e.to_string())
+    })?;
+
     let tag_name = format!("{EV_USER_IMAGE_NAME}:reproducible");
     let build_output = command::build_image_using_kaniko(
         output_path,
+        tar_output_dir.path().as_path(),
         abs_context_path.as_path(),
         tag_name.as_str(),
         verbose,
@@ -69,10 +75,9 @@ pub fn build_reproducible_user_image(
     }
 
     // Kaniko outputs an image archive directly, but we need to load it into local docker to use the nitro cli
-    let image_archive = output_path.join("image.tar");
+    let image_archive = tar_output_dir.path().join("image.tar");
     let load_output = command::load_image_into_local_docker_registry(&image_archive, verbose)?;
     if load_output.success() {
-        let _ = std::fs::remove_file(image_archive);
         return Ok(());
     } else {
         return Err(EnclaveError::new_build_error(load_output.code().unwrap()));
