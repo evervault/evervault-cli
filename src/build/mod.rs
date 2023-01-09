@@ -183,8 +183,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         data_plane_run_script = format!("{data_plane_run_script} {port}");
     }
 
-    let bootstrap_script_content =
-        r#"ifconfig lo 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service"#;
+    let bootstrap_script_content = r#"ifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \necho \"Booting enclave...\"\nexec runsvdir /etc/service"#;
 
     let installer_bundle_url = format!(
         "https://cage-build-assets.{}/installer/{}.tar.gz",
@@ -320,7 +319,7 @@ ENV EV_TEAM_UUID=teamid
 ENV DATA_PLANE_HEALTH_CHECKS=true
 ENV EV_API_KEY_AUTH=true
 ENV EV_TRX_LOGGING_ENABLED=true
-RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
@@ -414,7 +413,7 @@ ENV EV_TEAM_UUID=teamid
 ENV DATA_PLANE_HEALTH_CHECKS=true
 ENV EV_API_KEY_AUTH=true
 ENV EV_TRX_LOGGING_ENABLED=true
-RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
