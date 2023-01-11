@@ -55,7 +55,7 @@ pub async fn run(log_args: LogArgs) -> i32 {
     };
 
     let start_time = match now
-        .checked_sub(std::time::Duration::from_secs(60 * 60 * 3))
+        .checked_sub(std::time::Duration::from_secs(60 * 30))
         .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
     {
         Some(start_time) => start_time,
