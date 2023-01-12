@@ -47,11 +47,10 @@ pub struct BuildArgs {
     /// Build time arguments to provide to docker
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
-
-    /// Perform a reproducible build to guarantee consistent checksums.
-    /// Note: reproducible builds are significantly slower, but are recommended for production deployments.
-    #[clap(long = "reproducible")]
-    pub reproducible: bool,
+    // /// Perform a reproducible build to guarantee consistent checksums.
+    // /// Note: reproducible builds are significantly slower, but are recommended for production deployments.
+    // #[clap(long = "reproducible")]
+    // pub reproducible: bool
 }
 
 impl BuildTimeConfig for BuildArgs {
@@ -69,6 +68,7 @@ impl BuildTimeConfig for BuildArgs {
 }
 
 pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
+    let reproducible = false;
     let (mut cage_config, validated_config) =
         match read_and_validate_config(&build_args.config, &build_args) {
             Ok(config) => config,
@@ -112,7 +112,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         Some(&build_args.output_dir),
         !build_args.quiet,
         borrowed_args,
-        build_args.reproducible,
+        reproducible,
         data_plane_version,
         installer_version,
     )
