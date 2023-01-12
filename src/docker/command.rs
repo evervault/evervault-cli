@@ -36,6 +36,7 @@ pub fn build_image_using_kaniko(
     let context_volume = format!("{}:/workspace", context_path.display());
     let output_volume = format!("{}:/output", output_path.display());
     let tar_destination_volume = format!("{}:/image", tar_destination.display());
+
     let build_image_args: Vec<&OsStr> = vec![
         "run".as_ref(),
         "--volume".as_ref(),
