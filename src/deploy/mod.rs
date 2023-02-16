@@ -262,7 +262,7 @@ pub async fn timed_operation<T: std::future::Future>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{enclave::PCRs, test_utils};
+    use crate::test_utils;
     use std::time::Duration;
 
     #[tokio::test]

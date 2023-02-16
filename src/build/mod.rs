@@ -192,6 +192,26 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let installer_bundle = "runtime-dependencies.tar.gz";
     let installer_destination = format!("{INSTALLER_DIRECTORY}/{installer_bundle}");
 
+    let mut env_directives = vec![
+        // set cage name and app uuid as in enclave env vars
+        Directive::new_env("EV_CAGE_NAME", build_config.cage_name()),
+        Directive::new_env("CAGE_UUID", build_config.cage_uuid()),
+        Directive::new_env("EV_APP_UUID", build_config.app_uuid()),
+        Directive::new_env("EV_TEAM_UUID", build_config.team_uuid()),
+        Directive::new_env("DATA_PLANE_HEALTH_CHECKS", "true"),
+        Directive::new_env("EV_API_KEY_AUTH", &build_config.api_key_auth().to_string()),
+        Directive::new_env(
+            "EV_TRX_LOGGING_ENABLED",
+            &build_config.trx_logging_enabled().to_string(),
+        ),
+    ];
+
+    let egress = build_config.clone().egress;
+    if egress.is_enabled() {
+        let ports = Directive::new_env("EGRESS_PORTS", &egress.get_ports());
+        env_directives.push(ports)
+    };
+
     let injected_directives = vec![
         // install dependencies
         Directive::new_run(format!("mkdir -p {INSTALLER_DIRECTORY}")),
@@ -211,18 +231,10 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             data_plane_run_script.as_str(),
             format!("{DATA_PLANE_SERVICE_PATH}/run").as_str(),
             &[],
-        )),
-        // set cage name and app uuid as in enclave env vars
-        Directive::new_env("EV_CAGE_NAME", build_config.cage_name()),
-        Directive::new_env("CAGE_UUID", build_config.cage_uuid()),
-        Directive::new_env("EV_APP_UUID", build_config.app_uuid()),
-        Directive::new_env("EV_TEAM_UUID", build_config.team_uuid()),
-        Directive::new_env("DATA_PLANE_HEALTH_CHECKS", "true"),
-        Directive::new_env("EV_API_KEY_AUTH", &build_config.api_key_auth().to_string()),
-        Directive::new_env(
-            "EV_TRX_LOGGING_ENABLED",
-            &build_config.trx_logging_enabled().to_string(),
-        ),
+        ))
+    ];
+
+    let start_up_directives = vec![
         // Add bootstrap script to configure enclave before starting services
         Directive::new_run(crate::docker::utils::write_command_to_script(
             bootstrap_script_content,
@@ -237,7 +249,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     ];
 
     // add custom directives to end of dockerfile
-    Ok([cleaned_instructions, injected_directives].concat())
+    Ok([cleaned_instructions, injected_directives, env_directives, start_up_directives].concat())
 }
 
 #[cfg(test)]
@@ -263,6 +275,7 @@ mod test {
             egress: EgressSettings {
                 enabled: false,
                 destinations: None,
+                ports: Some(vec!["433".to_string()]),
             },
             attestation: None,
             signing: ValidatedSigningInfo {
