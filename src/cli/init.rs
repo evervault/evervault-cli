@@ -63,6 +63,10 @@ pub struct InitArgs {
     /// Flag to make your Cage delete after 6 hours
     #[clap(long = "self-destruct")]
     pub is_time_bound: bool,
+
+    /// Comma separated list of ports to allow egress on (e.g. 443,465,998), default port is 443 if none are supplied
+    #[clap(long = "egress-ports")]
+    pub egress_ports: Option<String>,
 }
 
 impl std::convert::From<InitArgs> for CageConfig {
@@ -76,6 +80,10 @@ impl std::convert::From<InitArgs> for CageConfig {
             })
         };
 
+        let egress_ports = val
+            .egress_ports
+            .map(|port_str| port_str.split(',').map(|port| port.to_string()).collect());
+
         CageConfig {
             name: val.cage_name,
             uuid: None,
@@ -85,6 +93,7 @@ impl std::convert::From<InitArgs> for CageConfig {
             egress: EgressSettings {
                 enabled: val.egress,
                 destinations: None,
+                ports: egress_ports,
             },
             dockerfile: val.dockerfile.unwrap_or_else(default_dockerfile), // need to manually set default dockerfile
             signing: signing_info,
@@ -185,6 +194,7 @@ mod init_tests {
             is_time_bound: false,
             disable_api_key_auth: false,
             trx_logging_disabled: false,
+            egress_ports: Some("443".to_string()),
         };
         init_local_config(init_args, sample_cage).await;
         let config_path = output_dir.path().join("cage.toml");
@@ -203,6 +213,7 @@ disable_tls_termination = false
 
 [egress]
 enabled = true
+ports = ["443"]
 
 [signing]
 certPath = "./cert.pem"
