@@ -16,7 +16,6 @@ impl EgressSettings {
     }
     pub fn get_ports(self) -> String {
         self.ports
-            .clone()
             .map(|ports| ports.join(","))
             .unwrap_or("443".to_string())
     }
