@@ -91,7 +91,7 @@ impl std::convert::From<InitArgs> for CageConfig {
             team_uuid: None,
             debug: val.debug,
             egress: EgressSettings {
-                enabled: val.egress,
+                enabled: val.egress || egress_ports.is_some(),
                 destinations: None,
                 ports: egress_ports,
             },
