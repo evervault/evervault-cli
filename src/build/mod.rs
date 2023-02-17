@@ -249,7 +249,13 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     ];
 
     // add custom directives to end of dockerfile
-    Ok([cleaned_instructions, injected_directives, env_directives, start_up_directives].concat())
+    Ok([
+        cleaned_instructions,
+        injected_directives,
+        env_directives,
+        start_up_directives,
+    ]
+    .concat())
 }
 
 #[cfg(test)]
