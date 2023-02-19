@@ -7,11 +7,17 @@ use thiserror::Error;
 pub struct EgressSettings {
     pub enabled: bool,
     pub destinations: Option<Vec<String>>,
+    pub ports: Option<Vec<String>>,
 }
 
 impl EgressSettings {
     pub fn is_enabled(&self) -> bool {
         self.enabled
+    }
+    pub fn get_ports(self) -> String {
+        self.ports
+            .map(|ports| ports.join(","))
+            .unwrap_or("443".to_string())
     }
 }
 
@@ -453,6 +459,7 @@ mod test {
             egress: super::EgressSettings {
                 enabled: false,
                 destinations: None,
+                ports: Some(vec!["443".to_string()]),
             },
             signing: None,
             attestation: None,
