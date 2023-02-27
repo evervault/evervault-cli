@@ -25,10 +25,12 @@ pub struct EnvArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum EnvCommands {
-    /// Create a new Cage signing certificate
     #[clap()]
+    /// Add Cage environment variable
     Add(AddEnvArgs),
+    /// Delete Cage environment variable
     Delete(DeleteEnvArgs),
+    /// Get Cage environment variables
     Get(GetEnvArgs),
 }
 
