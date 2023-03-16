@@ -163,7 +163,13 @@ pub fn docker_info() -> Result<ExitStatus, CommandError> {
         .args(["info"])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
-        .status()?;
+        .status();
 
-    Ok(status)
+    match status {
+        Ok(status) => Ok(status),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            Err(CommandError::CommandNotFound("Docker".to_string()))
+        }
+        Err(e) => Err(e.into()),
+    }
 }
