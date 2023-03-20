@@ -120,7 +120,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
     {
         Ok((built_enclave, _)) => built_enclave,
         Err(e) => {
-            log::error!("An error occurred while building your enclave — {0:?}", e);
+            log::error!("An error occurred while building your enclave — {e}");
             return e.exitcode();
         }
     };

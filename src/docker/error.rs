@@ -9,13 +9,15 @@ pub enum CommandError {
     IoError(#[from] std::io::Error),
     #[error("Failed to capture IO stream")]
     StdIoCaptureError,
+    #[error("{0} not found. Please install {0} to use this feature.")]
+    CommandNotFound(String),
 }
 
 impl CliError for CommandError {
     fn exitcode(&self) -> exitcode::ExitCode {
         match self {
             Self::IoError(io_err) => io_err.raw_os_error().unwrap_or(exitcode::IOERR),
-            Self::StdIoCaptureError => exitcode::IOERR,
+            _ => exitcode::IOERR,
         }
     }
 }
