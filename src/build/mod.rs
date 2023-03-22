@@ -234,7 +234,6 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         ))
     ];
 
-
     let start_up_directives = vec![
         // Add bootstrap script to configure enclave before starting services
         Directive::new_run(crate::docker::utils::write_command_to_script(
