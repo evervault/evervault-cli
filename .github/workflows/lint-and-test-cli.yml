@@ -17,7 +17,7 @@ jobs:
         with:
           toolchain: nightly
           override: true
-          components: rustfmt
+          components: rustfmt, clippy
       - name: Compile project
         run: cargo build --all-features -p ev-cage -Z registry-auth
         env:
