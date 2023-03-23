@@ -9,15 +9,6 @@ The Evervault Cages product is open source with the aim of providing transparenc
 
 The current state of this project does not allow for self-hosting. We plan on addressing this by abstracting away the Evervault-specific elements of the Cages product.
 
-## Run Locally
-
-```
-> cargo build
-> ln -s /<PATH-TO-CAGE-CLI-DIR>/cage-cli/target/debug/ev-cage /usr/local/bin/ev-cage
-> ev-cage init --name <name> --generate-signing -f <dockerfile_path> --api-key <API_KEY> # can also pass --egress here
-> ev-cage deploy --api-key <API_KEY>
-```
-
 ## Subcommands
 
 ### init
