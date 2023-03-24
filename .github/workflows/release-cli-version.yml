@@ -1,13 +1,9 @@
 name: Release Cage CLI version
 
-# TEMP TO TEST BUILD
 on:
   push:
-
-# on:
-#   push:
-#     tags:
-#       - "v*"
+    tags:
+      - "v*"
 
 env:
   RUST_BACKTRACE: 1
@@ -177,111 +173,111 @@ jobs:
           name: windows
           path: ./${{ env.RELEASE_DIR }}
 
-  # release-cli-version:
-  #   needs: [ get-version, compile-ubuntu, compile-macos, compile-windows ]
-  #   runs-on: ubuntu-latest
-  #   steps:
+  release-cli-version:
+    needs: [ get-version, compile-ubuntu, compile-macos, compile-windows ]
+    runs-on: ubuntu-latest
+    steps:
 
-  #     - name: Create Release
-  #       id: create-release
-  #       uses: actions/create-release@v1
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #       with:
-  #         tag_name: ${{ needs.get-version.outputs.version }}
-  #         release_name: ${{ needs.get-version.outputs.version }}
+      - name: Create Release
+        id: create-release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.get-version.outputs.version }}
+          release_name: ${{ needs.get-version.outputs.version }}
 
-  #     - name: Download MacOS Artifacts
-  #       uses: actions/download-artifact@v1
-  #       with:
-  #         name: macos
+      - name: Download MacOS Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: macos
 
-  #     - name: Download Linux Artifacts
-  #       uses: actions/download-artifact@v1
-  #       with:
-  #         name: linux
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: linux
 
-  #     - name: Download Windows Artifacts
-  #       uses: actions/download-artifact@v1
-  #       with:
-  #         name: windows
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: windows
 
-  #     - name: Upload Linux Release
-  #       uses: actions/upload-release-asset@v1
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #       with:
-  #         upload_url: ${{ steps.create-release.outputs.upload_url }}
-  #         asset_path: ./linux/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
-  #         asset_content_type: application/gzip
-  #         asset_name: ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+      - name: Upload Linux Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: ./linux/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          asset_content_type: application/gzip
+          asset_name: ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
-  #     - name: Upload MacOS Release
-  #       uses: actions/upload-release-asset@v1
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #       with:
-  #         upload_url: ${{ steps.create-release.outputs.upload_url }}
-  #         asset_path: ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
-  #         asset_content_type: application/gzip
-  #         asset_name: ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+      - name: Upload MacOS Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          asset_content_type: application/gzip
+          asset_name: ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
-  #     - name: Upload Windows Release
-  #       uses: actions/upload-release-asset@v1
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #       with:
-  #         upload_url: ${{ steps.create-release.outputs.upload_url }}
-  #         asset_path: ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
-  #         asset_content_type: application/gzip
-  #         asset_name: ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+      - name: Upload Windows Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+          asset_content_type: application/gzip
+          asset_name: ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
-  # upload-artifacts-to-s3:
-  #   needs: [ get-version , compile-ubuntu, compile-macos, compile-windows ]
-  #   runs-on: ubuntu-latest
-  #   steps:
+  upload-artifacts-to-s3:
+    needs: [ get-version , compile-ubuntu, compile-macos, compile-windows ]
+    runs-on: ubuntu-latest
+    steps:
 
-  #     - name: Configure AWS credentials
-  #       uses: aws-actions/configure-aws-credentials@v1
-  #       with:
-  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #         aws-region: us-east-1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-  #     - name: Download MacOS Artifacts
-  #       uses: actions/download-artifact@v1
-  #       with:
-  #         name: macos
+      - name: Download MacOS Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: macos
 
-  #     - name: Download Linux Artifacts
-  #       uses: actions/download-artifact@v1
-  #       with:
-  #         name: linux
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: linux
 
-  #     - name: Download Windows Artifacts
-  #       uses: actions/download-artifact@v1
-  #       with:
-  #         name: windows
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: windows
 
-  #     - name: Upload Windows CLI to S3
-  #       run: |
-  #         aws s3 cp ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.WINDOWS_TARGET }}/ev-cage.tar.gz
+      - name: Upload Windows CLI to S3
+        run: |
+          aws s3 cp ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.WINDOWS_TARGET }}/ev-cage.tar.gz
 
-  #     - name: Upload MacOS CLI to S3
-  #       run: |
-  #         aws s3 cp ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.MACOS_TARGET }}/ev-cage.tar.gz
+      - name: Upload MacOS CLI to S3
+        run: |
+          aws s3 cp ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.MACOS_TARGET }}/ev-cage.tar.gz
 
-  #     - name: Upload Ubuntu CLI to S3
-  #       run: |
-  #         aws s3 cp ./linux/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.LINUX_TARGET }}/ev-cage.tar.gz
+      - name: Upload Ubuntu CLI to S3
+        run: |
+          aws s3 cp ./linux/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.version }}/${{ env.LINUX_TARGET }}/ev-cage.tar.gz
 
-  #     - uses: actions/checkout@v2
-  #     - name: Update install script in S3
-  #       run: |
-  #         sh ./scripts/generate-installer.sh ${{ needs.get-version.outputs.version }}
-  #         aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/${{needs.get-version.outputs.version}}/install
-  #         aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/install
-  #         aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/${{needs.get-version.outputs.version}}/version
-  #         aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/version
-  #         aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/cli/install"
-  #         aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/cli/version"
+      - uses: actions/checkout@v2
+      - name: Update install script in S3
+        run: |
+          sh ./scripts/generate-installer.sh ${{ needs.get-version.outputs.version }}
+          aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/${{needs.get-version.outputs.version}}/install
+          aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/install
+          aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/${{needs.get-version.outputs.version}}/version
+          aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/version
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/cli/install"
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/cli/version"
