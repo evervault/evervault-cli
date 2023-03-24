@@ -14,6 +14,7 @@ use tokio::fs::File;
 use tokio::time::timeout;
 use tokio_stream::StreamExt;
 use tokio_util::codec::{BytesCodec, FramedRead};
+use async_stream::__private::AsyncStream;
 
 const ENCLAVE_ZIP_FILENAME: &str = "enclave.zip";
 const DEPLOY_WATCH_TIMEOUT_SECONDS: u64 = 600; //10 minutes
@@ -31,7 +32,7 @@ pub async fn deploy_eif(
     let zip_path = output_path.path().join(ENCLAVE_ZIP_FILENAME);
     let zip_file = File::open(&zip_path).await?;
     let zip_len_bytes = zip_file.metadata().await?.len();
-    let zip_upload_stream = create_zip_upload_stream(zip_file, zip_len_bytes).await;
+    let zip_upload_stream = create_zip_upload_stream(zip_file, zip_len_bytes);
 
     let eif_size_bytes = get_eif_size_bytes(output_path.path()).await?;
 
@@ -203,10 +204,10 @@ fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::Zip
     Ok(())
 }
 
-async fn create_zip_upload_stream(
+fn create_zip_upload_stream(
     zip_file: File,
     zip_len_bytes: u64,
-) -> async_stream::AsyncStream<
+) -> AsyncStream<
     Result<bytes::BytesMut, std::io::Error>,
     impl core::future::Future<Output = ()>,
 > {
