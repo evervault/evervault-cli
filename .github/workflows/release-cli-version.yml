@@ -41,7 +41,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nighlty
+          toolchain: nightly
           override: true
           target: ${{ env.LINUX_TARGET }}
 
