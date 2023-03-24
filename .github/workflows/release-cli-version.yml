@@ -90,7 +90,7 @@ jobs:
           override: true
 
       - name: Build CLI MacOs Target
-      - run: |
+        run: |
           cargo install cross
           cross build --release --target ${{ env.MACOS_TARGET }} -Z registry-auth
         env:
