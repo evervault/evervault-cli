@@ -7,6 +7,7 @@ use crate::enclave::{EIFMeasurements, ENCLAVE_FILENAME};
 use crate::progress::{get_tracker, poll_fn_and_report_status, ProgressLogger, StatusReport};
 use std::io::Write;
 mod error;
+use async_stream::__private::AsyncStream;
 use error::DeployError;
 use reqwest::Body;
 use std::path::Path;
@@ -14,7 +15,6 @@ use tokio::fs::File;
 use tokio::time::timeout;
 use tokio_stream::StreamExt;
 use tokio_util::codec::{BytesCodec, FramedRead};
-use async_stream::__private::AsyncStream;
 
 const ENCLAVE_ZIP_FILENAME: &str = "enclave.zip";
 const DEPLOY_WATCH_TIMEOUT_SECONDS: u64 = 600; //10 minutes
@@ -207,10 +207,7 @@ fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::Zip
 fn create_zip_upload_stream(
     zip_file: File,
     zip_len_bytes: u64,
-) -> AsyncStream<
-    Result<bytes::BytesMut, std::io::Error>,
-    impl core::future::Future<Output = ()>,
-> {
+) -> AsyncStream<Result<bytes::BytesMut, std::io::Error>, impl core::future::Future<Output = ()>> {
     let mut stream = FramedRead::new(zip_file, BytesCodec::new());
     let progress_bar = get_tracker("Uploading Cage to Evervault", Some(zip_len_bytes));
     async_stream::stream! {
