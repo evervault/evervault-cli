@@ -3,8 +3,6 @@ name: Release Cage CLI version
 # TEMP TO TEST BUILD
 on:
   push:
-    paths:
-      - .github/workflows/release-cli-version.yml
 
 # on:
 #   push:
