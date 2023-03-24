@@ -89,6 +89,11 @@ jobs:
           toolchain: nightly
           target: ${{ env.MACOS_TARGET }}
           override: true
+      
+      - name: Download cached dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+            shared-key: "macos-cross-builds"
 
       - name: Build CLI MacOs Target
         run: |
@@ -140,6 +145,11 @@ jobs:
           toolchain: nightly
           target: ${{ env.WINDOWS_TARGET }}
           override: true
+
+      - name: Download cached dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+            shared-key: "windows-cross-builds"
 
       - name: Fetch dependencies
         run: cargo fetch -Z registry-auth
