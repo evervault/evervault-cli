@@ -28,8 +28,8 @@ jobs:
     steps:
       - id: get-version
         run: |
-          echo "using version tag ${GITHUB_REF:11}"
-          echo ::set-output name=version::${GITHUB_REF:11}
+          echo "using version tag 0.1.15"
+          echo ::set-output name=version::0.1.15
 
   compile-ubuntu:
     runs-on: ubuntu-latest
