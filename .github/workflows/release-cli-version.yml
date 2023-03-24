@@ -33,17 +33,40 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Install musl-tools
+        run: sudo apt-get install musl-tools
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          target: ${{ env.LINUX_TARGET }}
+
+      - name: Download cached dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+            shared-key: "linux-cross-builds"
+
+      - name: Install cross
+        run: cargo install cross
+
       - name: Inject Version
         run: |
           sh ./scripts/insert-cli-version.sh ${{ needs.get-version.outputs.version }}
 
       - name: Build and Compress cli
-        # todo use evervault action with added 7zip
-        uses: davidnugent2425/cargo-static-build@master
-        with:
-          cmd: mkdir ${{ env.BIN_DIR }} ; mkdir ${{ env.RELEASE_DIR }} ; cargo build --release --target ${{ env.LINUX_TARGET }} ; mv ./target/${{ env.LINUX_TARGET }}/release/ev-cage ./${{ env.BIN_DIR }}/ev-cage ; 7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
+        run: |
+          mkdir ${{ env.BIN_DIR }}
+          mkdir ${{ env.RELEASE_DIR }}
+          cross build --release --target ${{ env.LINUX_TARGET }} -Z registry-auth
+          mv ./target/${{ env.LINUX_TARGET }}/release/ev-cage ./${{ env.BIN_DIR }}/ev-cage
+          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
+          CARGO_HOME: ${{ github.workspace }}/.cargo
 
       - name: Upload as artifact
         uses: actions/upload-artifact@v2
@@ -63,12 +86,22 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           target: ${{ env.MACOS_TARGET }}
+          override: true
+      
+      - name: Download cached dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+            shared-key: "macos-cross-builds"
 
-      - run: cargo build --release --target ${{ env.MACOS_TARGET }}
+      - name: Build CLI MacOs Target
+        run: |
+          cargo install cross
+          cross build --release --target ${{ env.MACOS_TARGET }} -Z registry-auth
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
 
       - name: Compress macos binary
         uses: svenstaro/upx-action@v2
@@ -109,18 +142,28 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           target: ${{ env.WINDOWS_TARGET }}
+          override: true
+
+      - name: Download cached dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+            shared-key: "windows-cross-builds"
 
       - name: Fetch dependencies
-        run: cargo fetch
+        run: cargo fetch -Z registry-auth
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
 
       - name: Build CLI for Windows
-        run: cargo build --release --target ${{ env.WINDOWS_TARGET }}
+        run: |
+          cargo install cross
+          cross build --release --target ${{ env.WINDOWS_TARGET }} -Z registry-auth
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
 
       - name: Setup directories
         shell: bash
