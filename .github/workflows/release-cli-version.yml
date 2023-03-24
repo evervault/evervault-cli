@@ -50,6 +50,9 @@ jobs:
         with:
             shared-key: "linux-cross-builds"
 
+      - name: Install cross
+        run: cargo install cross
+
       - name: Inject Version
         run: |
           sh ./scripts/insert-cli-version.sh ${{ needs.get-version.outputs.version }}
@@ -58,7 +61,6 @@ jobs:
         run: |
           mkdir ${{ env.BIN_DIR }}
           mkdir ${{ env.RELEASE_DIR }}
-          cargo install cross
           cross build --release --target ${{ env.LINUX_TARGET }} -Z registry-auth
           mv ./target/${{ env.LINUX_TARGET }}/release/ev-cage ./${{ env.BIN_DIR }}/ev-cage
           7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
