@@ -2,7 +2,7 @@ use crate::api::AuthMode;
 use crate::common::CliError;
 use crate::config::{read_and_validate_config, BuildTimeConfig};
 use crate::{api, get_api_key};
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 /// List your Cages and Deployments
 #[derive(Debug, Parser)]
@@ -14,14 +14,13 @@ pub struct List {
 }
 
 /// The supported list commands
-#[derive(Debug, Parser)]
+#[derive(Debug, Subcommand)]
 #[clap(name = "list", about)]
 pub enum ListCommands {
     /// List Cages
     #[clap()]
     Cages,
     /// List Cage Deployments
-    #[clap()]
     Deployments(DeploymentArgs),
 }
 

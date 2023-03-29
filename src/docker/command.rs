@@ -1,6 +1,6 @@
 use super::error::CommandError;
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, ExitStatus, Output, Stdio};
 
 pub struct CommandConfig {
@@ -80,7 +80,7 @@ pub fn build_image_using_kaniko(
 }
 
 pub fn load_image_into_local_docker_registry(
-    image_archive: &PathBuf,
+    image_archive: &Path,
     verbose: bool,
 ) -> Result<ExitStatus, CommandError> {
     let command_config = CommandConfig::new(verbose);

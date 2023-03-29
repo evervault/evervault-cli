@@ -8,7 +8,7 @@ use crate::{
 use super::encrypt::CurveName;
 use crate::env::env;
 
-#[derive(Clone, Debug, clap::ArgEnum, Subcommand)]
+#[derive(Clone, Debug)]
 pub enum EnvAction {
     Add,
     Delete,

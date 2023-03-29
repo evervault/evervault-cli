@@ -138,10 +138,10 @@ impl Directive {
                     .as_slice()
                     .split(|byte| &[*byte] == b" ")
                     .filter_map(|token| std::str::from_utf8(token).ok())
-                    .filter(|parsed_str| parsed_str.len() > 0)
+                    .filter(|parsed_str| !parsed_str.is_empty())
                     .collect::<Vec<&str>>();
                 *source_url = parsed_args
-                    .get(0)
+                    .first()
                     .ok_or_else(|| DecodeError::IncompleteInstruction)?
                     .to_string();
                 *destination_path = parsed_args

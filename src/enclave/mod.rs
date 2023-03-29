@@ -82,13 +82,13 @@ pub fn build_reproducible_user_image(
     let image_archive = tar_output_dir.path().join("image.tar");
     let load_output = command::load_image_into_local_docker_registry(&image_archive, verbose)?;
     if load_output.success() {
-        return Ok(());
+        Ok(())
     } else {
         log::debug!(
             "Failed to load image into local docker registry: {:?}",
             load_output.code()
         );
-        return Err(EnclaveError::new_build_error(load_output.code().unwrap()));
+        Err(EnclaveError::new_build_error(load_output.code().unwrap()))
     }
 }
 

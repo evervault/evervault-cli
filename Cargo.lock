@@ -117,7 +117,7 @@ dependencies = [
 [[package]]
 name = "attestation-doc-validation"
 version = "0.2.1"
-source = "registry+https://dl.cloudsmith.io/qb1b3KaN9Yg0lKI9/evervault/rust-libraries/cargo/index.git"
+source = "sparse+https://cargo.cloudsmith.io/evervault/rust-libraries/"
 checksum = "5466fdcc164977f408c3f2c821b00003b97febb830e42c56cf267e3c9b2b6609"
 dependencies = [
  "aws-nitro-enclaves-cose",
@@ -503,21 +503,6 @@ name = "either"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f107b87b6afc2a64fd13cac55fe06d6c8859f12d4b14cbcdd2c67d0976781be"
-
-[[package]]
-name = "enclave-rpc"
-version = "0.1.31"
-source = "registry+https://dl.cloudsmith.io/CoYdli3SfvrnaNmf/evervault/enclave-rpc/cargo/index.git"
-checksum = "a114f5a61a873953d8d5f94e1266d8476567e3100f83fbfc218d37300ca26c85"
-dependencies = [
- "byteorder",
- "rmp-serde",
- "serde",
- "serde_derive",
- "serde_json",
- "thiserror",
- "uuid",
-]
 
 [[package]]
 name = "encode_unicode"
@@ -973,17 +958,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3fac17f7123a73ca62df411b1bf727ccc805daa070338fda671c86dac1bdc27"
 dependencies = [
  "wasm-bindgen",
-]
-
-[[package]]
-name = "jsonpath_lib"
-version = "0.3.0"
-source = "registry+https://dl.cloudsmith.io/wTyJxFiyzoFiHcKK/evervault/jsonpath/cargo/index.git"
-checksum = "8ff24e9e44bc1aa181f511f9cd3361b69285076b13c91e701338384e0fead84c"
-dependencies = [
- "log",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -1679,17 +1653,15 @@ dependencies = [
 
 [[package]]
 name = "rust-crypto"
-version = "0.1.5"
-source = "registry+https://dl.cloudsmith.io/qb1b3KaN9Yg0lKI9/evervault/rust-libraries/cargo/index.git"
-checksum = "df1ff02636d161b5c6a9f6ae93b6d1c9008dc9ad533401cdff03353ddea37980"
+version = "0.1.21"
+source = "sparse+https://cargo.cloudsmith.io/evervault/rust-libraries/"
+checksum = "425302af86c7ea068604fad19ff99984612ba06cb171e7c2b88031945a51a308"
 dependencies = [
  "base-x",
  "base64",
  "byteorder",
  "der",
- "enclave-rpc",
  "hex",
- "jsonpath_lib",
  "lazy_static",
  "openssl",
  "rand 0.8.5",
@@ -1851,7 +1823,6 @@ version = "1.0.91"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "877c235533714907a8c2464236f5c4b2a17262ef1bd71f38f35ea592c8da6883"
 dependencies = [
- "indexmap",
  "itoa",
  "ryu",
  "serde",
