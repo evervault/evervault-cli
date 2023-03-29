@@ -2,7 +2,7 @@ use crate::api::AuthMode;
 use crate::common::CliError;
 use crate::config::{read_and_validate_config, BuildTimeConfig};
 use crate::{api, get_api_key};
-use clap::{Parser, Subcommand};
+use clap::Parser;
 
 /// List your Cages and Deployments
 #[derive(Debug, Parser)]
@@ -14,15 +14,19 @@ pub struct List {
 }
 
 /// The supported list commands
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Parser)]
 #[clap(name = "list", about)]
 pub enum ListCommands {
     /// List Cages
     #[clap()]
-    Cages,
+    Cages(NoArgs),
     /// List Cage Deployments
+    #[clap()]
     Deployments(DeploymentArgs),
 }
+
+#[derive(Debug, Parser)]
+pub struct NoArgs {}
 
 #[derive(Debug, Parser)]
 pub struct DeploymentArgs {
@@ -43,7 +47,7 @@ pub async fn run(list_action: List) -> exitcode::ExitCode {
     let cage_client = api::cage::CagesClient::new(auth);
 
     match list_action.resource {
-        ListCommands::Cages => list_cages(&cage_client).await,
+        ListCommands::Cages(_) => list_cages(&cage_client).await,
         ListCommands::Deployments(deployment_args) => {
             list_deployments(&cage_client, deployment_args).await
         }

@@ -8,13 +8,6 @@ use crate::{
 use super::encrypt::CurveName;
 use crate::env::env;
 
-#[derive(Clone, Debug)]
-pub enum EnvAction {
-    Add,
-    Delete,
-    Get,
-}
-
 /// Manage Cage environment
 #[derive(Debug, Parser)]
 #[clap(name = "cert", about)]
