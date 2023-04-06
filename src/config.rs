@@ -11,6 +11,29 @@ pub struct EgressSettings {
 }
 
 impl EgressSettings {
+    pub fn new(
+        ports: Option<Vec<String>>,
+        destinations: Option<Vec<String>>,
+        enabled: bool,
+    ) -> EgressSettings {
+        let enabled = enabled || destinations.is_some() || ports.is_some();
+        let destinations = if enabled && destinations.is_none() {
+            Some(vec!["*".to_string()])
+        } else {
+            destinations.clone()
+        };
+        let ports = if enabled && ports.is_none() {
+            Some(vec!["443".to_string()])
+        } else {
+            ports.clone()
+        };
+        EgressSettings {
+            enabled,
+            destinations,
+            ports,
+        }
+    }
+
     pub fn is_enabled(&self) -> bool {
         self.enabled
     }
@@ -18,6 +41,11 @@ impl EgressSettings {
         self.ports
             .map(|ports| ports.join(","))
             .unwrap_or("443".to_string())
+    }
+    pub fn get_destinations(self) -> String {
+        self.destinations
+            .map(|destination| destination.join(","))
+            .unwrap_or("*".to_string())
     }
 }
 

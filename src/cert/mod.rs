@@ -1,4 +1,4 @@
-use chrono::Datelike;
+use chrono::{Datelike, Utc};
 use itertools::Itertools;
 use rcgen::CertificateParams;
 use std::io::Write;
@@ -17,7 +17,7 @@ pub fn create_new_cert(
 
     add_distinguished_name_to_cert_params(&mut cert_params, distinguished_name);
 
-    let today = chrono::Utc::today();
+    let today = Utc::now();
     cert_params.not_before =
         rcgen::date_time_ymd(today.year(), today.month() as u8, today.day() as u8);
 

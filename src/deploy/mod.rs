@@ -39,7 +39,7 @@ pub async fn deploy_eif(
     let cage_deployment_intent_payload = CreateCageDeploymentIntentRequest::new(
         eif_measurements.pcrs(),
         validated_config.debug,
-        validated_config.egress().is_enabled(),
+        validated_config.egress().clone(),
         eif_size_bytes,
     );
     let deployment_intent = cage_api

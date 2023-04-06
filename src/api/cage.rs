@@ -1,3 +1,5 @@
+use crate::config::EgressSettings;
+
 use super::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
 use super::AuthMode;
 use reqwest::Client;
@@ -186,6 +188,8 @@ pub struct CreateCageDeploymentIntentRequest {
     pcrs: crate::enclave::PCRs,
     debug_mode: bool,
     egress_enabled: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    egress_domains: Option<Vec<String>>,
     eif_size_bytes: u64,
 }
 
@@ -193,14 +197,15 @@ impl CreateCageDeploymentIntentRequest {
     pub fn new(
         pcrs: &crate::enclave::PCRs,
         debug_mode: bool,
-        egress_enabled: bool,
+        egress_settings: EgressSettings,
         eif_size_bytes: u64,
     ) -> Self {
         Self {
             pcrs: pcrs.clone(),
             debug_mode,
-            egress_enabled,
+            egress_enabled: egress_settings.enabled,
             eif_size_bytes,
+            egress_domains: egress_settings.destinations,
         }
     }
 }
