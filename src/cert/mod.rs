@@ -1,12 +1,29 @@
-use chrono::Datelike;
+use chrono::{Datelike, TimeZone};
 use itertools::Itertools;
 use rcgen::CertificateParams;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::ops::Add;
 use std::path::{Path, PathBuf};
+use x509_parser::parse_x509_certificate;
+use x509_parser::prelude::{parse_x509_pem, X509Certificate};
 
 pub mod error;
 pub use error::CertError;
+
+#[derive(Debug, Clone)]
+pub struct CertValidityPeriod {
+    pub not_before: String,
+    pub not_after: String,
+}
+
+impl CertValidityPeriod {
+    pub fn new(not_before: String, not_after: String) -> Self {
+        Self {
+            not_before,
+            not_after,
+        }
+    }
+}
 
 pub fn create_new_cert(
     output_dir: &Path,
@@ -17,11 +34,10 @@ pub fn create_new_cert(
 
     add_distinguished_name_to_cert_params(&mut cert_params, distinguished_name);
 
-    let today = chrono::Utc::today();
-    cert_params.not_before =
-        rcgen::date_time_ymd(today.year(), today.month() as u8, today.day() as u8);
+    let now = chrono::Utc::now();
+    cert_params.not_before = rcgen::date_time_ymd(now.year(), now.month() as u8, now.day() as u8);
 
-    let expiry_time = today.add(chrono::Duration::weeks(52));
+    let expiry_time = now.add(chrono::Duration::weeks(52));
     cert_params.not_after = rcgen::date_time_ymd(
         expiry_time.year(),
         expiry_time.month() as u8,
@@ -79,6 +95,44 @@ fn write_cert_to_fs(
     key_file.write_all(serialized_key.as_bytes())?;
 
     Ok((cert_path, key_path))
+}
+
+fn epoch_to_date(epoch: i64) -> Result<String, CertError> {
+    match chrono::Utc.timestamp_opt(epoch, 0) {
+        chrono::LocalResult::Single(date) => Ok(date.format("%Y-%m-%dT%H:%M:%S%z").to_string()),
+        _ => Err(CertError::InvalidDate),
+    }
+}
+
+fn extract_cert_validity_period_from_x509(
+    cert: &X509Certificate,
+) -> Result<CertValidityPeriod, CertError> {
+    let now = chrono::Utc::now().timestamp();
+    let not_before = cert.tbs_certificate.validity.not_before.timestamp();
+    let not_after = cert.tbs_certificate.validity.not_after.timestamp();
+
+    if now < not_before {
+        return Err(CertError::CertNotYetValid);
+    } else if now > not_after {
+        return Err(CertError::CertHasExpired);
+    }
+
+    let cert_validity_period =
+        CertValidityPeriod::new(epoch_to_date(not_before)?, epoch_to_date(not_after)?);
+
+    Ok(cert_validity_period)
+}
+
+pub fn get_cert_validity_period(path: &Path) -> Result<CertValidityPeriod, CertError> {
+    let cert_file = std::fs::File::open(path)?;
+    let mut cert_reader = std::io::BufReader::new(cert_file);
+    let mut cert_contents = Vec::new();
+    cert_reader.read_to_end(&mut cert_contents)?;
+
+    let (_, pem) = parse_x509_pem(&cert_contents).map_err(CertError::PEMError)?;
+    let (_, x509) = parse_x509_certificate(&pem.contents).map_err(CertError::X509Error)?;
+
+    extract_cert_validity_period_from_x509(&x509)
 }
 
 #[derive(Debug)]
@@ -153,4 +207,28 @@ impl<'a> std::convert::TryInto<DistinguishedName<'a>> for DnBuilder<'a> {
             state: self.state.ok_or(CertError::InvalidCertSubjectProvided)?,
         })
     }
+}
+
+
+#[test]
+fn test_epoch_to_date() {
+    let epoch: i64 = 1619196863;
+    let expected_date = "2021-04-23T16:54:23+0000";
+
+    let date = epoch_to_date(epoch).unwrap();
+    assert_eq!(expected_date, date);
+}
+
+#[test]
+fn test_get_cert_validity_period() {
+    let path = Path::new("./test-cert/cert.pem");
+
+    let cert_validity_period = get_cert_validity_period(path).unwrap();
+
+    // Replace the expected dates with the actual `not_before` and `not_after` values from your test certificate
+    let expected_not_before = "2023-04-06T00:00:00+0000";
+    let expected_not_after = "2024-04-04T00:00:00+0000";
+
+    assert_eq!(expected_not_before, cert_validity_period.not_before);
+    assert_eq!(expected_not_after, cert_validity_period.not_after);
 }

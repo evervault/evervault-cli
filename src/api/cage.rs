@@ -187,6 +187,8 @@ pub struct CreateCageDeploymentIntentRequest {
     debug_mode: bool,
     egress_enabled: bool,
     eif_size_bytes: u64,
+    not_before: String,
+    not_after: String,
 }
 
 impl CreateCageDeploymentIntentRequest {
@@ -195,12 +197,16 @@ impl CreateCageDeploymentIntentRequest {
         debug_mode: bool,
         egress_enabled: bool,
         eif_size_bytes: u64,
+        not_before: String,
+        not_after: String,
     ) -> Self {
         Self {
             pcrs: pcrs.clone(),
             debug_mode,
             egress_enabled,
             eif_size_bytes,
+            not_before,
+            not_after,
         }
     }
 }
