@@ -224,8 +224,7 @@ fn test_get_cert_validity_period() {
     let path = Path::new("./test-cert/cert.pem");
 
     let cert_validity_period = get_cert_validity_period(path).unwrap();
-
-    // Replace the expected dates with the actual `not_before` and `not_after` values from your test certificate
+    
     let expected_not_before = "2023-04-06T00:00:00+0000";
     let expected_not_after = "2024-04-04T00:00:00+0000";
 
