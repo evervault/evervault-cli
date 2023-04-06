@@ -209,7 +209,6 @@ impl<'a> std::convert::TryInto<DistinguishedName<'a>> for DnBuilder<'a> {
     }
 }
 
-
 #[test]
 fn test_epoch_to_date() {
     let epoch: i64 = 1619196863;
@@ -224,7 +223,7 @@ fn test_get_cert_validity_period() {
     let path = Path::new("./test-cert/cert.pem");
 
     let cert_validity_period = get_cert_validity_period(path).unwrap();
-    
+
     let expected_not_before = "2023-04-06T00:00:00+0000";
     let expected_not_after = "2024-04-04T00:00:00+0000";
 

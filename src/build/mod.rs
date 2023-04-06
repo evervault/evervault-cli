@@ -291,7 +291,7 @@ mod test {
                 cert_validity_period: CertValidityPeriod {
                     not_before: "".into(),
                     not_after: "".into(),
-                }
+                },
             },
             disable_tls_termination: false,
             api_key_auth: true,
