@@ -67,6 +67,10 @@ pub struct InitArgs {
     /// Comma separated list of ports to allow egress on (e.g. 443,465,998), default port is 443 if none are supplied
     #[clap(long = "egress-ports")]
     pub egress_ports: Option<String>,
+
+    /// Comma separated list of destinations to allow traffic to from the enclave e.g api.evervault.com, default is allow all
+    #[clap(long = "egress-destinations")]
+    pub egress_destinations: Option<String>,
 }
 
 impl std::convert::From<InitArgs> for CageConfig {
@@ -80,21 +84,17 @@ impl std::convert::From<InitArgs> for CageConfig {
             })
         };
 
-        let egress_ports = val
-            .egress_ports
-            .map(|port_str| port_str.split(',').map(|port| port.to_string()).collect());
-
         CageConfig {
             name: val.cage_name,
             uuid: None,
             app_uuid: None,
             team_uuid: None,
             debug: val.debug,
-            egress: EgressSettings {
-                enabled: val.egress || egress_ports.is_some(),
-                destinations: None,
-                ports: egress_ports,
-            },
+            egress: EgressSettings::new(
+                convert_comma_list(val.egress_ports),
+                convert_comma_list(val.egress_destinations),
+                val.egress,
+            ),
             dockerfile: val.dockerfile.unwrap_or_else(default_dockerfile), // need to manually set default dockerfile
             signing: signing_info,
             attestation: None,
@@ -103,6 +103,10 @@ impl std::convert::From<InitArgs> for CageConfig {
             trx_logging: !val.trx_logging_disabled,
         }
     }
+}
+
+fn convert_comma_list(maybe_str: Option<String>) -> Option<Vec<String>> {
+    maybe_str.map(|str| str.split(',').map(|value| value.to_string()).collect())
 }
 
 pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
@@ -195,6 +199,7 @@ mod init_tests {
             disable_api_key_auth: false,
             trx_logging_disabled: false,
             egress_ports: Some("443".to_string()),
+            egress_destinations: Some("evervault.com".to_string()),
         };
         init_local_config(init_args, sample_cage).await;
         let config_path = output_dir.path().join("cage.toml");
@@ -213,6 +218,7 @@ disable_tls_termination = false
 
 [egress]
 enabled = true
+destinations = ["evervault.com"]
 ports = ["443"]
 
 [signing]

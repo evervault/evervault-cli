@@ -208,8 +208,10 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
 
     let egress = build_config.clone().egress;
     if egress.is_enabled() {
-        let ports = Directive::new_env("EGRESS_PORTS", &egress.get_ports());
-        env_directives.push(ports)
+        let ports = Directive::new_env("EGRESS_PORTS", &egress.clone().get_ports());
+        env_directives.push(ports);
+        let domains = Directive::new_env("EV_EGRESS_ALLOW_LIST", &egress.get_destinations());
+        env_directives.push(domains)
     };
 
     let injected_directives = vec![

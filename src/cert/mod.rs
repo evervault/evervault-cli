@@ -1,4 +1,4 @@
-use chrono::{Datelike, TimeZone};
+use chrono::{Datelike, TimeZone, Utc};
 use itertools::Itertools;
 use rcgen::CertificateParams;
 use std::io::{Read, Write};
@@ -34,7 +34,7 @@ pub fn create_new_cert(
 
     add_distinguished_name_to_cert_params(&mut cert_params, distinguished_name);
 
-    let now = chrono::Utc::now();
+    let now = Utc::now();
     cert_params.not_before = rcgen::date_time_ymd(now.year(), now.month() as u8, now.day() as u8);
 
     let expiry_time = now.add(chrono::Duration::weeks(52));
