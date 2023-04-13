@@ -43,11 +43,7 @@ pub struct UploadCertArgs {
 
     /// Name to attach to cert reference
     #[clap(long = "name")]
-    pub name: String,
-
-    /// Disable verbose logging
-    #[clap(long)]
-    pub quiet: bool,
+    pub name: String
 }
 
 pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {

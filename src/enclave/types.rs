@@ -123,11 +123,6 @@ pub struct DescribeEif {
     metadata: EnclaveMetadata,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CertPCR {
-    #[serde(rename = "PCR8")]
-    pub pcr8: String,
-}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
