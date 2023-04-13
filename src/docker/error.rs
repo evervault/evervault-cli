@@ -11,6 +11,12 @@ pub enum CommandError {
     StdIoCaptureError,
     #[error("{0} not found. Please install {0} to use this feature.")]
     CommandNotFound(String),
+    #[error("Error getting Git history — {0}")]
+    GitError(#[from] git2::Error),
+    #[error("Error parsing semver from buildx version string")]
+    RegexError(#[from] regex::Error),
+    #[error("Failed to parse semver versions")]
+    SemverParseError,
 }
 
 impl CliError for CommandError {

@@ -26,7 +26,7 @@ jobs:
         run: |
           echo "using version tag ${GITHUB_REF:11}"
           echo ::set-output name=version::${GITHUB_REF:11}
-
+                
   compile-ubuntu:
     runs-on: ubuntu-latest
     needs: get-version

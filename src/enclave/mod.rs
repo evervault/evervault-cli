@@ -1,4 +1,4 @@
-use crate::{common, docker::command};
+use crate::docker::command;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -13,7 +13,7 @@ pub use types::{
 };
 
 const IN_CONTAINER_VOLUME_DIR: &str = "/output";
-const EV_USER_IMAGE_NAME: &str = "ev-user-image";
+const EV_USER_IMAGE_NAME: &str = "ev-user-enclave-image";
 const NITRO_CLI_BUILDER_IMAGE_NAME: &str = "nitro-cli-builder-image";
 const NITRO_CLI_GENERIC_IMAGE_NAME: &str = "nitro-cli-generic-image";
 pub const NITRO_CLI_IMAGE_FILENAME: &str = "nitro-cli-image.Dockerfile";
@@ -33,7 +33,7 @@ pub fn build_user_image(
     }
 
     let tag_name = format!("{EV_USER_IMAGE_NAME}:latest");
-    let build_output = command::build_image(
+    let build_output = command::build_image_repro(
         user_dockerfile_path,
         tag_name.as_str(),
         command_line_args,
@@ -45,51 +45,6 @@ pub fn build_user_image(
     }
 
     Ok(())
-}
-
-pub fn build_reproducible_user_image(
-    user_context_path: &std::path::Path,
-    output_path: &std::path::Path,
-    verbose: bool,
-) -> Result<(), EnclaveError> {
-    let abs_context_path = std::env::current_dir()?
-        .join(user_context_path)
-        .canonicalize()?;
-
-    let tar_output_dir = common::resolve_output_path(None::<&str>).map_err(|e| {
-        let enclave_err = EnclaveError::new_fs_error();
-        enclave_err.context(e.to_string())
-    })?;
-
-    let tag_name = format!("{EV_USER_IMAGE_NAME}:reproducible");
-    let build_output = command::build_image_using_kaniko(
-        output_path,
-        tar_output_dir.path().as_path(),
-        abs_context_path.as_path(),
-        tag_name.as_str(),
-        verbose,
-    )?;
-
-    if !build_output.success() {
-        log::debug!(
-            "Reproducible build failed with code: {:?}",
-            build_output.code()
-        );
-        return Err(EnclaveError::new_build_error(build_output.code().unwrap()));
-    }
-
-    // Kaniko outputs an image archive directly, but we need to load it into local docker to use the nitro cli
-    let image_archive = tar_output_dir.path().join("image.tar");
-    let load_output = command::load_image_into_local_docker_registry(&image_archive, verbose)?;
-    if load_output.success() {
-        return Ok(());
-    } else {
-        log::debug!(
-            "Failed to load image into local docker registry: {:?}",
-            load_output.code()
-        );
-        return Err(EnclaveError::new_build_error(load_output.code().unwrap()));
-    }
 }
 
 fn get_cert_dest(output_dir: &std::path::Path) -> PathBuf {
@@ -224,24 +179,17 @@ pub fn build_nitro_cli_image(
 pub fn run_conversion_to_enclave(
     output_dir: &std::path::Path,
     verbose: bool,
-    reproducible: bool,
 ) -> Result<BuiltEnclave, EnclaveError> {
     let mounted_volume = format!("{}:{}", output_dir.display(), IN_CONTAINER_VOLUME_DIR);
     let output_location = format!("{}/{}", IN_CONTAINER_VOLUME_DIR, ENCLAVE_FILENAME);
-    let docker_uri = format!(
-        "{EV_USER_IMAGE_NAME}:{}",
-        if reproducible {
-            "reproducible"
-        } else {
-            "latest"
-        }
-    );
+    let docker_uri = format!("{}:latest", EV_USER_IMAGE_NAME);
+
     let nitro_run_args = vec![
         "build-enclave".as_ref(),
         "--output-file".as_ref(),
         output_location.as_str().as_ref(),
         "--docker-uri".as_ref(),
-        docker_uri.as_str().as_ref(),
+        docker_uri.as_ref(),
         "--signing-certificate".as_ref(),
         "/sign/cert.pem".as_ref(),
         "--private-key".as_ref(),

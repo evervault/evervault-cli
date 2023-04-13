@@ -40,6 +40,9 @@ axum = "0.5.16"
 rust-crypto = { version = "0.1.21", registry="evervault-rust-libraries", features=["vendored-openssl"] }
 serde_cbor = "0.11"
 base64 = "0.13.0"
+git2 = "0.17.1"
+version-compare = "0.1.1"
+regex = "1.8.1"
 
 [dev-dependencies]
 tokio-test = "0.4.2"
@@ -48,5 +51,3 @@ tokio-test = "0.4.2"
 aws-nitro-enclaves-nsm-api = { version = "0.2.1" }
 attestation-doc-validation = { version = "0.2.0", registry="evervault-rust-libraries" }
 
-[features]
-test-latest-reproducible = []

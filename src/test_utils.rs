@@ -7,8 +7,7 @@ use crate::enclave::BuiltEnclave;
 
 pub async fn build_test_cage(
     output_dir: Option<&str>,
-    reproducible: bool,
-    pin_versions: bool,
+    rebuild_image: Option<String>,
 ) -> Result<(BuiltEnclave, OutputPath), BuildError> {
     let dn_string = crate::cert::DistinguishedName::default();
     crate::cert::create_new_cert(std::path::Path::new("."), dn_string)
@@ -16,17 +15,8 @@ pub async fn build_test_cage(
     let build_args = get_test_build_args();
     let assets_client = AssetsClient::new();
 
-    // When testing reproducible builds, use pinned versions to avoid breaking the test on every release.
-    let data_plane_version = if reproducible && pin_versions {
-        "0.0.21".to_string()
-    } else {
-        assets_client.get_latest_data_plane_version().await.unwrap()
-    };
-    let installer_version = if reproducible && pin_versions {
-        "701ea2dbdf708c12172c668af9c1d2b703bfcc95".to_string()
-    } else {
-        assets_client.get_latest_installer_version().await.unwrap()
-    };
+    let data_plane_version = assets_client.get_latest_data_plane_version().await.unwrap();
+    let installer_version = assets_client.get_latest_installer_version().await.unwrap();
 
     build_enclave_image_file(
         &build_args,
@@ -34,9 +24,9 @@ pub async fn build_test_cage(
         output_dir,
         false,
         None,
-        reproducible,
         data_plane_version,
         installer_version,
+        rebuild_image,
     )
     .await
 }

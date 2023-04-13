@@ -224,6 +224,20 @@ impl Directive {
         }
     }
 
+    pub fn new_from(key: String) -> Self {
+        Self::Other {
+            directive: "FROM".into(),
+            arguments: key.clone().into(),
+        }
+    }
+
+    pub fn new_copy(key: String) -> Self {
+        Self::Other {
+            directive: "COPY".into(),
+            arguments: key.clone().into(),
+        }
+    }
+
     pub fn new_add<S: Into<String>>(source_url: S, destination_path: S) -> Self {
         Self::Add {
             source_url: source_url.into(),
