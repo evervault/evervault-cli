@@ -97,11 +97,19 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
                         return e.exitcode();
                     }
                 };
-            let success_msg = serde_json::json!({
-                "status": "success",
-                "output": cert_ref,
-            });
-            println!("{}", serde_json::to_string(&success_msg).unwrap());
+
+            if atty::is(Stream::Stdout) {
+                log::info!("PCR8: {}", cert_ref.cert_hash());
+                log::info!("Not Before: {}", cert_ref.not_before());
+                log::info!("Not After: {}", cert_ref.not_after());
+                log::info!("Certificate metadata uploaded to Evervault");
+            } else {
+                let success_msg = serde_json::json!({
+                    "status": "success",
+                    "output": cert_ref,
+                });
+                println!("{}", serde_json::to_string(&success_msg).unwrap());
+            };
         }
     }
 
