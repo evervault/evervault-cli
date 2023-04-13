@@ -40,6 +40,8 @@ axum = "0.5.16"
 rust-crypto = { version = "0.1.21", registry="evervault-rust-libraries", features=["vendored-openssl"] }
 serde_cbor = "0.11"
 base64 = "0.13.0"
+aws-nitro-enclaves-image-format = "0.2.0"
+sha2 = "0.9.9"
 
 [dev-dependencies]
 tokio-test = "0.4.2"

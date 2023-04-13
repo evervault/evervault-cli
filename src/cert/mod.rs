@@ -1,18 +1,16 @@
+use aws_nitro_enclaves_image_format::defs::eif_hasher::EifHasher;
 use chrono::{Datelike, TimeZone, Utc};
 use itertools::Itertools;
 use rcgen::CertificateParams;
+use sha2::{Digest, Sha384};
 use std::io::{Read, Write};
 use std::ops::Add;
 use std::path::{Path, PathBuf};
 use x509_parser::parse_x509_certificate;
 use x509_parser::prelude::{parse_x509_pem, X509Certificate};
 
-use crate::api::cage::CreateCageSigningCertRefRequest;
+use crate::api::cage::{CreateCageSigningCertRefRequest, CreateCageSigningCertRefResponse};
 use crate::api::{self, AuthMode};
-use crate::common::resolve_output_path;
-use crate::docker::{error::DockerError, utils::verify_docker_is_running};
-use crate::enclave;
-use crate::progress::get_tracker;
 
 pub mod error;
 pub use error::CertError;
@@ -58,46 +56,39 @@ pub fn create_new_cert(
     Ok((cert_path, key_path))
 }
 
-pub fn get_cert_pcr(cert_path: &Path, verbose: bool) -> Result<String, CertError> {
+pub fn get_cert_pcr(cert_path: &Path) -> Result<String, CertError> {
     if !cert_path.exists() {
         return Err(CertError::CertPathDoesNotExist(cert_path.to_path_buf()));
     }
 
-    let absolute_path = cert_path
-        .canonicalize()
-        .map_err(|_| CertError::CertPathDoesNotExist(cert_path.to_path_buf()))?;
+    let cert_contents = read_cert_bytes_from_fs(cert_path)?;
+    let (_, pem) = parse_x509_pem(&cert_contents).map_err(CertError::PEMError)?;
 
-    if !verify_docker_is_running()? {
-        return Err(DockerError::DaemonNotRunning.into());
-    }
+    let mut hasher = EifHasher::new_without_cache(Sha384::new()).map_err(CertError::HashError)?;
 
-    let progress = get_tracker("Getting PCR8 from signing cert", None);
+    hasher.write_all(&pem.contents).map_err(|err| CertError::HashError(err.to_string()))?;
 
-    let supplied_path: Option<&str> = None;
-    let output_path = resolve_output_path(supplied_path).unwrap();
-    enclave::build_nitro_cli_image(output_path.path(), None, verbose)?;
+    let hash_bytes = hasher.tpm_extend_finalize_reset().map_err(|err| CertError::HashError(err.to_string()))?;
 
-    let cert_pcr_result = enclave::get_cert_pcr(&absolute_path, verbose)?;
-    progress.finish_with_message("PCR8 retrieved.");
+    let hash = hex::encode(hash_bytes);
 
-    Ok(cert_pcr_result.pcr8)
+    Ok(hash)
 }
 
 pub async fn upload_new_cert_ref(
     cert_path: &str,
     api_key: &str,
     name: String,
-    verbose: bool,
-) -> Result<String, CertError> {
+) -> Result<CreateCageSigningCertRefResponse, CertError> {
     let path = std::path::Path::new(cert_path);
-    
-    let pcr8 = get_cert_pcr(path, verbose)?;
+
+    let pcr8 = get_cert_pcr(path)?;
     let validity_period = get_cert_validity_period(path)?;
 
     let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
 
     let payload = CreateCageSigningCertRefRequest::new(
-        pcr8,
+        pcr8.clone(),
         name,
         validity_period.not_before,
         validity_period.not_after,
@@ -111,7 +102,7 @@ pub async fn upload_new_cert_ref(
         }
     };
 
-    Ok(cert_ref.cert_hash().to_string())
+    Ok(cert_ref)
 }
 
 fn add_distinguished_name_to_cert_params(
@@ -187,15 +178,21 @@ fn extract_cert_validity_period_from_x509(
 }
 
 pub fn get_cert_validity_period(path: &Path) -> Result<CertValidityPeriod, CertError> {
-    let cert_file = std::fs::File::open(path)?;
-    let mut cert_reader = std::io::BufReader::new(cert_file);
-    let mut cert_contents = Vec::new();
-    cert_reader.read_to_end(&mut cert_contents)?;
+    let cert_contents = read_cert_bytes_from_fs(path)?;
 
     let (_, pem) = parse_x509_pem(&cert_contents).map_err(CertError::PEMError)?;
     let (_, x509) = parse_x509_certificate(&pem.contents).map_err(CertError::X509Error)?;
 
     extract_cert_validity_period_from_x509(&x509)
+}
+
+fn read_cert_bytes_from_fs(path: &Path) -> Result<Vec<u8>, CertError> {
+    let cert_file = std::fs::File::open(path)?;
+    let mut cert_reader = std::io::BufReader::new(cert_file);
+    let mut cert_contents = Vec::new();
+    cert_reader.read_to_end(&mut cert_contents)?;
+
+    Ok(cert_contents)
 }
 
 #[derive(Debug)]

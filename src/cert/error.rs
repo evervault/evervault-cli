@@ -1,4 +1,4 @@
-use crate::{common::CliError, docker::error::DockerError, enclave::error::EnclaveError};
+use crate::common::CliError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -23,12 +23,10 @@ pub enum CertError {
     InvalidDate,
     #[error("The specificied cert path does not exist: {0:?}")]
     CertPathDoesNotExist(std::path::PathBuf),
-    #[error("Failed to generate PCR8 from signing cert — {0}")]
-    DockerError(#[from] DockerError),
-    #[error(transparent)]
-    EnclaveError(#[from] EnclaveError),
     #[error("An error contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),
+    #[error("An error occurred calculating the hash of the cert — {0}")]
+    HashError(String),
 }
 
 impl CliError for CertError {
@@ -36,7 +34,7 @@ impl CliError for CertError {
         match self {
             Self::OutputPathDoesNotExist => exitcode::NOINPUT,
             Self::FileWriteError(_) => exitcode::IOERR,
-            Self::CertSerializationError(_) => exitcode::SOFTWARE,
+            Self::CertSerializationError(_) | Self::HashError(_) => exitcode::SOFTWARE,
             Self::InvalidCertSubjectProvided
             | Self::PEMError(_)
             | Self::X509Error(_)
@@ -44,8 +42,6 @@ impl CliError for CertError {
             | Self::CertNotYetValid
             | Self::InvalidDate
             | Self::CertPathDoesNotExist(_) => exitcode::DATAERR,
-            Self::DockerError(_) => exitcode::UNAVAILABLE,
-            Self::EnclaveError(inner) => inner.exitcode(),
             Self::ApiError(inner) => inner.exitcode(),
         }
     }

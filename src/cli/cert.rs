@@ -88,11 +88,10 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
         }
         CertCommands::Upload(upload_args) => {
             let api_key = get_api_key!();
-            let pcr8 = match cert::upload_new_cert_ref(
+            let cert_ref = match cert::upload_new_cert_ref(
                 &upload_args.cert_path,
                 &api_key,
-                upload_args.name,
-                !upload_args.quiet,
+                upload_args.name
             )
             .await
             {
@@ -107,7 +106,7 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
             };
             let success_msg = serde_json::json!({
                 "status": "success",
-                "output": pcr8,
+                "output": cert_ref,
             });
             println!("{}", serde_json::to_string(&success_msg).unwrap());
         }
