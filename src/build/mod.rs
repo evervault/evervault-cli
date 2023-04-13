@@ -263,6 +263,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
 #[cfg(test)]
 mod test {
     use super::{process_dockerfile, BuildError};
+    use crate::cert::CertValidityPeriod;
     use crate::config::EgressSettings;
     use crate::config::ValidatedCageBuildConfig;
     use crate::config::ValidatedSigningInfo;
@@ -289,6 +290,10 @@ mod test {
             signing: ValidatedSigningInfo {
                 cert: "".into(),
                 key: "".into(),
+                cert_validity_period: CertValidityPeriod {
+                    not_before: "".into(),
+                    not_after: "".into(),
+                },
             },
             disable_tls_termination: false,
             api_key_auth: true,

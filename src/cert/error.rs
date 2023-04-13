@@ -11,6 +11,16 @@ pub enum CertError {
     CertSerializationError(#[from] rcgen::RcgenError),
     #[error("Failed to parse the subject provided")]
     InvalidCertSubjectProvided,
+    #[error("Failed to parse the PEM file")]
+    PEMError(#[from] x509_parser::nom::Err<x509_parser::prelude::PEMError>),
+    #[error("Failed to parse the X509 certificate")]
+    X509Error(#[from] x509_parser::nom::Err<x509_parser::prelude::X509Error>),
+    #[error("The cert has expired")]
+    CertHasExpired,
+    #[error("The cert is not yet valid")]
+    CertNotYetValid,
+    #[error("Invalid date")]
+    InvalidDate,
 }
 
 impl CliError for CertError {
@@ -19,7 +29,12 @@ impl CliError for CertError {
             Self::OutputPathDoesNotExist => exitcode::NOINPUT,
             Self::FileWriteError(_) => exitcode::IOERR,
             Self::CertSerializationError(_) => exitcode::SOFTWARE,
-            Self::InvalidCertSubjectProvided => exitcode::DATAERR,
+            Self::InvalidCertSubjectProvided
+            | Self::PEMError(_)
+            | Self::X509Error(_)
+            | Self::CertHasExpired
+            | Self::CertNotYetValid
+            | Self::InvalidDate => exitcode::DATAERR,
         }
     }
 }

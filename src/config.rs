@@ -1,3 +1,7 @@
+use std::path::Path;
+
+use crate::cert::{get_cert_validity_period, CertValidityPeriod};
+
 use super::common::CliError;
 use super::enclave::{EIFMeasurements, EnclaveSigningInfo};
 use serde::{Deserialize, Serialize};
@@ -71,6 +75,8 @@ pub enum SigningInfoError {
     EmptySigningCert,
     #[error("No signing key given.")]
     EmptySigningKey,
+    #[error("Invalid signing cert given.")]
+    InvalidSigningCert,
     #[error("Could not find signing cert file at {0}")]
     SigningCertNotFound(String),
     #[error("Could not find signing key file at {0}")]
@@ -80,9 +86,10 @@ pub enum SigningInfoError {
 impl CliError for SigningInfoError {
     fn exitcode(&self) -> exitcode::ExitCode {
         match self {
-            Self::NoSigningInfoGiven | Self::EmptySigningCert | Self::EmptySigningKey => {
-                exitcode::DATAERR
-            }
+            Self::NoSigningInfoGiven
+            | Self::EmptySigningCert
+            | Self::EmptySigningKey
+            | Self::InvalidSigningCert => exitcode::DATAERR,
             Self::SigningCertNotFound(_) | Self::SigningKeyNotFound(_) => exitcode::NOINPUT,
         }
     }
@@ -92,6 +99,7 @@ impl CliError for SigningInfoError {
 pub struct ValidatedSigningInfo {
     pub cert: String,
     pub key: String,
+    pub cert_validity_period: CertValidityPeriod,
 }
 
 impl ValidatedSigningInfo {
@@ -102,23 +110,39 @@ impl ValidatedSigningInfo {
     pub fn key(&self) -> &str {
         self.key.as_str()
     }
+
+    pub fn not_before(&self) -> String {
+        self.cert_validity_period.not_before.clone()
+    }
+
+    pub fn not_after(&self) -> String {
+        self.cert_validity_period.not_after.clone()
+    }
 }
 
 impl std::convert::TryFrom<&SigningInfo> for ValidatedSigningInfo {
     type Error = SigningInfoError;
 
     fn try_from(signing_info: &SigningInfo) -> Result<ValidatedSigningInfo, Self::Error> {
+        let cert_path = signing_info
+            .cert
+            .as_deref()
+            .ok_or(Self::Error::EmptySigningCert)?
+            .to_string();
+
+        let key_path = signing_info
+            .key
+            .as_deref()
+            .ok_or(Self::Error::EmptySigningKey)?
+            .to_string();
+
+        let cert_validity_period = get_cert_validity_period(Path::new(&cert_path))
+            .map_err(|_| Self::Error::EmptySigningCert)?;
+
         Ok(ValidatedSigningInfo {
-            cert: signing_info
-                .cert
-                .as_deref()
-                .ok_or(Self::Error::EmptySigningCert)?
-                .to_string(),
-            key: signing_info
-                .key
-                .as_deref()
-                .ok_or(Self::Error::EmptySigningKey)?
-                .to_string(),
+            cert: cert_path,
+            key: key_path,
+            cert_validity_period,
         })
     }
 }

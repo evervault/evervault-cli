@@ -2,6 +2,7 @@
 target
 */target
 *.pem
+!/test-cert/cert.pem
 .cargo
 .vscode
 *-build.json

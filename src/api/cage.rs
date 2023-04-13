@@ -191,6 +191,8 @@ pub struct CreateCageDeploymentIntentRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     egress_domains: Option<Vec<String>>,
     eif_size_bytes: u64,
+    not_before: String,
+    not_after: String,
 }
 
 impl CreateCageDeploymentIntentRequest {
@@ -199,12 +201,16 @@ impl CreateCageDeploymentIntentRequest {
         debug_mode: bool,
         egress_settings: EgressSettings,
         eif_size_bytes: u64,
+        not_before: String,
+        not_after: String,
     ) -> Self {
         Self {
             pcrs: pcrs.clone(),
             debug_mode,
             egress_enabled: egress_settings.enabled,
             eif_size_bytes,
+            not_before,
+            not_after,
             egress_domains: egress_settings.destinations,
         }
     }
