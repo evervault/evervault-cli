@@ -209,24 +209,29 @@ impl<'a> std::convert::TryInto<DistinguishedName<'a>> for DnBuilder<'a> {
     }
 }
 
-#[test]
-fn test_epoch_to_date() {
-    let epoch: i64 = 1619196863;
-    let expected_date = "2021-04-23T16:54:23+0000";
+#[cfg(test)]
+mod test {
+    use super::*;
 
-    let date = epoch_to_date(epoch).unwrap();
-    assert_eq!(expected_date, date);
-}
+    #[test]
+    fn test_epoch_to_date() {
+        let epoch: i64 = 1619196863;
+        let expected_date = "2021-04-23T16:54:23+0000";
 
-#[test]
-fn test_get_cert_validity_period() {
-    let path = Path::new("./test-cert/cert.pem");
+        let date = epoch_to_date(epoch).unwrap();
+        assert_eq!(expected_date, date);
+    }
 
-    let cert_validity_period = get_cert_validity_period(path).unwrap();
+    #[test]
+    fn test_get_cert_validity_period() {
+        let path = Path::new("./test-cert/cert.pem");
 
-    let expected_not_before = "2023-04-06T00:00:00+0000";
-    let expected_not_after = "2024-04-04T00:00:00+0000";
+        let cert_validity_period = get_cert_validity_period(path).unwrap();
 
-    assert_eq!(expected_not_before, cert_validity_period.not_before);
-    assert_eq!(expected_not_after, cert_validity_period.not_after);
+        let expected_not_before = "2023-04-06T00:00:00+0000";
+        let expected_not_after = "2024-04-04T00:00:00+0000";
+
+        assert_eq!(expected_not_before, cert_validity_period.not_before);
+        assert_eq!(expected_not_after, cert_validity_period.not_after);
+    }
 }
