@@ -43,7 +43,7 @@ pub struct UploadCertArgs {
 
     /// Name to attach to cert reference
     #[clap(long = "name")]
-    pub name: String
+    pub name: String,
 }
 
 pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
@@ -84,22 +84,19 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
         }
         CertCommands::Upload(upload_args) => {
             let api_key = get_api_key!();
-            let cert_ref = match cert::upload_new_cert_ref(
-                &upload_args.cert_path,
-                &api_key,
-                upload_args.name
-            )
-            .await
-            {
-                Ok(pcr8) => pcr8,
-                Err(e) => {
-                    log::error!(
-                        "An error occurred while generating PCR8 for your cert - {}",
-                        e
-                    );
-                    return e.exitcode();
-                }
-            };
+            let cert_ref =
+                match cert::upload_new_cert_ref(&upload_args.cert_path, &api_key, upload_args.name)
+                    .await
+                {
+                    Ok(pcr8) => pcr8,
+                    Err(e) => {
+                        log::error!(
+                            "An error occurred while generating PCR8 for your cert - {}",
+                            e
+                        );
+                        return e.exitcode();
+                    }
+                };
             let success_msg = serde_json::json!({
                 "status": "success",
                 "output": cert_ref,

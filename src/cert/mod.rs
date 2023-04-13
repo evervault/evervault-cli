@@ -66,9 +66,13 @@ pub fn get_cert_pcr(cert_path: &Path) -> Result<String, CertError> {
 
     let mut hasher = EifHasher::new_without_cache(Sha384::new()).map_err(CertError::HashError)?;
 
-    hasher.write_all(&pem.contents).map_err(|err| CertError::HashError(err.to_string()))?;
+    hasher
+        .write_all(&pem.contents)
+        .map_err(|err| CertError::HashError(err.to_string()))?;
 
-    let hash_bytes = hasher.tpm_extend_finalize_reset().map_err(|err| CertError::HashError(err.to_string()))?;
+    let hash_bytes = hasher
+        .tpm_extend_finalize_reset()
+        .map_err(|err| CertError::HashError(err.to_string()))?;
 
     let hash = hex::encode(hash_bytes);
 

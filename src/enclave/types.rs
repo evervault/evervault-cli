@@ -123,7 +123,6 @@ pub struct DescribeEif {
     metadata: EnclaveMetadata,
 }
 
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct EnclaveSigningCertificate {
