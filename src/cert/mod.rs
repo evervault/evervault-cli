@@ -7,6 +7,13 @@ use std::path::{Path, PathBuf};
 use x509_parser::parse_x509_certificate;
 use x509_parser::prelude::{parse_x509_pem, X509Certificate};
 
+use crate::api::cage::CreateCageSigningCertRefRequest;
+use crate::api::{self, AuthMode};
+use crate::common::resolve_output_path;
+use crate::docker::{error::DockerError, utils::verify_docker_is_running};
+use crate::enclave;
+use crate::progress::get_tracker;
+
 pub mod error;
 pub use error::CertError;
 
@@ -49,6 +56,62 @@ pub fn create_new_cert(
     let (cert_path, key_path) = write_cert_to_fs(output_dir, cert)?;
 
     Ok((cert_path, key_path))
+}
+
+pub fn get_cert_pcr(cert_path: &Path, verbose: bool) -> Result<String, CertError> {
+    if !cert_path.exists() {
+        return Err(CertError::CertPathDoesNotExist(cert_path.to_path_buf()));
+    }
+
+    let absolute_path = cert_path
+        .canonicalize()
+        .map_err(|_| CertError::CertPathDoesNotExist(cert_path.to_path_buf()))?;
+
+    if !verify_docker_is_running()? {
+        return Err(DockerError::DaemonNotRunning.into());
+    }
+
+    let progress = get_tracker("Getting PCR8 from signing cert", None);
+
+    let supplied_path: Option<&str> = None;
+    let output_path = resolve_output_path(supplied_path).unwrap();
+    enclave::build_nitro_cli_image(output_path.path(), None, verbose)?;
+
+    let cert_pcr_result = enclave::get_cert_pcr(&absolute_path, verbose)?;
+    progress.finish_with_message("PCR8 retrieved.");
+
+    Ok(cert_pcr_result.pcr8)
+}
+
+pub async fn upload_new_cert_ref(
+    cert_path: &str,
+    api_key: &str,
+    name: String,
+    verbose: bool,
+) -> Result<String, CertError> {
+    let path = std::path::Path::new(cert_path);
+    
+    let pcr8 = get_cert_pcr(path, verbose)?;
+    let validity_period = get_cert_validity_period(path)?;
+
+    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
+
+    let payload = CreateCageSigningCertRefRequest::new(
+        pcr8,
+        name,
+        validity_period.not_before,
+        validity_period.not_after,
+    );
+
+    let cert_ref = match cage_api.create_cage_signing_cert_ref(payload).await {
+        Ok(cert_ref) => cert_ref,
+        Err(e) => {
+            log::error!("Error upload cage signing cert ref — {:?}", e);
+            return Err(CertError::ApiError(e));
+        }
+    };
+
+    Ok(cert_ref.cert_hash().to_string())
 }
 
 fn add_distinguished_name_to_cert_params(

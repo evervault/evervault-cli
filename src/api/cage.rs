@@ -60,6 +60,19 @@ impl CagesClient {
             .await
     }
 
+    pub async fn create_cage_signing_cert_ref(
+        &self,
+        payload: CreateCageSigningCertRefRequest,
+    ) -> ApiResult<CreateCageSigningCertRefResponse> {
+        let signing_cert_url = format!("{}/signing/certs", self.base_url());
+        self.post(&signing_cert_url)
+            .json(&payload)
+            .send()
+            .await
+            .handle_json_response()
+            .await
+    }
+
     pub async fn get_cages(&self) -> ApiResult<GetCagesResponse> {
         let get_cages_url = format!("{}/", self.base_url());
         self.get(&get_cages_url)
@@ -218,6 +231,26 @@ impl CreateCageDeploymentIntentRequest {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CreateCageSigningCertRefRequest {
+    cert_hash: String,
+    name: String,
+    not_before: String,
+    not_after: String,
+}
+
+impl CreateCageSigningCertRefRequest {
+    pub fn new(cert_hash: String, name: String, not_before: String, not_after: String) -> Self {
+        Self {
+            cert_hash,
+            name,
+            not_before,
+            not_after,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateCageRequest {
     name: String,
     is_time_bound: bool,
@@ -281,6 +314,38 @@ impl CreateCageDeploymentIntentResponse {
 
     pub fn version(&self) -> u32 {
         self.version
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateCageSigningCertRefResponse {
+    cert_hash: String,
+    not_before: String,
+    not_after: String,
+    name: String,
+    uuid: String,
+}
+
+impl CreateCageSigningCertRefResponse {
+    pub fn cert_hash(&self) -> &str {
+        &self.cert_hash
+    }
+
+    pub fn not_before(&self) -> &str {
+        &self.not_before
+    }
+
+    pub fn not_after(&self) -> &str {
+        &self.not_after
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::cert::{self, DistinguishedName};
 use crate::common::CliError;
+use crate::get_api_key;
 use atty::Stream;
 use clap::{Parser, Subcommand};
 
@@ -16,6 +17,9 @@ pub enum CertCommands {
     /// Create a new Cage signing certificate
     #[clap()]
     New(NewCertArgs),
+    /// Upload a cage signing certificate's metadata to Evervault
+    #[clap()]
+    Upload(UploadCertArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -30,7 +34,23 @@ pub struct NewCertArgs {
     pub subject: Option<String>,
 }
 
-pub fn run(cert_args: CertArgs) -> exitcode::ExitCode {
+#[derive(Parser, Debug)]
+#[clap(name = "new", about)]
+pub struct UploadCertArgs {
+    /// Path to directory where the signing cert will be saved
+    #[clap(short = 'p', long = "cert_path", default_value = "./cert.pem")]
+    pub cert_path: String,
+
+    /// Name to attach to cert reference
+    #[clap(long = "name")]
+    pub name: String,
+
+    /// Disable verbose logging
+    #[clap(long)]
+    pub quiet: bool,
+}
+
+pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
     match cert_args.action {
         CertCommands::New(new_args) => {
             let distinguished_name =
@@ -65,6 +85,31 @@ pub fn run(cert_args: CertArgs) -> exitcode::ExitCode {
                 });
                 println!("{}", serde_json::to_string(&success_msg).unwrap());
             };
+        }
+        CertCommands::Upload(upload_args) => {
+            let api_key = get_api_key!();
+            let pcr8 = match cert::upload_new_cert_ref(
+                &upload_args.cert_path,
+                &api_key,
+                upload_args.name,
+                !upload_args.quiet,
+            )
+            .await
+            {
+                Ok(pcr8) => pcr8,
+                Err(e) => {
+                    log::error!(
+                        "An error occurred while generating PCR8 for your cert - {}",
+                        e
+                    );
+                    return e.exitcode();
+                }
+            };
+            let success_msg = serde_json::json!({
+                "status": "success",
+                "output": pcr8,
+            });
+            println!("{}", serde_json::to_string(&success_msg).unwrap());
         }
     }
 

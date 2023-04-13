@@ -46,7 +46,7 @@ async fn main() {
     setup_logger(base_args.verbose);
     let exit_code = match base_args.command {
         Command::Build(build_args) => build::run(build_args).await,
-        Command::Cert(cert_args) => cert::run(cert_args),
+        Command::Cert(cert_args) => cert::run(cert_args).await,
         Command::Delete(delete_args) => delete::run(delete_args).await,
         Command::Deploy(deploy_args) => deploy::run(deploy_args).await,
         Command::Describe(describe_args) => describe::run(describe_args).await,

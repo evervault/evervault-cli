@@ -105,6 +105,8 @@ fn get_signing_info_path(output_dir: &std::path::Path) -> PathBuf {
 }
 
 use crate::add_context_and_exit;
+
+use self::types::CertPCR;
 fn move_signing_info_into_scope(
     signing_info: &EnclaveSigningInfo,
     output_dir: &std::path::Path,
@@ -329,6 +331,57 @@ pub fn describe_eif(
         Err(
           EnclaveError::new_build_error(run_conversion_status.status.code().unwrap())
           .context("Nitro CLI container exited with a non-zero code while attempting to describe the given EIF.")
+        )
+    }
+}
+
+pub fn get_cert_pcr(cert_path: &std::path::Path, verbose: bool) -> Result<CertPCR, EnclaveError> {
+    if !cert_path.is_file() {
+        return Err(EnclaveError::new_fs_error()
+            .context("Invalid path given for signing cert. Expected a file."));
+    }
+    let cert_directory = cert_path.parent().ok_or_else(|| {
+        EnclaveError::new_fs_error()
+            .context("Failed to identify the signing cert's parent directory.")
+    })?;
+    let cert_filename = cert_path
+        .file_name()
+        .ok_or_else(|| EnclaveError::new_fs_error().context("Invalid file path given."))?
+        .to_string_lossy();
+
+    let mounted_volume = format!("{}:{}", cert_directory.display(), IN_CONTAINER_VOLUME_DIR);
+    let output_location = format!("{}/{}", IN_CONTAINER_VOLUME_DIR, cert_filename);
+    let nitro_describe_args = vec![
+        "pcr".as_ref(),
+        "--signing-certificate".as_ref(),
+        output_location.as_str().as_ref(),
+    ];
+
+    let run_conversion_result = command::run_image(
+        NITRO_CLI_GENERIC_IMAGE_NAME,
+        vec![
+            "/var/run/docker.sock:/var/run/docker.sock",
+            mounted_volume.as_str(),
+        ],
+        nitro_describe_args,
+        verbose,
+    );
+
+    let run_conversion_status = add_context_and_exit!(
+        run_conversion_result,
+        "Failed to generate signing cert PCR using Nitro CLI."
+    );
+
+    if run_conversion_status.status.success() {
+        let cert_pcr_output: CertPCR = add_context_and_exit!(
+            serde_json::from_slice(run_conversion_status.stdout.as_slice()),
+            "Failed to parse output from the Nitro CLI PCR command"
+        );
+        Ok(cert_pcr_output)
+    } else {
+        Err(
+          EnclaveError::new_build_error(run_conversion_status.status.code().unwrap())
+          .context("Nitro CLI container exited with a non-zero code while attempting to get PCR8 from the given cert.")
         )
     }
 }
