@@ -1,11 +1,16 @@
+use aws_nitro_enclaves_image_format::defs::eif_hasher::EifHasher;
 use chrono::{Datelike, TimeZone, Utc};
 use itertools::Itertools;
 use rcgen::CertificateParams;
+use sha2::{Digest, Sha384};
 use std::io::{Read, Write};
 use std::ops::Add;
 use std::path::{Path, PathBuf};
 use x509_parser::parse_x509_certificate;
 use x509_parser::prelude::{parse_x509_pem, X509Certificate};
+
+use crate::api::cage::{CreateCageSigningCertRefRequest, CreateCageSigningCertRefResponse};
+use crate::api::{self, AuthMode};
 
 pub mod error;
 pub use error::CertError;
@@ -49,6 +54,59 @@ pub fn create_new_cert(
     let (cert_path, key_path) = write_cert_to_fs(output_dir, cert)?;
 
     Ok((cert_path, key_path))
+}
+
+pub fn get_cert_pcr(cert_path: &Path) -> Result<String, CertError> {
+    if !cert_path.exists() {
+        return Err(CertError::CertPathDoesNotExist(cert_path.to_path_buf()));
+    }
+
+    let cert_contents = read_cert_bytes_from_fs(cert_path)?;
+    let (_, pem) = parse_x509_pem(&cert_contents).map_err(CertError::PEMError)?;
+
+    let mut hasher = EifHasher::new_without_cache(Sha384::new()).map_err(CertError::HashError)?;
+
+    hasher
+        .write_all(&pem.contents)
+        .map_err(|err| CertError::HashError(err.to_string()))?;
+
+    let hash_bytes = hasher
+        .tpm_extend_finalize_reset()
+        .map_err(|err| CertError::HashError(err.to_string()))?;
+
+    let hash = hex::encode(hash_bytes);
+
+    Ok(hash)
+}
+
+pub async fn upload_new_cert_ref(
+    cert_path: &str,
+    api_key: &str,
+    name: String,
+) -> Result<CreateCageSigningCertRefResponse, CertError> {
+    let path = std::path::Path::new(cert_path);
+
+    let pcr8 = get_cert_pcr(path)?;
+    let validity_period = get_cert_validity_period(path)?;
+
+    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
+
+    let payload = CreateCageSigningCertRefRequest::new(
+        pcr8.clone(),
+        name,
+        validity_period.not_before,
+        validity_period.not_after,
+    );
+
+    let cert_ref = match cage_api.create_cage_signing_cert_ref(payload).await {
+        Ok(cert_ref) => cert_ref,
+        Err(e) => {
+            log::error!("Error upload cage signing cert ref — {:?}", e);
+            return Err(CertError::ApiError(e));
+        }
+    };
+
+    Ok(cert_ref)
 }
 
 fn add_distinguished_name_to_cert_params(
@@ -124,15 +182,21 @@ fn extract_cert_validity_period_from_x509(
 }
 
 pub fn get_cert_validity_period(path: &Path) -> Result<CertValidityPeriod, CertError> {
-    let cert_file = std::fs::File::open(path)?;
-    let mut cert_reader = std::io::BufReader::new(cert_file);
-    let mut cert_contents = Vec::new();
-    cert_reader.read_to_end(&mut cert_contents)?;
+    let cert_contents = read_cert_bytes_from_fs(path)?;
 
     let (_, pem) = parse_x509_pem(&cert_contents).map_err(CertError::PEMError)?;
     let (_, x509) = parse_x509_certificate(&pem.contents).map_err(CertError::X509Error)?;
 
     extract_cert_validity_period_from_x509(&x509)
+}
+
+fn read_cert_bytes_from_fs(path: &Path) -> Result<Vec<u8>, CertError> {
+    let cert_file = std::fs::File::open(path)?;
+    let mut cert_reader = std::io::BufReader::new(cert_file);
+    let mut cert_contents = Vec::new();
+    cert_reader.read_to_end(&mut cert_contents)?;
+
+    Ok(cert_contents)
 }
 
 #[derive(Debug)]

@@ -21,6 +21,12 @@ pub enum CertError {
     CertNotYetValid,
     #[error("Invalid date")]
     InvalidDate,
+    #[error("The specificied cert path does not exist: {0:?}")]
+    CertPathDoesNotExist(std::path::PathBuf),
+    #[error("An error contacting the API — {0}")]
+    ApiError(#[from] crate::api::client::ApiError),
+    #[error("An error occurred calculating the hash of the cert — {0}")]
+    HashError(String),
 }
 
 impl CliError for CertError {
@@ -28,13 +34,15 @@ impl CliError for CertError {
         match self {
             Self::OutputPathDoesNotExist => exitcode::NOINPUT,
             Self::FileWriteError(_) => exitcode::IOERR,
-            Self::CertSerializationError(_) => exitcode::SOFTWARE,
+            Self::CertSerializationError(_) | Self::HashError(_) => exitcode::SOFTWARE,
             Self::InvalidCertSubjectProvided
             | Self::PEMError(_)
             | Self::X509Error(_)
             | Self::CertHasExpired
             | Self::CertNotYetValid
-            | Self::InvalidDate => exitcode::DATAERR,
+            | Self::InvalidDate
+            | Self::CertPathDoesNotExist(_) => exitcode::DATAERR,
+            Self::ApiError(inner) => inner.exitcode(),
         }
     }
 }

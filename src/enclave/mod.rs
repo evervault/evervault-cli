@@ -105,6 +105,7 @@ fn get_signing_info_path(output_dir: &std::path::Path) -> PathBuf {
 }
 
 use crate::add_context_and_exit;
+
 fn move_signing_info_into_scope(
     signing_info: &EnclaveSigningInfo,
     output_dir: &std::path::Path,
