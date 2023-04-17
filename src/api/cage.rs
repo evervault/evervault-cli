@@ -773,4 +773,40 @@ mod test {
             .is_none());
         assert!(deployment_with_empty_regional.is_failed().is_none());
     }
+
+    #[test]
+    fn test_populated_regional_deployments() {
+        let deployment = get_testing_deployment();
+        let version = get_testing_version();
+        let cert = get_testing_cert();
+
+        let failure_reason = "An error occurred provisioning your TEE".to_string();
+        let detailed_failure_reason = "Insufficient capacity".to_string();
+        let deployment_with_regional = GetCageDeploymentResponse {
+            deployment,
+            tee_cage_version: version,
+            tee_cage_signing_cert: cert,
+            tee_cage_regional_deployments: vec![CageRegionalDeployment {
+                uuid: "abc".to_string(),
+                deployment_uuid: "def".to_string(),
+                deployment_order: 1,
+                region: "us-east-1".to_string(),
+                failure_reason: Some(failure_reason.clone()),
+                deploy_status: DeployStatus::Failed,
+                started_at: None,
+                completed_at: None,
+                detailed_status: Some(detailed_failure_reason.clone()),
+            }],
+        };
+
+        assert_eq!(deployment_with_regional.is_failed(), Some(true));
+        assert_eq!(
+            deployment_with_regional.get_failure_reason(),
+            Some(failure_reason)
+        );
+        assert_eq!(
+            deployment_with_regional.get_detailed_status(),
+            Some(detailed_failure_reason)
+        );
+    }
 }
