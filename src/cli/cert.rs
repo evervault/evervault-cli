@@ -151,9 +151,15 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
             let api_key = get_api_key!();
 
             let cage_uuid = match CageConfig::try_from_filepath(&lock_cert_args.config) {
-                Ok(cage_config) if cage_config.uuid.is_some() => cage_config.uuid.unwrap(),
-                _ => {
-                    log::error!("No cage uuid found in cage.toml");
+                Ok(cage_config) => match cage_config.uuid {
+                    Some(uuid) => uuid,
+                    None => {
+                        log::error!("No cage uuid found in cage.toml");
+                        return DATAERR;
+                    }
+                },
+                Err(_) => {
+                    log::error!("Failed to load cage configuration");
                     return DATAERR;
                 }
             };
