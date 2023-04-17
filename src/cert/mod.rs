@@ -115,29 +115,31 @@ pub async fn upload_new_cert_ref(
 }
 
 fn format_cert_for_multi_select(cert: &CageSigningCert) -> String {
-    format!(
-        "{} {} ({})",
-        cert.name().unwrap_or("".to_string()),
-        cert.cert_hash(),
-        format_expiry_time(cert.not_after().unwrap_or("".to_string()))
-    )
+    let name = cert.name().unwrap_or_else(|| "".to_string());
+    let cert_hash = cert.cert_hash();
+    let not_after = cert
+        .not_after()
+        .and_then(|time| format_expiry_time(&time).ok())
+        .unwrap_or_else(|| "".to_string());
+
+    format!("{} {} ({})", name, cert_hash, not_after)
 }
 
-fn format_expiry_time(expiry_time: String) -> String {
-    let dt = DateTime::parse_from_rfc3339(expiry_time.as_str()).unwrap_or_else(|_| {
-        panic!("Failed to parse expiry time: {}", expiry_time);
-    });
+fn format_expiry_time(expiry_time: &str) -> Result<String, CertError> {
+    let dt = DateTime::parse_from_rfc3339(expiry_time).map_err(CertError::TimstampParseError)?;
 
     let now = Local::now();
     let duration = dt.signed_duration_since(now);
 
-    if duration.num_hours() < 0 {
+    let formatted_duration = if duration.num_hours() < 0 {
         "Expired".to_string()
     } else if duration.num_hours() >= 24 {
         format!("Expires in {} days", duration.num_days())
     } else {
         format!("Expires in {} hours", duration.num_hours())
-    }
+    };
+
+    Ok(formatted_duration)
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
