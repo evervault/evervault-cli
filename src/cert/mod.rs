@@ -12,8 +12,8 @@ use x509_parser::parse_x509_certificate;
 use x509_parser::prelude::{parse_x509_pem, X509Certificate};
 
 use crate::api::cage::{
-    CageSigningCert, CreateCageSigningCertRefRequest,
-    CreateCageSigningCertRefResponse, UpdateLockedCageSigningCertRequest,
+    CageSigningCert, CreateCageSigningCertRefRequest, CreateCageSigningCertRefResponse,
+    UpdateLockedCageSigningCertRequest,
 };
 use crate::api::{self, AuthMode};
 
