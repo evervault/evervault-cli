@@ -221,7 +221,9 @@ pub async fn lock_cage_to_certs(api_key: &str, cage_uuid: &str) -> Result<(), Ce
     let sorted_certs_for_select = sort_certs_by_expiry(certs_for_select)?;
 
     let chosen: Vec<usize> = MultiSelect::new()
-        .with_prompt("Select Certs To Lock Cage To. Press Space To Select, Enter To Confirm")
+        .with_prompt("Select Certs To Lock Cage To. Press Space To Select, Enter To Confirm.\n Cert Name | PCR8 (Hash of cert) | Cert Expiry ")
+        .report(false)
+        .max_length(6)
         .items_checked(
             sorted_certs_for_select
                 .iter()
@@ -243,7 +245,16 @@ pub async fn lock_cage_to_certs(api_key: &str, cage_uuid: &str) -> Result<(), Ce
         })
         .collect::<Vec<String>>();
 
-    let payload = UpdateLockedCageSigningCertRequest::new(chosen_cert_uuids);
+    let payload = UpdateLockedCageSigningCertRequest::new(chosen_cert_uuids.clone());
+
+    let amount_chosen = chosen_cert_uuids.len();
+    let msg = match amount_chosen {
+        0 => format!("No certs selected. Cage {} will not be locked to any certs.", cage_uuid),
+        1 => format!("1 cert selected. Cage {} will be locked to this cert.", cage_uuid),
+        _ => format!("{} certs selected. Cage {} will be locked to these certs", amount_chosen, cage_uuid),
+    };
+
+    log::info!("{}", msg);
 
     if let Err(e) = cage_api
         .update_cage_locked_signing_certs(cage_uuid, payload)
