@@ -249,9 +249,18 @@ pub async fn lock_cage_to_certs(api_key: &str, cage_uuid: &str) -> Result<(), Ce
 
     let amount_chosen = chosen_cert_uuids.len();
     let msg = match amount_chosen {
-        0 => format!("No certs selected. Cage {} will not be locked to any certs.", cage_uuid),
-        1 => format!("1 cert selected. Cage {} will be locked to this cert.", cage_uuid),
-        _ => format!("{} certs selected. Cage {} will be locked to these certs", amount_chosen, cage_uuid),
+        0 => format!(
+            "No certs selected. Cage {} will not be locked to any certs.",
+            cage_uuid
+        ),
+        1 => format!(
+            "1 cert selected. Cage {} will be locked to this cert.",
+            cage_uuid
+        ),
+        _ => format!(
+            "{} certs selected. Cage {} will be locked to these certs",
+            amount_chosen, cage_uuid
+        ),
     };
 
     log::info!("{}", msg);
