@@ -1,7 +1,6 @@
-use crate::api::cage;
 use crate::cert::{self, DistinguishedName};
 use crate::common::CliError;
-use crate::config::{read_and_validate_config, CageConfig};
+use crate::config::CageConfig;
 use crate::get_api_key;
 use atty::Stream;
 use clap::{Parser, Subcommand};
@@ -150,11 +149,12 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
         CertCommands::Lock(lock_cert_args) => {
             let api_key = get_api_key!();
 
-            let cage_uuid = match CageConfig::try_from_filepath(&lock_cert_args.config) {
-                Ok(cage_config) => match cage_config.uuid {
-                    Some(uuid) => uuid,
-                    None => {
-                        log::error!("No cage uuid found in cage.toml");
+            let (cage_uuid, cage_name) = match CageConfig::try_from_filepath(&lock_cert_args.config)
+            {
+                Ok(cage_config) => match (cage_config.uuid, cage_config.name) {
+                    (Some(uuid), name) => (uuid, name),
+                    _ => {
+                        log::error!("No cage details found in cage.toml");
                         return DATAERR;
                     }
                 },
@@ -164,7 +164,7 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
                 }
             };
 
-            cert::lock_cage_to_certs(&api_key, &cage_uuid)
+            cert::lock_cage_to_certs(&api_key, &cage_uuid, &cage_name)
                 .await
                 .unwrap();
         }

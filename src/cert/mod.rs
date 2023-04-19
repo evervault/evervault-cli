@@ -1,7 +1,6 @@
 use aws_nitro_enclaves_image_format::defs::eif_hasher::EifHasher;
 use chrono::{DateTime, Datelike, Local, TimeZone, Utc};
-use dialoguer::theme::{ColorfulTheme, SimpleTheme};
-use dialoguer::MultiSelect;
+use dialoguer::{Confirm, MultiSelect};
 use itertools::Itertools;
 use rcgen::CertificateParams;
 use sha2::{Digest, Sha384};
@@ -184,24 +183,18 @@ async fn get_certs_for_selection(
         .map(|cert| cert.uuid())
         .collect::<Vec<&str>>();
 
-    let available_stripped: Vec<&CageSigningCert> = available_certs
+    let available_formatted: Vec<CertWithFormattedString> = available_certs
         .iter()
         .filter(|cert| !locked_cert_uuids.contains(&cert.uuid()))
-        .collect();
-
-    let available_formatted = available_stripped
-        .iter()
         .map(|cert| CertWithFormattedString::new(cert, false))
         .collect::<Vec<CertWithFormattedString>>();
+
     let locked_formatted = locked_certs
         .iter()
         .map(|cert| CertWithFormattedString::new(cert, true))
         .collect::<Vec<CertWithFormattedString>>();
 
-    let mut all_formatted: Vec<CertWithFormattedString> = vec![];
-
-    all_formatted.extend(available_formatted);
-    all_formatted.extend(locked_formatted);
+    let all_formatted = [available_formatted, locked_formatted].concat();
 
     Ok(all_formatted)
 }
@@ -209,11 +202,19 @@ async fn get_certs_for_selection(
 fn sort_certs_by_expiry(
     mut certs: Vec<CertWithFormattedString>,
 ) -> Result<Vec<CertWithFormattedString>, CertError> {
-    certs.sort_by_key(|cert| cert.cert.not_after().unwrap_or("".to_string()));
+    certs.sort_by_key(|cert| {
+        cert.cert
+            .not_after()
+            .unwrap_or("Failed to get cert expiry".to_string())
+    });
     Ok(certs)
 }
 
-pub async fn lock_cage_to_certs(api_key: &str, cage_uuid: &str) -> Result<(), CertError> {
+pub async fn lock_cage_to_certs(
+    api_key: &str,
+    cage_uuid: &str,
+    cage_name: &str,
+) -> Result<(), CertError> {
     let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
 
     let certs_for_select = get_certs_for_selection(cage_api.clone(), cage_uuid).await?;
@@ -238,11 +239,9 @@ pub async fn lock_cage_to_certs(api_key: &str, cage_uuid: &str) -> Result<(), Ce
         .map(|index| {
             sorted_certs_for_select
                 .get(*index)
-                .unwrap()
-                .cert
-                .uuid()
-                .to_string()
+                .and_then(|cert| Some(cert.cert.uuid().to_string()))
         })
+        .flatten()
         .collect::<Vec<String>>();
 
     let payload = UpdateLockedCageSigningCertRequest::new(chosen_cert_uuids.clone());
@@ -251,19 +250,28 @@ pub async fn lock_cage_to_certs(api_key: &str, cage_uuid: &str) -> Result<(), Ce
     let msg = match amount_chosen {
         0 => format!(
             "No certs selected. Cage {} will not be locked to any certs.",
-            cage_uuid
+            cage_name
         ),
         1 => format!(
             "1 cert selected. Cage {} will be locked to this cert.",
-            cage_uuid
+            cage_name
         ),
         _ => format!(
             "{} certs selected. Cage {} will be locked to these certs",
-            amount_chosen, cage_uuid
+            amount_chosen, cage_name
         ),
     };
 
     log::info!("{}", msg);
+    //Need to ask the user to confirm they want to continue
+    let confirmed = Confirm::new()
+        .with_prompt("Do you want to continue?")
+        .interact()?;
+
+    if !confirmed {
+        log::info!("Close one! Update Cancelled.");
+        return Ok(());
+    }
 
     if let Err(e) = cage_api
         .update_cage_locked_signing_certs(cage_uuid, payload)
