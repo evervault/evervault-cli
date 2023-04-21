@@ -119,7 +119,7 @@ fn format_cert_for_multi_select(cert: &CageSigningCert) -> String {
     let not_after = cert
         .not_after()
         .and_then(|time| format_expiry_time(&time).ok())
-        .unwrap_or_else(|| "".to_string());
+        .unwrap_or_else(|| "Failed to get cert expiry".to_string());
 
     format!("{} {} ({})", name, cert_hash, not_after)
 }
