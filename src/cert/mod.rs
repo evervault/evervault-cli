@@ -281,6 +281,17 @@ pub async fn lock_cage_to_certs(
         return Err(CertError::ApiError(e));
     };
 
+    let final_msg = match amount_chosen {
+        0 => format!("Cage {} successfully unlocked from all certs!", cage_name),
+        1 => format!("Cage {} successfully locked to 1 cert!", cage_name),
+        _ => format!(
+            "Cage {} successfully locked to {} certs!",
+            cage_name, amount_chosen
+        ),
+    };
+
+    log::info!("{}", final_msg);
+
     Ok(())
 }
 
