@@ -1,7 +1,6 @@
-use crate::api::cage;
 use crate::cert::{self, DistinguishedName};
 use crate::common::CliError;
-use crate::config::{read_and_validate_config, CageConfig};
+use crate::config::CageConfig;
 use crate::get_api_key;
 use atty::Stream;
 use clap::{Parser, Subcommand};
@@ -23,6 +22,9 @@ pub enum CertCommands {
     /// Upload a cage signing certificate's metadata to Evervault
     #[clap()]
     Upload(UploadCertArgs),
+    /// Lock a cage to specific signing certificate. Cage deployment will fail if the signing certificate is not the one specified.
+    #[clap()]
+    Lock(LockCertArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -38,7 +40,7 @@ pub struct NewCertArgs {
 }
 
 #[derive(Parser, Debug)]
-#[clap(name = "new", about)]
+#[clap(name = "upload", about)]
 pub struct UploadCertArgs {
     /// Path to directory where the signing cert will be saved
     #[clap(short = 'p', long = "cert_path")]
@@ -48,6 +50,14 @@ pub struct UploadCertArgs {
     #[clap(long = "name")]
     pub name: String,
 
+    /// Path to cage.toml config file
+    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    pub config: String,
+}
+
+#[derive(Parser, Debug)]
+#[clap(name = "lock", about)]
+pub struct LockCertArgs {
     /// Path to cage.toml config file
     #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
     pub config: String,
@@ -135,6 +145,28 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
                 });
                 println!("{}", serde_json::to_string(&success_msg).unwrap());
             };
+        }
+        CertCommands::Lock(lock_cert_args) => {
+            let api_key = get_api_key!();
+
+            let (cage_uuid, cage_name) = match CageConfig::try_from_filepath(&lock_cert_args.config)
+            {
+                Ok(cage_config) => match (cage_config.uuid, cage_config.name) {
+                    (Some(uuid), name) => (uuid, name),
+                    _ => {
+                        log::error!("No cage details found in cage.toml");
+                        return DATAERR;
+                    }
+                },
+                Err(_) => {
+                    log::error!("Failed to load cage configuration");
+                    return DATAERR;
+                }
+            };
+
+            cert::lock_cage_to_certs(&api_key, &cage_uuid, &cage_name)
+                .await
+                .unwrap();
         }
     }
 

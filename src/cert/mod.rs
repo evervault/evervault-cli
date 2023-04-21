@@ -1,5 +1,6 @@
 use aws_nitro_enclaves_image_format::defs::eif_hasher::EifHasher;
-use chrono::{Datelike, TimeZone, Utc};
+use chrono::{DateTime, Datelike, Local, TimeZone, Utc};
+use dialoguer::{Confirm, MultiSelect};
 use itertools::Itertools;
 use rcgen::CertificateParams;
 use sha2::{Digest, Sha384};
@@ -9,7 +10,10 @@ use std::path::{Path, PathBuf};
 use x509_parser::parse_x509_certificate;
 use x509_parser::prelude::{parse_x509_pem, X509Certificate};
 
-use crate::api::cage::{CreateCageSigningCertRefRequest, CreateCageSigningCertRefResponse};
+use crate::api::cage::{
+    CageSigningCert, CreateCageSigningCertRefRequest, CreateCageSigningCertRefResponse,
+    UpdateLockedCageSigningCertRequest,
+};
 use crate::api::{self, AuthMode};
 
 pub mod error;
@@ -107,6 +111,188 @@ pub async fn upload_new_cert_ref(
     };
 
     Ok(cert_ref)
+}
+
+fn format_cert_for_multi_select(cert: &CageSigningCert) -> String {
+    let name = cert.name().unwrap_or_else(|| "".to_string());
+    let cert_hash = cert.cert_hash();
+    let not_after = cert
+        .not_after()
+        .and_then(|time| format_expiry_time(&time).ok())
+        .unwrap_or_else(|| "Failed to get cert expiry".to_string());
+
+    format!("{} {} ({})", name, cert_hash, not_after)
+}
+
+fn format_expiry_time(expiry_time: &str) -> Result<String, CertError> {
+    let dt = DateTime::parse_from_rfc3339(expiry_time).map_err(CertError::TimstampParseError)?;
+
+    let now = Local::now();
+    let duration = dt.signed_duration_since(now);
+
+    let formatted_duration = if duration.num_hours() < 0 {
+        "Expired".to_string()
+    } else if duration.num_hours() >= 24 {
+        format!("Expires in {} days", duration.num_days())
+    } else {
+        format!("Expires in {} hours", duration.num_hours())
+    };
+
+    Ok(formatted_duration)
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+struct CertWithFormattedString {
+    cert: CageSigningCert,
+    formatted: String,
+    locked: bool,
+}
+
+impl CertWithFormattedString {
+    fn new(cert: &CageSigningCert, locked: bool) -> Self {
+        Self {
+            formatted: format_cert_for_multi_select(cert),
+            cert: cert.clone(),
+            locked,
+        }
+    }
+}
+
+async fn get_certs_for_selection(
+    cage_api: api::cage::CagesClient,
+    cage_uuid: &str,
+) -> Result<Vec<CertWithFormattedString>, CertError> {
+    let available_certs = match cage_api.get_signing_certs().await {
+        Ok(res) => res.certs,
+        Err(e) => {
+            log::error!("Error getting cage signing cert refs — {:?}", e);
+            return Err(CertError::ApiError(e));
+        }
+    };
+
+    let locked_certs = match cage_api.get_cage_locked_signing_certs(cage_uuid).await {
+        Ok(certs) => certs,
+        Err(e) => {
+            log::error!("Error getting cage signing cert — {:?}", e);
+            return Err(CertError::ApiError(e));
+        }
+    };
+
+    let locked_cert_uuids = locked_certs
+        .iter()
+        .map(|cert| cert.uuid())
+        .collect::<Vec<&str>>();
+
+    let available_formatted: Vec<CertWithFormattedString> = available_certs
+        .iter()
+        .filter(|cert| !locked_cert_uuids.contains(&cert.uuid()))
+        .map(|cert| CertWithFormattedString::new(cert, false))
+        .collect::<Vec<CertWithFormattedString>>();
+
+    let locked_formatted = locked_certs
+        .iter()
+        .map(|cert| CertWithFormattedString::new(cert, true))
+        .collect::<Vec<CertWithFormattedString>>();
+
+    let all_formatted = [available_formatted, locked_formatted].concat();
+
+    Ok(all_formatted)
+}
+
+fn sort_certs_by_expiry(
+    mut certs: Vec<CertWithFormattedString>,
+) -> Result<Vec<CertWithFormattedString>, CertError> {
+    certs.sort_by_key(|cert| {
+        cert.cert
+            .not_after()
+            .unwrap_or("Failed to get cert expiry".to_string())
+    });
+    Ok(certs)
+}
+
+pub async fn lock_cage_to_certs(
+    api_key: &str,
+    cage_uuid: &str,
+    cage_name: &str,
+) -> Result<(), CertError> {
+    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
+
+    let certs_for_select = get_certs_for_selection(cage_api.clone(), cage_uuid).await?;
+
+    let sorted_certs_for_select = sort_certs_by_expiry(certs_for_select)?;
+
+    let chosen: Vec<usize> = MultiSelect::new()
+        .with_prompt("Select Certs To Lock Cage To. Press Space To Select, Enter To Confirm.\n Cert Name | PCR8 (Hash of cert) | Cert Expiry ")
+        .report(false)
+        .max_length(6)
+        .items_checked(
+            sorted_certs_for_select
+                .iter()
+                .map(|cert| (cert.formatted.as_str(), cert.locked))
+                .collect::<Vec<(&str, bool)>>()
+                .as_slice(),
+        )
+        .interact()?;
+
+    let chosen_cert_uuids = chosen
+        .iter()
+        .map(|index| {
+            sorted_certs_for_select
+                .get(*index)
+                .and_then(|cert| Some(cert.cert.uuid().to_string()))
+        })
+        .flatten()
+        .collect::<Vec<String>>();
+
+    let payload = UpdateLockedCageSigningCertRequest::new(chosen_cert_uuids.clone());
+
+    let amount_chosen = chosen_cert_uuids.len();
+    let msg = match amount_chosen {
+        0 => format!(
+            "No certs selected. Cage {} will not be locked to any certs.",
+            cage_name
+        ),
+        1 => format!(
+            "1 cert selected. Cage {} will be locked to this cert.",
+            cage_name
+        ),
+        _ => format!(
+            "{} certs selected. Cage {} will be locked to these certs",
+            amount_chosen, cage_name
+        ),
+    };
+
+    log::info!("{}", msg);
+    //Need to ask the user to confirm they want to continue
+    let confirmed = Confirm::new()
+        .with_prompt("Do you want to continue?")
+        .interact()?;
+
+    if !confirmed {
+        log::info!("Close one! Update Cancelled.");
+        return Ok(());
+    }
+
+    if let Err(e) = cage_api
+        .update_cage_locked_signing_certs(cage_uuid, payload)
+        .await
+    {
+        log::error!("Error locking cage to certs — {:?}", e);
+        return Err(CertError::ApiError(e));
+    };
+
+    let final_msg = match amount_chosen {
+        0 => format!("Cage {} successfully unlocked from all certs!", cage_name),
+        1 => format!("Cage {} successfully locked to 1 cert!", cage_name),
+        _ => format!(
+            "Cage {} successfully locked to {} certs!",
+            cage_name, amount_chosen
+        ),
+    };
+
+    log::info!("{}", final_msg);
+
+    Ok(())
 }
 
 fn add_distinguished_name_to_cert_params(
@@ -297,5 +483,58 @@ mod test {
 
         assert_eq!(expected_not_before, cert_validity_period.not_before);
         assert_eq!(expected_not_after, cert_validity_period.not_after);
+    }
+
+    #[test]
+    fn test_sort_certs_by_expiry() {
+        let cert1 = CageSigningCert::new(
+            None,
+            "uuid1".to_string(),
+            "app_uuid1".to_string(),
+            "hash1".to_string(),
+            None,
+            Some("2023-04-17T12:00:00Z".to_string()),
+        );
+        let cert2 = CageSigningCert::new(
+            None,
+            "uuid2".to_string(),
+            "app_uuid2".to_string(),
+            "hash2".to_string(),
+            None,
+            Some("2023-04-18T12:00:00Z".to_string()),
+        );
+        let cert3 = CageSigningCert::new(
+            None,
+            "uuid3".to_string(),
+            "app_uuid3".to_string(),
+            "hash3".to_string(),
+            None,
+            Some("2023-04-16T12:00:00Z".to_string()),
+        );
+
+        let certs = vec![
+            CertWithFormattedString::new(&cert1, false),
+            CertWithFormattedString::new(&cert2, false),
+            CertWithFormattedString::new(&cert3, false),
+        ];
+
+        let result = sort_certs_by_expiry(certs);
+
+        assert!(result.is_ok());
+        let sorted_certs = result.unwrap();
+
+        assert_eq!(sorted_certs.len(), 3);
+        assert_eq!(
+            sorted_certs[0].cert.not_after(),
+            Some("2023-04-16T12:00:00Z".to_string())
+        );
+        assert_eq!(
+            sorted_certs[1].cert.not_after(),
+            Some("2023-04-17T12:00:00Z".to_string())
+        );
+        assert_eq!(
+            sorted_certs[2].cert.not_after(),
+            Some("2023-04-18T12:00:00Z".to_string())
+        );
     }
 }

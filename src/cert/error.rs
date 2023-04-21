@@ -27,6 +27,8 @@ pub enum CertError {
     ApiError(#[from] crate::api::client::ApiError),
     #[error("An error occurred calculating the hash of the cert — {0}")]
     HashError(String),
+    #[error("Failed to parse timestamp")]
+    TimstampParseError(#[from] chrono::ParseError),
 }
 
 impl CliError for CertError {
@@ -41,7 +43,8 @@ impl CliError for CertError {
             | Self::CertHasExpired
             | Self::CertNotYetValid
             | Self::InvalidDate
-            | Self::CertPathDoesNotExist(_) => exitcode::DATAERR,
+            | Self::CertPathDoesNotExist(_)
+            | Self::TimstampParseError(_) => exitcode::DATAERR,
             Self::ApiError(inner) => inner.exitcode(),
         }
     }

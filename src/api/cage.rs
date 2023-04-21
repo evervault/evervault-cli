@@ -157,6 +157,32 @@ impl CagesClient {
             .await
     }
 
+    pub async fn update_cage_locked_signing_certs(
+        &self,
+        cage_uuid: &str,
+        payload: UpdateLockedCageSigningCertRequest,
+    ) -> ApiResult<Vec<CageToSigningCert>> {
+        let get_cage_lock_certs_url = format!("{}/{}/signing/certs", self.base_url(), cage_uuid);
+        self.put(&get_cage_lock_certs_url)
+            .json(&payload)
+            .send()
+            .await
+            .handle_json_response()
+            .await
+    }
+
+    pub async fn get_cage_locked_signing_certs(
+        &self,
+        cage_uuid: &str,
+    ) -> ApiResult<Vec<CageSigningCert>> {
+        let get_cage_lock_certs_url = format!("{}/{}/signing/certs", self.base_url(), cage_uuid);
+        self.get(&get_cage_lock_certs_url)
+            .send()
+            .await
+            .handle_json_response()
+            .await
+    }
+
     pub async fn get_cage_cert_by_uuid(&self, cert_uuid: &str) -> ApiResult<CageSigningCert> {
         let get_cert_url = format!("{}/signing/certs/{}", self.base_url(), cert_uuid);
         self.get(&get_cert_url)
@@ -246,6 +272,18 @@ impl CreateCageSigningCertRefRequest {
             not_before,
             not_after,
         }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateLockedCageSigningCertRequest {
+    cert_uuids: Vec<String>,
+}
+
+impl UpdateLockedCageSigningCertRequest {
+    pub fn new(cert_uuids: Vec<String>) -> Self {
+        Self { cert_uuids }
     }
 }
 
@@ -349,6 +387,13 @@ impl CreateCageSigningCertRefResponse {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CageToSigningCert {
+    pub cage_uuid: String,
+    pub signing_cert_uuid: String,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum CageState {
@@ -429,14 +474,59 @@ pub struct CageVersion {
     started_at: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, PartialOrd)]
 #[serde(rename_all = "camelCase")]
 pub struct CageSigningCert {
+    name: Option<String>,
     uuid: String,
     app_uuid: String,
     cert_hash: String,
     not_before: Option<String>,
     not_after: Option<String>,
+}
+
+impl CageSigningCert {
+    pub fn new(
+        name: Option<String>,
+        uuid: String,
+        app_uuid: String,
+        cert_hash: String,
+        not_before: Option<String>,
+        not_after: Option<String>,
+    ) -> Self {
+        Self {
+            name,
+            uuid,
+            app_uuid,
+            cert_hash,
+            not_before,
+            not_after,
+        }
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
+    }
+
+    pub fn app_uuid(&self) -> &str {
+        &self.app_uuid
+    }
+
+    pub fn cert_hash(&self) -> &str {
+        &self.cert_hash
+    }
+
+    pub fn not_before(&self) -> Option<String> {
+        self.not_before.clone()
+    }
+
+    pub fn not_after(&self) -> Option<String> {
+        self.not_after.clone()
+    }
+
+    pub fn name(&self) -> Option<String> {
+        self.name.clone()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -572,7 +662,7 @@ impl GetCageDeploymentResponse {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetSigningCertsResponse {
-    certs: Vec<CageSigningCert>,
+    pub certs: Vec<CageSigningCert>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -654,6 +744,7 @@ mod test {
 
     fn get_testing_cert() -> CageSigningCert {
         CageSigningCert {
+            name: Some("abc".to_string()),
             uuid: "abc".to_string(),
             app_uuid: "def".to_string(),
             cert_hash: "ghi".to_string(),
