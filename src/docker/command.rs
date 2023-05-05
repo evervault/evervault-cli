@@ -1,7 +1,10 @@
 use super::error::CommandError;
+use git2::Repository;
+use regex::Regex;
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, ExitStatus, Output, Stdio};
+use version_compare::Version;
 
 pub struct CommandConfig {
     verbose: bool,
@@ -23,60 +26,6 @@ impl CommandConfig {
             Stdio::null()
         }
     }
-}
-
-pub fn build_image_using_kaniko(
-    output_path: &Path,
-    tar_destination: &Path,
-    context_path: &Path,
-    tag_name: &str,
-    verbose: bool,
-) -> Result<ExitStatus, CommandError> {
-    let command_config = CommandConfig::new(verbose);
-    let context_volume = format!("{}:/workspace", context_path.display());
-    let output_volume = format!("{}:/output", output_path.display());
-    let tar_destination_volume = format!("{}:/image", tar_destination.display());
-
-    let build_image_args: Vec<&OsStr> = vec![
-        "run".as_ref(),
-        "--volume".as_ref(),
-        context_volume.as_str().as_ref(),
-        "--volume".as_ref(),
-        output_volume.as_str().as_ref(),
-        "--volume".as_ref(),
-        tar_destination_volume.as_str().as_ref(),
-        "--rm".as_ref(),
-        "--network=host".as_ref(),
-        "gcr.io/kaniko-project/executor:v1.7.0".as_ref(),
-        "--context".as_ref(),
-        "dir:///workspace/".as_ref(),
-        "--tarPath".as_ref(),
-        "/image/image.tar".as_ref(),
-        "--no-push".as_ref(),
-        "--destination".as_ref(),
-        tag_name.as_ref(),
-        "--dockerfile".as_ref(),
-        "ev-user.Dockerfile".as_ref(),
-        "--reproducible".as_ref(),
-        "--single-snapshot".as_ref(),
-        "--snapshotMode=redo".as_ref(),
-        "--customPlatform=linux/amd64".as_ref(),
-    ];
-
-    // Kaniko pipes the output of RUN directives to stdout, which prevents programmatic use of the PCRs
-    // If stdout is being piped, then set the stdout stream to null
-    let is_stdout_piped = atty::isnt(atty::Stream::Stdout);
-    let command_status = Command::new("docker")
-        .args(build_image_args)
-        .stdout(if is_stdout_piped {
-            Stdio::null()
-        } else {
-            command_config.output_setting()
-        })
-        .stderr(command_config.output_setting())
-        .output()?;
-
-    Ok(command_status.status)
 }
 
 pub fn load_image_into_local_docker_registry(
@@ -101,6 +50,36 @@ pub fn load_image_into_local_docker_registry(
     Ok(docker_load_result)
 }
 
+fn get_git_timestamp() -> Result<String, CommandError> {
+    let time = match std::env::var("env") {
+        Ok(v) => v,
+        Err(_) => {
+            let repo = Repository::open(".")?;
+            let head = repo.head()?;
+            let commit = head.peel_to_commit()?;
+            let time = commit.time();
+            time.seconds().to_string()
+        }
+    };
+    Ok(time)
+}
+
+fn docker_buildkit_enabled() -> Result<bool, CommandError> {
+    let args: Vec<&OsStr> = vec!["buildx".as_ref(), "version".as_ref()];
+    let output = Command::new("docker").args(args).output()?;
+
+    let version_output = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
+    let semver_regex = Regex::new(r"\d+\.\d+\.\d+")?;
+    let semver_match = semver_regex
+        .find(&version_output)
+        .ok_or(CommandError::SemverParseError)?
+        .as_str();
+
+    let min_version = Version::from("0.10.0").ok_or(CommandError::SemverParseError)?;
+    let user_version = Version::from(&semver_match).ok_or(CommandError::SemverParseError)?;
+    Ok(user_version >= min_version)
+}
+
 pub fn build_image(
     dockerfile_path: &std::path::Path,
     tag_name: &str,
@@ -122,6 +101,67 @@ pub fn build_image(
     .concat();
 
     let command_status = Command::new("docker")
+        .args(build_image_args)
+        .stdout(command_config.output_setting())
+        .stderr(command_config.output_setting())
+        .status()?;
+
+    Ok(command_status)
+}
+
+pub fn build_image_repro(
+    dockerfile_path: &std::path::Path,
+    tag_name: &str,
+    command_line_args: Vec<&OsStr>,
+    verbose: bool,
+) -> Result<ExitStatus, CommandError> {
+    let command_config = CommandConfig::new(verbose);
+    let build_image_args = if docker_buildkit_enabled().unwrap() {
+        log::info!("Docker version is reproducible build compatible");
+        [
+            vec![
+                "buildx".as_ref(),
+                "build".as_ref(),
+                "-f".as_ref(),
+                dockerfile_path.as_os_str(),
+                "-t".as_ref(),
+                tag_name.as_ref(),
+                "--load".as_ref(),
+            ],
+            command_config.extra_build_args(),
+            command_line_args,
+        ]
+        .concat()
+    } else {
+        log::warn!("Your docker version is too old for reproducible builds, attempting build without buildkit. Please upgrade docker for build reproducibility");
+        [
+            vec![
+                "build".as_ref(),
+                "-f".as_ref(),
+                dockerfile_path.as_os_str(),
+                "-t".as_ref(),
+                tag_name.as_ref(),
+                "--load".as_ref(),
+            ],
+            command_config.extra_build_args(),
+            command_line_args,
+        ]
+        .concat()
+    };
+
+    let time = match get_git_timestamp() {
+        Ok(time) => {
+            log::info!("Building with timestamp {time}");
+            time
+        }
+        Err(_) => {
+            log::info!("Couldn't find a git timestamp - defaulting timestamp to unix epoch 0");
+            "0".to_string()
+        }
+    };
+
+    let command_status = Command::new("docker")
+        .env("SOURCE_DATE_EPOCH", time)
         .args(build_image_args)
         .stdout(command_config.output_setting())
         .stderr(command_config.output_setting())

@@ -47,10 +47,8 @@ pub struct DeployArgs {
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 
-    /// Perform a reproducible build to guarantee consistent checksums.
-    /// Note: reproducible builds are significantly slower, but are recommended for production deployments.
-    #[clap(long = "reproducible")]
-    pub reproducible: bool,
+    #[clap(long = "rebuild")]
+    pub rebuild: Option<String>,
 }
 
 impl BuildTimeConfig for DeployArgs {
@@ -99,7 +97,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         deploy_args.eif_path.as_deref(),
         !deploy_args.quiet,
         build_args,
-        deploy_args.reproducible,
+        deploy_args.rebuild,
     )
     .await
     {
@@ -147,7 +145,7 @@ async fn resolve_eif(
     eif_path: Option<&str>,
     verbose: bool,
     build_args: Option<Vec<&str>>,
-    reproducible: bool,
+    rebuild: Option<String>,
 ) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
     if let Some(path) = eif_path {
         get_eif(path, verbose).map_err(|e| {
@@ -184,9 +182,9 @@ async fn resolve_eif(
             None,
             verbose,
             build_args,
-            reproducible,
             data_plane_version,
             installer_version,
+            rebuild,
         )
         .await
         .map_err(|build_err| {

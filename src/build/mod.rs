@@ -8,11 +8,11 @@ use crate::docker::parse::{Directive, DockerfileDecoder, Mode};
 use crate::docker::utils::verify_docker_is_running;
 use crate::enclave;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tokio::fs::File;
 use tokio::io::AsyncRead;
 
-const EV_USER_DOCKERFILE_PATH: &str = "ev-user.Dockerfile";
+const EV_USER_DOCKERFILE_PATH: &str = "enclave.Dockerfile";
 const INSTALLER_DIRECTORY: &str = "/opt/evervault";
 const USER_ENTRYPOINT_SERVICE_PATH: &str = "/etc/service/user-entrypoint";
 const DATA_PLANE_SERVICE_PATH: &str = "/etc/service/data-plane";
@@ -23,9 +23,9 @@ pub async fn build_enclave_image_file(
     output_dir: Option<&str>,
     verbose: bool,
     docker_build_args: Option<Vec<&str>>,
-    reproducible: bool,
     data_plane_version: String,
     installer_version: String,
+    rebuild: Option<String>,
 ) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
     let context_path = Path::new(&context_path);
     if !context_path.exists() {
@@ -42,6 +42,51 @@ pub async fn build_enclave_image_file(
 
     let signing_info = enclave::EnclaveSigningInfo::try_from(cage_config.signing_info())?;
 
+    match rebuild {
+        Some(path) => {
+            let user_dockerfile_path = output_path.path().join(path);
+            enclave::build_user_image(
+                &user_dockerfile_path,
+                context_path,
+                verbose,
+                docker_build_args,
+            )?;
+        }
+        None => {
+            build_from_scratch(
+                cage_config,
+                context_path,
+                verbose,
+                docker_build_args,
+                data_plane_version,
+                installer_version,
+                output_path.path(),
+            )
+            .await?;
+        }
+    };
+
+    log::debug!(
+        "Building Nitro CLI image... {}",
+        output_path.path().as_os_str().to_str().unwrap()
+    );
+
+    enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose)?;
+    log::info!("Converting docker image to EIF...");
+    enclave::run_conversion_to_enclave(output_path.path(), verbose)
+        .map(|built_enc| (built_enc, output_path))
+        .map_err(|e| e.into())
+}
+
+pub async fn build_from_scratch(
+    cage_config: &ValidatedCageBuildConfig,
+    context_path: &Path,
+    verbose: bool,
+    docker_build_args: Option<Vec<&str>>,
+    data_plane_version: String,
+    installer_version: String,
+    output_path: &PathBuf,
+) -> Result<(), BuildError> {
     if !verify_docker_is_running()? {
         return Err(DockerError::DaemonNotRunning.into());
     }
@@ -67,7 +112,7 @@ pub async fn build_enclave_image_file(
     .await?;
 
     // write new dockerfile to fs
-    let user_dockerfile_path = output_path.path().join(EV_USER_DOCKERFILE_PATH);
+    let user_dockerfile_path = output_path.as_path().join(EV_USER_DOCKERFILE_PATH);
 
     let mut ev_user_dockerfile = std::fs::File::create(&user_dockerfile_path)
         .map_err(BuildError::FailedToWriteCageDockerfile)?;
@@ -82,34 +127,15 @@ pub async fn build_enclave_image_file(
     );
 
     log::info!("Building docker image...");
-    if reproducible {
-        // to perform a reproducible build, the context directory has to be mounted to the docker container for kaniko to have access
-        // so the dockerfile has to be placed into `context_path`
-        let dockerfile_in_context = context_path.join(EV_USER_DOCKERFILE_PATH);
-        if !dockerfile_in_context.exists() {
-            std::fs::copy(user_dockerfile_path, dockerfile_in_context).unwrap();
-        }
 
-        enclave::build_reproducible_user_image(context_path, output_path.path(), verbose)?;
-        log::debug!("Reproducible image built...");
-    } else {
-        enclave::build_user_image(
-            &user_dockerfile_path,
-            context_path,
-            verbose,
-            docker_build_args,
-        )?;
-        log::debug!("User image built...");
-    }
-
-    log::debug!("Building Nitro CLI image...");
-
-    enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose)?;
-
-    log::info!("Converting docker image to EIF...");
-    enclave::run_conversion_to_enclave(output_path.path(), verbose, reproducible)
-        .map(|built_enc| (built_enc, output_path))
-        .map_err(|e| e.into())
+    enclave::build_user_image(
+        &user_dockerfile_path,
+        context_path,
+        verbose,
+        docker_build_args,
+    )?;
+    log::debug!("User image built...");
+    Ok(())
 }
 
 async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
@@ -192,6 +218,8 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let installer_bundle = "runtime-dependencies.tar.gz";
     let installer_destination = format!("{INSTALLER_DIRECTORY}/{installer_bundle}");
 
+    let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
+
     let mut env_directives = vec![
         // set cage name and app uuid as in enclave env vars
         Directive::new_env("EV_CAGE_NAME", build_config.cage_name()),
@@ -243,7 +271,10 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             "/bootstrap",
             &[],
         )),
+        Directive::new_run(repro_time),
         // add entrypoint which starts the runit services
+        Directive::new_from("scratch".to_string()),
+        Directive::new_copy("--from=0 / /".to_string()),
         Directive::new_entrypoint(
             Mode::Exec,
             vec!["/bootstrap".to_string(), "1>&2".to_string()],
@@ -270,7 +301,7 @@ mod test {
     use crate::docker;
     use crate::enclave;
     use crate::test_utils;
-    use itertools::zip;
+    use std::iter::zip;
     use tempfile::TempDir;
 
     fn get_config() -> ValidatedCageBuildConfig {
@@ -346,6 +377,9 @@ ENV DATA_PLANE_HEALTH_CHECKS=true
 ENV EV_API_KEY_AUTH=true
 ENV EV_TRX_LOGGING_ENABLED=true
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
+FROM scratch
+COPY --from=0 / /
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
@@ -440,6 +474,9 @@ ENV DATA_PLANE_HEALTH_CHECKS=true
 ENV EV_API_KEY_AUTH=true
 ENV EV_TRX_LOGGING_ENABLED=true
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
+FROM scratch
+COPY --from=0 / /
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
@@ -463,9 +500,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
     async fn test_choose_output_dir() {
         let output_dir = TempDir::new().unwrap();
 
-        let _ =
-            test_utils::build_test_cage(Some(output_dir.path().to_str().unwrap()), false, false)
-                .await;
+        let _ = test_utils::build_test_cage(Some(output_dir.path().to_str().unwrap()), None).await;
 
         let paths = std::fs::read_dir(output_dir.path().to_str().unwrap().to_string()).unwrap();
 

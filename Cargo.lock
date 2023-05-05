@@ -36,9 +36,9 @@ dependencies = [
 
 [[package]]
 name = "aho-corasick"
-version = "0.7.20"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc936419f96fa211c1b9166887b38e5e40b19958e5b895be7c1f93adec7071ac"
+checksum = "67fc08ce920c31afb70f013dcce1bfc3a3195de6a228474e45e1f145b36f8d04"
 dependencies = [
  "memchr",
 ]
@@ -167,7 +167,7 @@ dependencies = [
 [[package]]
 name = "attestation-doc-validation"
 version = "0.2.1"
-source = "sparse+https://cargo.cloudsmith.io/evervault/rust-libraries/"
+source = "registry+https://dl.cloudsmith.io/tREKUrB8e35qy9O7/evervault/rust-libraries/cargo/index.git"
 checksum = "5466fdcc164977f408c3f2c821b00003b97febb830e42c56cf267e3c9b2b6609"
 dependencies = [
  "aws-nitro-enclaves-cose",
@@ -377,6 +377,9 @@ name = "cc"
 version = "1.0.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50d30906286121d95be3d479533b458f87493b30a4b5f79a607db8f5d11aa91f"
+dependencies = [
+ "jobserver",
+]
 
 [[package]]
 name = "cfg-if"
@@ -762,6 +765,7 @@ dependencies = [
  "exitcode",
  "futures",
  "futures-core",
+ "git2",
  "hex",
  "human-panic",
  "indicatif",
@@ -769,6 +773,7 @@ dependencies = [
  "log",
  "minus",
  "rcgen",
+ "regex",
  "reqwest",
  "rust-crypto",
  "serde",
@@ -783,6 +788,7 @@ dependencies = [
  "tokio-test",
  "tokio-util",
  "toml 0.5.11",
+ "version-compare",
  "x509-parser",
  "zip",
 ]
@@ -947,6 +953,21 @@ name = "gimli"
 version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad0a93d233ebf96623465aad4046a8d3aa4da22d4f4beba5388838c8a434bbb4"
+
+[[package]]
+name = "git2"
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b7905cdfe33d31a88bb2e8419ddd054451f5432d1da9eaf2ac7804ee1ea12d5"
+dependencies = [
+ "bitflags",
+ "libc",
+ "libgit2-sys",
+ "log",
+ "openssl-probe",
+ "openssl-sys",
+ "url",
+]
 
 [[package]]
 name = "h2"
@@ -1236,6 +1257,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "453ad9f582a441959e5f0d088b02ce04cfe8d51a8eaf077f12ac6d3e94164ca6"
 
 [[package]]
+name = "jobserver"
+version = "0.1.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "936cfd212a0155903bcbc060e316fb6cc7cbf2e1907329391ebadc1fe0ce77c2"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1255,6 +1285,46 @@ name = "libc"
 version = "0.2.140"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99227334921fae1a979cf0bfdfcc6b3e5ce376ef57e16fb6fb3ea2ed6095f80c"
+
+[[package]]
+name = "libgit2-sys"
+version = "0.15.1+1.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb4577bde8cdfc7d6a2a4bcb7b049598597de33ffd337276e9c7db6cd4a2cee7"
+dependencies = [
+ "cc",
+ "libc",
+ "libssh2-sys",
+ "libz-sys",
+ "openssl-sys",
+ "pkg-config",
+]
+
+[[package]]
+name = "libssh2-sys"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dc8a030b787e2119a731f1951d6a773e2280c660f8ec4b0f5e1505a386e71ee"
+dependencies = [
+ "cc",
+ "libc",
+ "libz-sys",
+ "openssl-sys",
+ "pkg-config",
+ "vcpkg",
+]
+
+[[package]]
+name = "libz-sys"
+version = "1.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9702761c3935f8cc2f101793272e202c72b99da8f4224a19ddcf1279a6450bbf"
+dependencies = [
+ "cc",
+ "libc",
+ "pkg-config",
+ "vcpkg",
+]
 
 [[package]]
 name = "link-cplusplus"
@@ -1888,9 +1958,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.7.2"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cce168fea28d3e05f158bda4576cf0c844d5045bc2cc3620fa0292ed5bb5814c"
+checksum = "af83e617f331cc6ae2da5443c602dfa5af81e517212d9d611a5b3ba1777b5370"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1899,9 +1969,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.6.29"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f162c6dd7b008981e4d40210aca20b4bd0f9b60ca9271061b07f78537722f2e1"
+checksum = "a5996294f19bd3aae0453a862ad728f60e6600695733dd5df01da90c54363a3c"
 
 [[package]]
 name = "reqwest"
@@ -1981,13 +2051,14 @@ dependencies = [
 
 [[package]]
 name = "rust-crypto"
-version = "0.1.21"
-source = "sparse+https://cargo.cloudsmith.io/evervault/rust-libraries/"
-checksum = "425302af86c7ea068604fad19ff99984612ba06cb171e7c2b88031945a51a308"
+version = "0.1.24"
+source = "registry+https://dl.cloudsmith.io/tREKUrB8e35qy9O7/evervault/rust-libraries/cargo/index.git"
+checksum = "cee2de111fd94746e67580b021e64cc05bf776b4c2f776d5c965887a20768011"
 dependencies = [
  "base-x",
  "base64 0.13.1",
  "byteorder",
+ "crc32fast",
  "der",
  "hex",
  "lazy_static",
@@ -2085,9 +2156,9 @@ dependencies = [
 
 [[package]]
 name = "secp256k1"
-version = "0.20.3"
+version = "0.22.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97d03ceae636d0fed5bae6a7f4f664354c5f4fcedf6eef053fef17e49f837d0a"
+checksum = "295642060261c80709ac034f52fca8e5a9fa2c7d341ded5cdb164b7c33768b2a"
 dependencies = [
  "rand 0.6.5",
  "secp256k1-sys",
@@ -2095,9 +2166,9 @@ dependencies = [
 
 [[package]]
 name = "secp256k1-sys"
-version = "0.4.2"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "957da2573cde917463ece3570eab4a0b3f19de6f1646cde62e6fd3868f566036"
+checksum = "152e20a0fd0519390fc43ab404663af8a0b794273d2a91d60ad4a39f13ffe110"
 dependencies = [
  "cc",
 ]
@@ -2756,6 +2827,12 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "version-compare"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "579a42fc0b8e0c63b76519a339be31bed574929511fa53c1a3acae26eb258f29"
 
 [[package]]
 name = "version_check"

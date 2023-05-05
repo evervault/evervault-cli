@@ -262,60 +262,42 @@ pub async fn timed_operation<T: std::future::Future>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::enclave::PCRs;
     use crate::test_utils;
     use std::time::Duration;
 
     #[tokio::test]
     async fn test_get_eif_size() {
-        let (_, output_path) = test_utils::build_test_cage(None, false, false)
-            .await
-            .unwrap();
+        let (_, output_path) = test_utils::build_test_cage(None, None).await.unwrap();
         let output_path_as_string = output_path.path().to_str().unwrap().to_string();
 
         // ensure temp output directory still exists after running function
         assert!(std::path::PathBuf::from(output_path_as_string).exists());
     }
 
-    // #[tokio::test]
-    // async fn test_reproducible_cage_builds_with_pinned_version() {
-    //     let (build_output, output_path) =
-    //         test_utils::build_test_cage(None, true, true).await.unwrap();
-    //     let eif_pcrs = build_output.measurements().pcrs();
-
-    //     // Compare build measures as certs are generated on the fly to prevent expiry
-    //     let expected_pcrs: PCRs = serde_json::from_str(r#"{
-    //       "PCR0": "e2e600bdaf4467c14c549d2625172d63f4b881239fb6511790bb29e868c1132348ed6aaf340c7bdb4f1675000c92da8e",
-    //       "PCR1": "bcdf05fefccaa8e55bf2c8d6dee9e79bbff31e34bf28a99aa19e6b29c37ee80b214a414b7607236edf26fcb78654e63f",
-    //       "PCR2": "9515584ba5a65357648215677fc6b0e3711149e9e93b7645c22585dec5aebede67c7d5eb80e94b433e9838f2e7b72a6d"
-    //     }"#).unwrap();
-    //     assert_eq!(&eif_pcrs.pcr0, &expected_pcrs.pcr0);
-    //     assert_eq!(&eif_pcrs.pcr1, &expected_pcrs.pcr1);
-    //     assert_eq!(&eif_pcrs.pcr2, &expected_pcrs.pcr2);
-
-    //     // ensure temp output directory still exists after running function
-    //     assert!(output_path.path().exists());
-    // }
-
-    #[cfg(feature = "test-latest-reproducible")]
     #[tokio::test]
-    async fn test_reproducible_cage_builds_using_latest() {
-        let (first_build_output, first_output_path) =
-            test_utils::build_test_cage(None, true, false)
-                .await
-                .unwrap();
-        let first_eif_pcrs = first_build_output.measurements().pcrs();
-        // ensure temp output directory still exists after running function
-        assert!(first_output_path.path().exists());
+    async fn test_reproducible_cage_builds_with_pinned_version() {
+        let current_dir = std::env::current_dir().unwrap();
+        let (build_output, output_path) = test_utils::build_test_cage(
+            None,
+            Some(format!("{}/testRepro.Dockerfile", current_dir.to_str().unwrap()).to_string()),
+        )
+        .await
+        .unwrap();
+        let eif_pcrs = build_output.measurements().pcrs();
 
-        let (second_build_output, second_output_path) =
-            test_utils::build_test_cage(None, true, false)
-                .await
-                .unwrap();
-        let second_eif_pcrs = second_build_output.measurements().pcrs();
-        assert!(second_output_path.path().exists());
-        assert_eq!(&first_eif_pcrs.pcr0, &second_eif_pcrs.pcr0);
-        assert_eq!(&first_eif_pcrs.pcr1, &second_eif_pcrs.pcr1);
-        assert_eq!(&first_eif_pcrs.pcr2, &second_eif_pcrs.pcr2);
+        // Compare build measures as certs are generated on the fly to prevent expiry
+        let expected_pcrs: PCRs = serde_json::from_str(r#"{
+            "PCR0": "9fe8e1525219b65a265f0ccb234f66fececfc5c761fe50bcbc3b1ac0e48f84dc4b0434a9a29f27d8aef57399e78b4124",
+            "PCR1": "bcdf05fefccaa8e55bf2c8d6dee9e79bbff31e34bf28a99aa19e6b29c37ee80b214a414b7607236edf26fcb78654e63f",
+            "PCR2": "48ffa10dec685c5e43c2e37f7800d103d42b5d9cc2fe36fc7419f35950a089d0b251a3ee36a311c9718159f8e62f0cc9"
+        }"#).unwrap();
+        assert_eq!(&eif_pcrs.pcr0, &expected_pcrs.pcr0);
+        assert_eq!(&eif_pcrs.pcr1, &expected_pcrs.pcr1);
+        assert_eq!(&eif_pcrs.pcr2, &expected_pcrs.pcr2);
+
+        // ensure temp output directory still exists after running function
+        assert!(output_path.path().exists());
     }
 
     async fn long_operation(duration: Duration) {
