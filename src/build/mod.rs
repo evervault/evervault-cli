@@ -2,7 +2,7 @@ pub mod error;
 use error::BuildError;
 
 use crate::common::{resolve_output_path, OutputPath};
-use crate::config::ValidatedCageBuildConfig;
+use crate::config::{ReproducibleInfo, ValidatedCageBuildConfig};
 use crate::docker::error::DockerError;
 use crate::docker::parse::{Directive, DockerfileDecoder, Mode};
 use crate::docker::utils::verify_docker_is_running;
@@ -23,8 +23,7 @@ pub async fn build_enclave_image_file(
     output_dir: Option<&str>,
     verbose: bool,
     docker_build_args: Option<Vec<&str>>,
-    data_plane_version: String,
-    installer_version: String,
+    repro_info: ReproducibleInfo,
     rebuild: Option<String>,
 ) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
     let context_path = Path::new(&context_path);
@@ -50,6 +49,7 @@ pub async fn build_enclave_image_file(
                 context_path,
                 verbose,
                 docker_build_args,
+                repro_info,
             )?;
         }
         None => {
@@ -58,8 +58,7 @@ pub async fn build_enclave_image_file(
                 context_path,
                 verbose,
                 docker_build_args,
-                data_plane_version,
-                installer_version,
+                repro_info,
                 output_path.path(),
             )
             .await?;
@@ -83,8 +82,7 @@ pub async fn build_from_scratch(
     context_path: &Path,
     verbose: bool,
     docker_build_args: Option<Vec<&str>>,
-    data_plane_version: String,
-    installer_version: String,
+    repro_info: ReproducibleInfo,
     output_path: &PathBuf,
 ) -> Result<(), BuildError> {
     if !verify_docker_is_running()? {
@@ -103,13 +101,8 @@ pub async fn build_from_scratch(
         .await
         .map_err(|_| BuildError::DockerfileAccessError(cage_config.dockerfile().to_string()))?;
 
-    let processed_dockerfile = process_dockerfile(
-        cage_config,
-        dockerfile,
-        data_plane_version,
-        installer_version,
-    )
-    .await?;
+    let processed_dockerfile =
+        process_dockerfile(cage_config, dockerfile, repro_info.clone()).await?;
 
     // write new dockerfile to fs
     let user_dockerfile_path = output_path.as_path().join(EV_USER_DOCKERFILE_PATH);
@@ -133,6 +126,7 @@ pub async fn build_from_scratch(
         context_path,
         verbose,
         docker_build_args,
+        repro_info,
     )?;
     log::debug!("User image built...");
     Ok(())
@@ -141,8 +135,7 @@ pub async fn build_from_scratch(
 async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     build_config: &ValidatedCageBuildConfig,
     dockerfile_src: R,
-    data_plane_version: String,
-    installer_version: String,
+    repro_info: ReproducibleInfo,
 ) -> Result<Vec<Directive>, BuildError> {
     // Decode dockerfile from file
     let instruction_set = DockerfileDecoder::decode_dockerfile_from_src(dockerfile_src).await?;
@@ -199,7 +192,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let data_plane_url = format!(
         "https://cage-build-assets.{}/runtime/{}/data-plane/{}",
         ev_domain,
-        data_plane_version,
+        repro_info.data_plane_version,
         build_config.get_dataplane_feature_label()
     );
 
@@ -213,7 +206,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
 
     let installer_bundle_url = format!(
         "https://cage-build-assets.{}/installer/{}.tar.gz",
-        ev_domain, installer_version
+        ev_domain, repro_info.installer_version
     );
     let installer_bundle = "runtime-dependencies.tar.gz";
     let installer_destination = format!("{INSTALLER_DIRECTORY}/{installer_bundle}");

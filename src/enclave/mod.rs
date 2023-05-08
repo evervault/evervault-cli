@@ -1,4 +1,4 @@
-use crate::docker::command;
+use crate::{config::ReproducibleInfo, docker::command};
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -24,6 +24,7 @@ pub fn build_user_image(
     user_context_path: &std::path::Path,
     verbose: bool,
     docker_build_args: Option<Vec<&str>>,
+    repro_info: ReproducibleInfo,
 ) -> Result<(), EnclaveError> {
     let mut command_line_args = vec![user_context_path.as_os_str()];
 
@@ -38,6 +39,7 @@ pub fn build_user_image(
         tag_name.as_str(),
         command_line_args,
         verbose,
+        repro_info,
     )?;
 
     if !build_output.success() {

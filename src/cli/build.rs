@@ -1,7 +1,9 @@
 use crate::api::assets::AssetsClient;
 use crate::build::build_enclave_image_file;
 use crate::common::{prepare_build_args, CliError};
+use crate::config::ReproducibleInfo;
 use crate::config::{read_and_validate_config, BuildTimeConfig};
+use crate::docker::command::get_git_hash_time;
 use clap::Parser;
 
 /// Build a Cage from a Dockerfile
@@ -40,7 +42,7 @@ pub struct BuildArgs {
     #[clap(short = 'o', long = "output", default_value = ".")]
     pub output_dir: String,
 
-    /// Write latest attestation information to cage.toml config file
+    /// Write latest attestation and reproducibility information to cage.toml config file
     #[clap(short = 'w', long = "write")]
     pub write: bool,
 
@@ -105,14 +107,22 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         }
     };
 
+    let (git_hash, timestamp) = get_git_hash_time().unwrap();
+
+    let repro_info = ReproducibleInfo {
+        git_hash,
+        timestamp,
+        data_plane_version,
+        installer_version,
+    };
+
     let built_enclave = match build_enclave_image_file(
         &validated_config,
         &build_args.context_path,
         Some(&build_args.output_dir),
         !build_args.quiet,
         borrowed_args,
-        data_plane_version,
-        installer_version,
+        repro_info.clone(),
         build_args.rebuild,
     )
     .await
@@ -129,6 +139,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
             &mut cage_config,
             &build_args.config,
             built_enclave.measurements(),
+            Some(repro_info),
         );
     }
 
