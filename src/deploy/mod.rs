@@ -24,6 +24,7 @@ pub async fn deploy_eif(
     cage_api: CagesClient,
     output_path: OutputPath,
     eif_measurements: &EIFMeasurements,
+    data_plane_version: String,
 ) -> Result<(), DeployError> {
     let progress_bar = get_tracker("Zipping Cage...", None);
     create_zip_archive_for_eif(output_path.path())?;
@@ -43,6 +44,7 @@ pub async fn deploy_eif(
         eif_size_bytes,
         validated_config.signing.not_before(),
         validated_config.signing.not_after(),
+        data_plane_version,
     );
     let deployment_intent = cage_api
         .create_cage_deployment_intent(validated_config.cage_uuid(), cage_deployment_intent_payload)

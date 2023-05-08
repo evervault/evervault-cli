@@ -1,6 +1,7 @@
 use crate::api::{self, assets::AssetsClient, AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::common::prepare_build_args;
+use crate::docker::command::get_git_hash_time;
 use crate::get_api_key;
 use crate::{
     common::{CliError, OutputPath},
@@ -10,6 +11,7 @@ use crate::{
 };
 use atty::Stream;
 use clap::Parser;
+use exitcode::ExitCode;
 
 /// Deploy a Cage from a toml file.
 #[derive(Debug, Parser)]
@@ -86,6 +88,8 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         }
     };
 
+    let (_, timestamp) = get_git_hash_time();
+
     let formatted_args = prepare_build_args(&deploy_args.docker_build_args);
     let build_args = formatted_args
         .as_ref()
@@ -98,6 +102,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         !deploy_args.quiet,
         build_args,
         deploy_args.rebuild,
+        timestamp,
     )
     .await
     {
@@ -119,9 +124,18 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         &mut cage_config,
         &deploy_args.config,
         &eif_measurements,
+        None,
     );
 
-    if let Err(e) = deploy_eif(&validated_config, cage_api, output_path, &eif_measurements).await {
+    if let Err(e) = deploy_eif(
+        &validated_config,
+        cage_api,
+        output_path,
+        &eif_measurements,
+        "".to_string(),
+    )
+    .await
+    {
         log::error!("{}", e);
         return e.exitcode();
     };
@@ -146,35 +160,16 @@ async fn resolve_eif(
     verbose: bool,
     build_args: Option<Vec<&str>>,
     rebuild: Option<String>,
+    timestamp: String,
 ) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
     if let Some(path) = eif_path {
-        get_eif(path, verbose).map_err(|e| {
+        return get_eif(path, verbose).map_err(|e| {
             log::error!("Failed to access the EIF at {}", path);
             e.exitcode()
-        })
+        });
     } else {
-        let cage_build_assets_client = AssetsClient::new();
-        let data_plane_version = match cage_build_assets_client
-            .get_latest_data_plane_version()
-            .await
-        {
-            Ok(version) => version,
-            Err(e) => {
-                log::error!("Failed to retrieve the latest data plane version - {e:?}");
-                return Err(e.exitcode());
-            }
-        };
-
-        let installer_version = match cage_build_assets_client
-            .get_latest_installer_version()
-            .await
-        {
-            Ok(version) => version,
-            Err(e) => {
-                log::error!("Failed to retrieve the latest data plane version - {e:?}");
-                return Err(e.exitcode());
-            }
-        };
+        let (data_plane_version, installer_version) =
+            get_data_plane_and_installer_version(validated_config).await?;
 
         let (built_enclave, output_path) = build_enclave_image_file(
             validated_config,
@@ -184,6 +179,7 @@ async fn resolve_eif(
             build_args,
             data_plane_version,
             installer_version,
+            timestamp,
             rebuild,
         )
         .await
@@ -191,6 +187,38 @@ async fn resolve_eif(
             log::error!("Failed to build EIF - {}", build_err);
             build_err.exitcode()
         })?;
-        Ok((built_enclave.measurements().to_owned(), output_path))
+        return Ok((built_enclave.measurements().to_owned(), output_path));
+    }
+
+    async fn get_data_plane_and_installer_version(
+        validated_config: &ValidatedCageBuildConfig,
+    ) -> Result<(String, String), ExitCode> {
+        let cage_build_assets_client = AssetsClient::new();
+        match validated_config.reproducible.clone() {
+            Some(config) => Ok((config.data_plane_version.clone(), config.installer_version)),
+            None => {
+                let data_plane_version = match cage_build_assets_client
+                    .get_latest_data_plane_version()
+                    .await
+                {
+                    Ok(version) => version,
+                    Err(e) => {
+                        log::error!("Failed to retrieve the latest data plane version - {e:?}");
+                        return Err(e.exitcode());
+                    }
+                };
+                let installer_version = match cage_build_assets_client
+                    .get_latest_installer_version()
+                    .await
+                {
+                    Ok(version) => version,
+                    Err(e) => {
+                        log::error!("Failed to retrieve the latest installer version - {e:?}");
+                        return Err(e.exitcode());
+                    }
+                };
+                Ok((data_plane_version, installer_version))
+            }
+        }
     }
 }

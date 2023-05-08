@@ -17,6 +17,7 @@ pub async fn build_test_cage(
 
     let data_plane_version = assets_client.get_latest_data_plane_version().await.unwrap();
     let installer_version = assets_client.get_latest_installer_version().await.unwrap();
+    let timestamp = "0".to_string();
 
     build_enclave_image_file(
         &build_args,
@@ -26,6 +27,7 @@ pub async fn build_test_cage(
         None,
         data_plane_version,
         installer_version,
+        timestamp,
         rebuild_image,
     )
     .await

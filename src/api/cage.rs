@@ -232,6 +232,7 @@ pub struct CreateCageDeploymentIntentRequest {
     eif_size_bytes: u64,
     not_before: String,
     not_after: String,
+    data_plane_version: String,
 }
 
 impl CreateCageDeploymentIntentRequest {
@@ -242,6 +243,7 @@ impl CreateCageDeploymentIntentRequest {
         eif_size_bytes: u64,
         not_before: String,
         not_after: String,
+        data_plane_version: String,
     ) -> Self {
         Self {
             pcrs: pcrs.clone(),
@@ -251,6 +253,7 @@ impl CreateCageDeploymentIntentRequest {
             not_before,
             not_after,
             egress_domains: egress_settings.destinations,
+            data_plane_version,
         }
     }
 }
