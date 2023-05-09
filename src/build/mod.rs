@@ -334,7 +334,7 @@ mod test {
             disable_tls_termination: false,
             api_key_auth: true,
             trx_logging_enabled: true,
-            reproducible: None,
+            runtime: None,
         }
     }
 

@@ -1,7 +1,7 @@
 use crate::api::{self, assets::AssetsClient, AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::common::prepare_build_args;
-use crate::docker::command::get_git_hash_time;
+use crate::docker::command::get_source_date_epoch;
 use crate::get_api_key;
 use crate::{
     common::{CliError, OutputPath},
@@ -88,7 +88,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         }
     };
 
-    let (_, timestamp) = get_git_hash_time();
+    let timestamp = get_source_date_epoch();
 
     let formatted_args = prepare_build_args(&deploy_args.docker_build_args);
     let build_args = formatted_args
@@ -113,7 +113,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         deploy_args.rebuild,
         timestamp,
         data_plane_version.clone(),
-        installer_version,
+        installer_version.clone(),
     )
     .await
     {
@@ -144,6 +144,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         output_path,
         &eif_measurements,
         data_plane_version,
+        installer_version,
     )
     .await
     {
@@ -205,7 +206,7 @@ async fn get_data_plane_and_installer_version(
     validated_config: &ValidatedCageBuildConfig,
 ) -> Result<(String, String), ExitCode> {
     let cage_build_assets_client = AssetsClient::new();
-    match validated_config.reproducible.clone() {
+    match validated_config.runtime.clone() {
         Some(config) => Ok((config.data_plane_version.clone(), config.installer_version)),
         None => {
             let data_plane_version = match cage_build_assets_client

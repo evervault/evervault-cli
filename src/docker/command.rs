@@ -66,23 +66,25 @@ fn docker_buildkit_enabled() -> Result<bool, CommandError> {
     Ok(user_version >= min_version)
 }
 
-pub fn get_git_hash_time() -> (String, String) {
-    match try_get_git_hash_time() {
+pub fn get_git_hash() -> String {
+    match try_get_git_hash() {
         Ok(info) => info,
-        Err(_) => ("0".to_string(), "0".to_string()),
+        Err(_) => "no git info available".to_string(),
     }
 }
 
-pub fn try_get_git_hash_time() -> Result<(String, String), CommandError> {
-    let repo = Repository::open(".")?;
+pub fn try_get_git_hash() -> Result<String, CommandError> {
+    let repo: Repository = Repository::open(".")?;
     let head = repo.head()?;
     let commit = head.peel_to_commit()?;
+    Ok(commit.id().to_string())
+}
 
-    let time = match std::env::var("env") {
-        Ok(v) => v,
-        Err(_) => commit.time().seconds().to_string(),
-    };
-    Ok((commit.id().to_string(), time))
+pub fn get_source_date_epoch() -> String {
+    match std::env::var("SOURCE_DATE_EPOCH") {
+        Ok(epoch) => epoch,
+        Err(_) => "0".to_string(),
+    }
 }
 
 pub fn build_image(
@@ -122,7 +124,7 @@ pub fn build_image_repro(
     timestamp: String,
 ) -> Result<ExitStatus, CommandError> {
     let command_config = CommandConfig::new(verbose);
-    let build_image_args = if docker_buildkit_enabled().unwrap() {
+    let build_image_args = if docker_buildkit_enabled()? {
         log::info!("Docker version is reproducible build compatible");
         [
             vec![

@@ -1,8 +1,8 @@
 use crate::api::assets::AssetsClient;
 use crate::build::build_enclave_image_file;
 use crate::common::{prepare_build_args, CliError};
-use crate::config::{read_and_validate_config, BuildTimeConfig, ReproducibleInfo};
-use crate::docker::command::get_git_hash_time;
+use crate::config::{read_and_validate_config, BuildTimeConfig, RuntimeVersions};
+use crate::docker::command::get_source_date_epoch;
 use clap::Parser;
 
 /// Build a Cage from a Dockerfile
@@ -102,14 +102,9 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         }
     };
 
-    let (git_hash, timestamp) = get_git_hash_time();
+    let timestamp = get_source_date_epoch();
 
-    let repro_info = ReproducibleInfo::new(
-        git_hash,
-        timestamp.clone(),
-        data_plane_version.clone(),
-        installer_version.clone(),
-    );
+    let runtime_info = RuntimeVersions::new(data_plane_version.clone(), installer_version.clone());
 
     let built_enclave = match build_enclave_image_file(
         &validated_config,
@@ -135,7 +130,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         &mut cage_config,
         &build_args.config,
         built_enclave.measurements(),
-        Some(repro_info),
+        Some(runtime_info),
     );
 
     if cage_config.debug {

@@ -1,4 +1,4 @@
-use crate::config::EgressSettings;
+use crate::config::ValidatedCageBuildConfig;
 
 use super::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
 use super::AuthMode;
@@ -233,27 +233,33 @@ pub struct CreateCageDeploymentIntentRequest {
     not_before: String,
     not_after: String,
     data_plane_version: String,
+    installer_version: String,
+    timestamp: String,
+    git_hash: String,
 }
 
 impl CreateCageDeploymentIntentRequest {
     pub fn new(
         pcrs: &crate::enclave::PCRs,
-        debug_mode: bool,
-        egress_settings: EgressSettings,
+        config: ValidatedCageBuildConfig,
         eif_size_bytes: u64,
-        not_before: String,
-        not_after: String,
         data_plane_version: String,
+        installer_version: String,
+        timestamp: String,
+        git_hash: String,
     ) -> Self {
         Self {
             pcrs: pcrs.clone(),
-            debug_mode,
-            egress_enabled: egress_settings.enabled,
+            debug_mode: config.debug,
+            egress_enabled: config.egress.enabled,
+            egress_domains: config.egress.destinations.clone(),
             eif_size_bytes,
-            not_before,
-            not_after,
-            egress_domains: egress_settings.destinations,
+            not_before: config.signing.not_before(),
+            not_after: config.signing.not_after(),
             data_plane_version,
+            installer_version,
+            timestamp,
+            git_hash,
         }
     }
 }

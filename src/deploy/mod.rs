@@ -7,6 +7,8 @@ use crate::enclave::{EIFMeasurements, ENCLAVE_FILENAME};
 use crate::progress::{get_tracker, poll_fn_and_report_status, ProgressLogger, StatusReport};
 use std::io::Write;
 mod error;
+use crate::docker::command::get_git_hash;
+use crate::docker::command::get_source_date_epoch;
 use async_stream::__private::AsyncStream;
 use error::DeployError;
 use reqwest::Body;
@@ -25,6 +27,7 @@ pub async fn deploy_eif(
     output_path: OutputPath,
     eif_measurements: &EIFMeasurements,
     data_plane_version: String,
+    installer_version: String,
 ) -> Result<(), DeployError> {
     let progress_bar = get_tracker("Zipping Cage...", None);
     create_zip_archive_for_eif(output_path.path())?;
@@ -39,13 +42,14 @@ pub async fn deploy_eif(
 
     let cage_deployment_intent_payload = CreateCageDeploymentIntentRequest::new(
         eif_measurements.pcrs(),
-        validated_config.debug,
-        validated_config.egress().clone(),
+        validated_config.clone(),
         eif_size_bytes,
-        validated_config.signing.not_before(),
-        validated_config.signing.not_after(),
         data_plane_version,
+        installer_version,
+        get_git_hash(),
+        get_source_date_epoch(),
     );
+
     let deployment_intent = cage_api
         .create_cage_deployment_intent(validated_config.cage_uuid(), cage_deployment_intent_payload)
         .await?;
