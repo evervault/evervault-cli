@@ -41,10 +41,6 @@ pub struct BuildArgs {
     #[clap(short = 'o', long = "output", default_value = ".")]
     pub output_dir: String,
 
-    /// Write latest attestation and reproducibility information to cage.toml config file
-    #[clap(short = 'w', long = "write")]
-    pub write: bool,
-
     /// Build time arguments to provide to docker
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
@@ -135,14 +131,12 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         }
     };
 
-    if build_args.write {
-        crate::common::update_cage_config_with_eif_measurements(
-            &mut cage_config,
-            &build_args.config,
-            built_enclave.measurements(),
-            Some(repro_info),
-        );
-    }
+    crate::common::update_cage_config_with_eif_measurements(
+        &mut cage_config,
+        &build_args.config,
+        built_enclave.measurements(),
+        Some(repro_info),
+    );
 
     if cage_config.debug {
         crate::common::log_debug_mode_attestation_warning();
