@@ -45,9 +45,9 @@ pub struct BuildArgs {
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 
-    /// Path to an enclave dockerfile to rebuild
-    #[clap(long = "rebuild")]
-    pub rebuild: Option<String>,
+    /// Path to an enclave dockerfile to build from existing
+    #[clap(long = "from-existing")]
+    pub from_existing: Option<String>,
 }
 
 impl BuildTimeConfig for BuildArgs {
@@ -115,7 +115,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         data_plane_version,
         installer_version,
         timestamp,
-        build_args.rebuild,
+        build_args.from_existing,
     )
     .await
     {

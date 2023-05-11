@@ -26,7 +26,7 @@ pub async fn build_enclave_image_file(
     data_plane_version: String,
     installer_version: String,
     timestamp: String,
-    rebuild: Option<String>,
+    from_existing: Option<String>,
 ) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
     let context_path = Path::new(&context_path);
     if !context_path.exists() {
@@ -43,7 +43,7 @@ pub async fn build_enclave_image_file(
 
     let signing_info = enclave::EnclaveSigningInfo::try_from(cage_config.signing_info())?;
 
-    match rebuild {
+    match from_existing {
         Some(path) => {
             let user_dockerfile_path = output_path.path().join(path);
             enclave::build_user_image(

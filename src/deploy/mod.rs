@@ -46,8 +46,8 @@ pub async fn deploy_eif(
         eif_size_bytes,
         data_plane_version,
         installer_version,
-        get_git_hash(),
         get_source_date_epoch(),
+        get_git_hash(),
     );
 
     let deployment_intent = cage_api

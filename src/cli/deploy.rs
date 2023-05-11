@@ -49,8 +49,8 @@ pub struct DeployArgs {
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 
-    #[clap(long = "rebuild")]
-    pub rebuild: Option<String>,
+    #[clap(long = "from-existing")]
+    pub from_existing: Option<String>,
 }
 
 impl BuildTimeConfig for DeployArgs {
@@ -110,7 +110,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         deploy_args.eif_path.as_deref(),
         !deploy_args.quiet,
         build_args,
-        deploy_args.rebuild,
+        deploy_args.from_existing,
         timestamp,
         data_plane_version.clone(),
         installer_version.clone(),
@@ -171,7 +171,7 @@ async fn resolve_eif(
     eif_path: Option<&str>,
     verbose: bool,
     build_args: Option<Vec<&str>>,
-    rebuild: Option<String>,
+    from_existing: Option<String>,
     timestamp: String,
     data_plane_version: String,
     installer_version: String,
@@ -191,7 +191,7 @@ async fn resolve_eif(
             data_plane_version,
             installer_version,
             timestamp,
-            rebuild,
+            from_existing,
         )
         .await
         .map_err(|build_err| {

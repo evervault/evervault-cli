@@ -222,6 +222,15 @@ impl CagesClient {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct VersionMetadata {
+    installer_version: String,
+    git_hash: String,
+    data_plane_version: String,
+    git_timestamp: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateCageDeploymentIntentRequest {
     #[serde(flatten)]
     pcrs: crate::enclave::PCRs,
@@ -232,10 +241,7 @@ pub struct CreateCageDeploymentIntentRequest {
     eif_size_bytes: u64,
     not_before: String,
     not_after: String,
-    data_plane_version: String,
-    installer_version: String,
-    timestamp: String,
-    git_hash: String,
+    metadata: VersionMetadata,
 }
 
 impl CreateCageDeploymentIntentRequest {
@@ -245,7 +251,7 @@ impl CreateCageDeploymentIntentRequest {
         eif_size_bytes: u64,
         data_plane_version: String,
         installer_version: String,
-        timestamp: String,
+        git_timestamp: String,
         git_hash: String,
     ) -> Self {
         Self {
@@ -256,10 +262,12 @@ impl CreateCageDeploymentIntentRequest {
             eif_size_bytes,
             not_before: config.signing.not_before(),
             not_after: config.signing.not_after(),
-            data_plane_version,
-            installer_version,
-            timestamp,
-            git_hash,
+            metadata: VersionMetadata {
+                git_hash,
+                installer_version,
+                data_plane_version,
+                git_timestamp,
+            },
         }
     }
 }
