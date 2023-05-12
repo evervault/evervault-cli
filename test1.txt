@@ -1,0 +1,24 @@
+FROM node:16-alpine3.16
+COPY ./index.js /index.js
+COPY ./package.json /package.json
+COPY ./package-lock.json /package-lock.json
+ENV EGRESS_PORTS=587,443,465
+RUN npm i
+RUN mkdir -p /opt/evervault
+RUN mkdir -p /etc/service/user-entrypoint
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec node /index.js\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://cage-build-assets.evervault.com/runtime/0.0.29/data-plane/egress-enabled/tls-termination-enabled /opt/evervault/data-plane
+RUN chmod +x /opt/evervault/data-plane
+RUN mkdir -p /etc/service/data-plane
+RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 8008\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
+ENV EV_CAGE_NAME=april-17
+ENV CAGE_UUID=cage_ab016fb67dd0
+ENV EV_APP_UUID=app_275b780cb78d
+ENV EV_TEAM_UUID=team_74fd9616c1f3
+ENV DATA_PLANE_HEALTH_CHECKS=true
+ENV EV_API_KEY_AUTH=true
+ENV EV_TRX_LOGGING_ENABLED=true
+ENV EGRESS_PORTS=443
+ENV EV_EGRESS_ALLOW_LIST=*
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+ENTRYPOINT ["/bootstrap", "1>&2"]
