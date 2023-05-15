@@ -101,6 +101,7 @@ impl std::convert::From<InitArgs> for CageConfig {
             disable_tls_termination: val.disable_tls_termination,
             api_key_auth: !val.disable_api_key_auth,
             trx_logging: !val.trx_logging_disabled,
+            runtime: None,
         }
     }
 }

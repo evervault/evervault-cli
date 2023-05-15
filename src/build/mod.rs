@@ -25,7 +25,8 @@ pub async fn build_enclave_image_file(
     docker_build_args: Option<Vec<&str>>,
     data_plane_version: String,
     installer_version: String,
-    rebuild: Option<String>,
+    timestamp: String,
+    from_existing: Option<String>,
 ) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
     let context_path = Path::new(&context_path);
     if !context_path.exists() {
@@ -42,7 +43,7 @@ pub async fn build_enclave_image_file(
 
     let signing_info = enclave::EnclaveSigningInfo::try_from(cage_config.signing_info())?;
 
-    match rebuild {
+    match from_existing {
         Some(path) => {
             let user_dockerfile_path = output_path.path().join(path);
             enclave::build_user_image(
@@ -50,6 +51,7 @@ pub async fn build_enclave_image_file(
                 context_path,
                 verbose,
                 docker_build_args,
+                timestamp,
             )?;
         }
         None => {
@@ -61,6 +63,7 @@ pub async fn build_enclave_image_file(
                 data_plane_version,
                 installer_version,
                 output_path.path(),
+                timestamp,
             )
             .await?;
         }
@@ -86,6 +89,7 @@ pub async fn build_from_scratch(
     data_plane_version: String,
     installer_version: String,
     output_path: &PathBuf,
+    timestamp: String,
 ) -> Result<(), BuildError> {
     if !verify_docker_is_running()? {
         return Err(DockerError::DaemonNotRunning.into());
@@ -133,6 +137,7 @@ pub async fn build_from_scratch(
         context_path,
         verbose,
         docker_build_args,
+        timestamp,
     )?;
     log::debug!("User image built...");
     Ok(())
@@ -329,6 +334,7 @@ mod test {
             disable_tls_termination: false,
             api_key_auth: true,
             trx_logging_enabled: true,
+            runtime: None,
         }
     }
 

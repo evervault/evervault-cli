@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use thiserror::Error;
 
-use crate::config::CageConfig;
+use crate::config::{CageConfig, RuntimeVersions};
 
 pub struct OutputPath {
     _tmp_dir: Option<tempfile::TempDir>,
@@ -75,14 +75,18 @@ pub fn update_cage_config_with_eif_measurements(
     cage_config: &mut CageConfig,
     config_path: &str,
     eif_measurements: &crate::enclave::EIFMeasurements,
+    runtime_info: Option<RuntimeVersions>,
 ) {
     cage_config.set_attestation(eif_measurements);
+    runtime_info.map(|info| cage_config.set_runtime_info(info));
 
     if let Ok(serialized_config) = toml::ser::to_vec(&cage_config) {
         match std::fs::write(config_path, serialized_config) {
-            Ok(_) => log::debug!("Cage config updated with enclave attestation measures"),
+            Ok(_) => log::debug!(
+                "Cage config updated with enclave attestation measures and reproducible info"
+            ),
             Err(e) => log::error!(
-                "Failed to write attestation measures to cage config — {:?}",
+                "Failed to write attestation measures and reproducible info to cage config — {:?}",
                 e
             ),
         };

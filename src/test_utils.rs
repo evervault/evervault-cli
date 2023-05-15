@@ -7,7 +7,7 @@ use crate::enclave::BuiltEnclave;
 
 pub async fn build_test_cage(
     output_dir: Option<&str>,
-    rebuild_image: Option<String>,
+    from_existing: Option<String>,
 ) -> Result<(BuiltEnclave, OutputPath), BuildError> {
     let dn_string = crate::cert::DistinguishedName::default();
     crate::cert::create_new_cert(std::path::Path::new("."), dn_string)
@@ -17,6 +17,7 @@ pub async fn build_test_cage(
 
     let data_plane_version = assets_client.get_latest_data_plane_version().await.unwrap();
     let installer_version = assets_client.get_latest_installer_version().await.unwrap();
+    let timestamp = "0".to_string();
 
     build_enclave_image_file(
         &build_args,
@@ -26,7 +27,8 @@ pub async fn build_test_cage(
         None,
         data_plane_version,
         installer_version,
-        rebuild_image,
+        timestamp,
+        from_existing,
     )
     .await
 }

@@ -95,6 +95,21 @@ impl CliError for SigningInfoError {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RuntimeVersions {
+    pub data_plane_version: String,
+    pub installer_version: String,
+}
+
+impl RuntimeVersions {
+    pub fn new(data_plane_version: String, installer_version: String) -> RuntimeVersions {
+        RuntimeVersions {
+            data_plane_version,
+            installer_version,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ValidatedSigningInfo {
     pub cert: String,
@@ -222,6 +237,7 @@ pub struct CageConfig {
     pub egress: EgressSettings,
     pub signing: Option<SigningInfo>,
     pub attestation: Option<EIFMeasurements>,
+    pub runtime: Option<RuntimeVersions>,
 }
 
 impl CageConfig {
@@ -253,6 +269,7 @@ pub struct ValidatedCageBuildConfig {
     pub disable_tls_termination: bool,
     pub api_key_auth: bool,
     pub trx_logging_enabled: bool,
+    pub runtime: Option<RuntimeVersions>,
 }
 
 impl ValidatedCageBuildConfig {
@@ -352,6 +369,10 @@ impl CageConfig {
         self.attestation = Some(measurements.clone());
     }
 
+    pub fn set_runtime_info(&mut self, runtime: RuntimeVersions) {
+        self.runtime = Some(runtime.clone());
+    }
+
     pub fn try_from_filepath(path: &str) -> Result<Self, CageConfigError> {
         let config_path = std::path::Path::new(path);
         if !config_path.exists() {
@@ -423,6 +444,7 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             disable_tls_termination: config.disable_tls_termination,
             api_key_auth: config.api_key_auth,
             trx_logging_enabled,
+            runtime: config.runtime.clone(),
         })
     }
 }
@@ -517,6 +539,7 @@ mod test {
             attestation: None,
             api_key_auth: true,
             trx_logging: true,
+            runtime: None,
         };
 
         let test_args = ExampleArgs {

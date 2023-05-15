@@ -1,6 +1,7 @@
 use crate::api::{self, assets::AssetsClient, AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::common::prepare_build_args;
+use crate::docker::command::get_source_date_epoch;
 use crate::get_api_key;
 use crate::{
     common::{CliError, OutputPath},
@@ -10,6 +11,7 @@ use crate::{
 };
 use atty::Stream;
 use clap::Parser;
+use exitcode::ExitCode;
 
 /// Deploy a Cage from a toml file.
 #[derive(Debug, Parser)]
@@ -47,8 +49,8 @@ pub struct DeployArgs {
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 
-    #[clap(long = "rebuild")]
-    pub rebuild: Option<String>,
+    #[clap(long = "from-existing")]
+    pub from_existing: Option<String>,
 }
 
 impl BuildTimeConfig for DeployArgs {
@@ -86,10 +88,21 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         }
     };
 
+    let timestamp = get_source_date_epoch();
+
     let formatted_args = prepare_build_args(&deploy_args.docker_build_args);
     let build_args = formatted_args
         .as_ref()
         .map(|args| args.iter().map(AsRef::as_ref).collect());
+
+    let (data_plane_version, installer_version) =
+        match get_data_plane_and_installer_version(&validated_config).await {
+            Ok(versions) => versions,
+            Err(e) => {
+                log::error!("Failed to get data plane and installer versions – {}", e);
+                return e;
+            }
+        };
 
     let (eif_measurements, output_path) = match resolve_eif(
         &validated_config,
@@ -97,7 +110,10 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         deploy_args.eif_path.as_deref(),
         !deploy_args.quiet,
         build_args,
-        deploy_args.rebuild,
+        deploy_args.from_existing,
+        timestamp,
+        data_plane_version.clone(),
+        installer_version.clone(),
     )
     .await
     {
@@ -119,9 +135,19 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         &mut cage_config,
         &deploy_args.config,
         &eif_measurements,
+        None,
     );
 
-    if let Err(e) = deploy_eif(&validated_config, cage_api, output_path, &eif_measurements).await {
+    if let Err(e) = deploy_eif(
+        &validated_config,
+        cage_api,
+        output_path,
+        &eif_measurements,
+        data_plane_version,
+        installer_version,
+    )
+    .await
+    {
         log::error!("{}", e);
         return e.exitcode();
     };
@@ -145,7 +171,10 @@ async fn resolve_eif(
     eif_path: Option<&str>,
     verbose: bool,
     build_args: Option<Vec<&str>>,
-    rebuild: Option<String>,
+    from_existing: Option<String>,
+    timestamp: String,
+    data_plane_version: String,
+    installer_version: String,
 ) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
     if let Some(path) = eif_path {
         get_eif(path, verbose).map_err(|e| {
@@ -153,29 +182,6 @@ async fn resolve_eif(
             e.exitcode()
         })
     } else {
-        let cage_build_assets_client = AssetsClient::new();
-        let data_plane_version = match cage_build_assets_client
-            .get_latest_data_plane_version()
-            .await
-        {
-            Ok(version) => version,
-            Err(e) => {
-                log::error!("Failed to retrieve the latest data plane version - {e:?}");
-                return Err(e.exitcode());
-            }
-        };
-
-        let installer_version = match cage_build_assets_client
-            .get_latest_installer_version()
-            .await
-        {
-            Ok(version) => version,
-            Err(e) => {
-                log::error!("Failed to retrieve the latest data plane version - {e:?}");
-                return Err(e.exitcode());
-            }
-        };
-
         let (built_enclave, output_path) = build_enclave_image_file(
             validated_config,
             context_path,
@@ -184,7 +190,8 @@ async fn resolve_eif(
             build_args,
             data_plane_version,
             installer_version,
-            rebuild,
+            timestamp,
+            from_existing,
         )
         .await
         .map_err(|build_err| {
@@ -192,5 +199,37 @@ async fn resolve_eif(
             build_err.exitcode()
         })?;
         Ok((built_enclave.measurements().to_owned(), output_path))
+    }
+}
+
+async fn get_data_plane_and_installer_version(
+    validated_config: &ValidatedCageBuildConfig,
+) -> Result<(String, String), ExitCode> {
+    let cage_build_assets_client = AssetsClient::new();
+    match validated_config.runtime.clone() {
+        Some(config) => Ok((config.data_plane_version.clone(), config.installer_version)),
+        None => {
+            let data_plane_version = match cage_build_assets_client
+                .get_latest_data_plane_version()
+                .await
+            {
+                Ok(version) => version,
+                Err(e) => {
+                    log::error!("Failed to retrieve the latest data plane version - {e:?}");
+                    return Err(e.exitcode());
+                }
+            };
+            let installer_version = match cage_build_assets_client
+                .get_latest_installer_version()
+                .await
+            {
+                Ok(version) => version,
+                Err(e) => {
+                    log::error!("Failed to retrieve the latest installer version - {e:?}");
+                    return Err(e.exitcode());
+                }
+            };
+            Ok((data_plane_version, installer_version))
+        }
     }
 }

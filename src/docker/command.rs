@@ -50,20 +50,6 @@ pub fn load_image_into_local_docker_registry(
     Ok(docker_load_result)
 }
 
-fn get_git_timestamp() -> Result<String, CommandError> {
-    let time = match std::env::var("env") {
-        Ok(v) => v,
-        Err(_) => {
-            let repo = Repository::open(".")?;
-            let head = repo.head()?;
-            let commit = head.peel_to_commit()?;
-            let time = commit.time();
-            time.seconds().to_string()
-        }
-    };
-    Ok(time)
-}
-
 fn docker_buildkit_enabled() -> Result<bool, CommandError> {
     let args: Vec<&OsStr> = vec!["buildx".as_ref(), "version".as_ref()];
     let output = Command::new("docker").args(args).output()?;
@@ -78,6 +64,27 @@ fn docker_buildkit_enabled() -> Result<bool, CommandError> {
     let min_version = Version::from("0.10.0").ok_or(CommandError::SemverParseError)?;
     let user_version = Version::from(&semver_match).ok_or(CommandError::SemverParseError)?;
     Ok(user_version >= min_version)
+}
+
+pub fn get_git_hash() -> String {
+    match try_get_git_hash() {
+        Ok(info) => info,
+        Err(_) => "no git info available".to_string(),
+    }
+}
+
+pub fn try_get_git_hash() -> Result<String, CommandError> {
+    let repo: Repository = Repository::open(".")?;
+    let head = repo.head()?;
+    let commit = head.peel_to_commit()?;
+    Ok(commit.id().to_string())
+}
+
+pub fn get_source_date_epoch() -> String {
+    match std::env::var("SOURCE_DATE_EPOCH") {
+        Ok(epoch) => epoch,
+        Err(_) => "0".to_string(),
+    }
 }
 
 pub fn build_image(
@@ -114,9 +121,10 @@ pub fn build_image_repro(
     tag_name: &str,
     command_line_args: Vec<&OsStr>,
     verbose: bool,
+    timestamp: String,
 ) -> Result<ExitStatus, CommandError> {
     let command_config = CommandConfig::new(verbose);
-    let build_image_args = if docker_buildkit_enabled().unwrap() {
+    let build_image_args = if docker_buildkit_enabled()? {
         log::info!("Docker version is reproducible build compatible");
         [
             vec![
@@ -149,19 +157,8 @@ pub fn build_image_repro(
         .concat()
     };
 
-    let time = match get_git_timestamp() {
-        Ok(time) => {
-            log::info!("Building with timestamp {time}");
-            time
-        }
-        Err(_) => {
-            log::info!("Couldn't find a git timestamp - defaulting timestamp to unix epoch 0");
-            "0".to_string()
-        }
-    };
-
     let command_status = Command::new("docker")
-        .env("SOURCE_DATE_EPOCH", time)
+        .env("SOURCE_DATE_EPOCH", timestamp)
         .args(build_image_args)
         .stdout(command_config.output_setting())
         .stderr(command_config.output_setting())

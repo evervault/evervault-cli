@@ -1,7 +1,8 @@
 use crate::api::assets::AssetsClient;
 use crate::build::build_enclave_image_file;
 use crate::common::{prepare_build_args, CliError};
-use crate::config::{read_and_validate_config, BuildTimeConfig};
+use crate::config::{read_and_validate_config, BuildTimeConfig, RuntimeVersions};
+use crate::docker::command::get_source_date_epoch;
 use clap::Parser;
 
 /// Build a Cage from a Dockerfile
@@ -40,17 +41,13 @@ pub struct BuildArgs {
     #[clap(short = 'o', long = "output", default_value = ".")]
     pub output_dir: String,
 
-    /// Write latest attestation information to cage.toml config file
-    #[clap(short = 'w', long = "write")]
-    pub write: bool,
-
     /// Build time arguments to provide to docker
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 
-    /// Path to an enclave dockerfile to rebuild
-    #[clap(long = "rebuild")]
-    pub rebuild: Option<String>,
+    /// Path to an enclave dockerfile to build from existing
+    #[clap(long = "from-existing")]
+    pub from_existing: Option<String>,
 }
 
 impl BuildTimeConfig for BuildArgs {
@@ -105,6 +102,10 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         }
     };
 
+    let timestamp = get_source_date_epoch();
+
+    let runtime_info = RuntimeVersions::new(data_plane_version.clone(), installer_version.clone());
+
     let built_enclave = match build_enclave_image_file(
         &validated_config,
         &build_args.context_path,
@@ -113,7 +114,8 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         borrowed_args,
         data_plane_version,
         installer_version,
-        build_args.rebuild,
+        timestamp,
+        build_args.from_existing,
     )
     .await
     {
@@ -124,13 +126,12 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         }
     };
 
-    if build_args.write {
-        crate::common::update_cage_config_with_eif_measurements(
-            &mut cage_config,
-            &build_args.config,
-            built_enclave.measurements(),
-        );
-    }
+    crate::common::update_cage_config_with_eif_measurements(
+        &mut cage_config,
+        &build_args.config,
+        built_enclave.measurements(),
+        Some(runtime_info),
+    );
 
     if cage_config.debug {
         crate::common::log_debug_mode_attestation_warning();

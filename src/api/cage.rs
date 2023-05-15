@@ -1,4 +1,4 @@
-use crate::config::EgressSettings;
+use crate::config::ValidatedCageBuildConfig;
 
 use super::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
 use super::AuthMode;
@@ -222,6 +222,15 @@ impl CagesClient {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct VersionMetadata {
+    installer_version: String,
+    git_hash: String,
+    data_plane_version: String,
+    git_timestamp: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateCageDeploymentIntentRequest {
     #[serde(flatten)]
     pcrs: crate::enclave::PCRs,
@@ -232,25 +241,33 @@ pub struct CreateCageDeploymentIntentRequest {
     eif_size_bytes: u64,
     not_before: String,
     not_after: String,
+    metadata: VersionMetadata,
 }
 
 impl CreateCageDeploymentIntentRequest {
     pub fn new(
         pcrs: &crate::enclave::PCRs,
-        debug_mode: bool,
-        egress_settings: EgressSettings,
+        config: ValidatedCageBuildConfig,
         eif_size_bytes: u64,
-        not_before: String,
-        not_after: String,
+        data_plane_version: String,
+        installer_version: String,
+        git_timestamp: String,
+        git_hash: String,
     ) -> Self {
         Self {
             pcrs: pcrs.clone(),
-            debug_mode,
-            egress_enabled: egress_settings.enabled,
+            debug_mode: config.debug,
+            egress_enabled: config.egress.enabled,
+            egress_domains: config.egress.destinations.clone(),
             eif_size_bytes,
-            not_before,
-            not_after,
-            egress_domains: egress_settings.destinations,
+            not_before: config.signing.not_before(),
+            not_after: config.signing.not_after(),
+            metadata: VersionMetadata {
+                git_hash,
+                installer_version,
+                data_plane_version,
+                git_timestamp,
+            },
         }
     }
 }
