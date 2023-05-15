@@ -301,7 +301,7 @@ mod tests {
         assert_eq!(&eif_pcrs.pcr0, &expected_pcrs.pcr0);
         assert_eq!(&eif_pcrs.pcr1, &expected_pcrs.pcr1);
         assert_eq!(&eif_pcrs.pcr2, &expected_pcrs.pcr2);
-        
+
         // ensure temp output directory still exists after running function
         assert!(output_path.path().exists());
     }

@@ -227,8 +227,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
 
     let egress = build_config.clone().egress;
-
-    let egress_obj = if egress.is_enabled() {
+    let egress_settings = if egress.is_enabled() {
         json!({
             "ports": &egress.clone().get_ports(),
             "allowList": &egress.get_destinations()
@@ -240,7 +239,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let dataplane_info = json!({
         "apiKeyAuth":  &build_config.api_key_auth().to_string(),
         "trxLoggingEnabled": &build_config.trx_logging_enabled().to_string(),
-        "egress": egress_obj
+        "egress": egress_settings
     })
     .to_string();
 
