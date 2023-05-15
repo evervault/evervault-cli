@@ -230,22 +230,24 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let egress_settings = if egress.is_enabled() {
         json!({
             "ports": &egress.clone().get_ports(),
-            "allowList": &egress.get_destinations()
+            "allow_list": &egress.clone().get_destinations()
         })
     } else {
         json!({})
     };
 
-    let dataplane_info = json!({
-        "apiKeyAuth":  &build_config.api_key_auth().to_string(),
-        "trxLoggingEnabled": &build_config.trx_logging_enabled().to_string(),
-        "egress": egress_settings
-    })
-    .to_string();
+    let mut dataplane_info = json!({
+        "api_key_auth":  &build_config.api_key_auth(),
+        "trx_logging_enabled": &build_config.trx_logging_enabled()
+    });
+
+    if egress.enabled {
+        dataplane_info["egress"] = egress_settings;
+    }
 
     let dataplane_env = format!(
-        "echo {} > /etc/dataplane-vars",
-        dataplane_info.replace("\"", "\\\"")
+        "echo {} > /etc/dataplane-config.json",
+        dataplane_info.to_string().replace("\"", "\\\"")
     );
 
     let injected_directives = vec![
@@ -371,7 +373,7 @@ RUN touch /hello-script;\
 RUN mkdir -p /opt/evervault
 ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
 RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
-RUN echo {\"apiKeyAuth\":\"true\",\"egress\":{},\"trxLoggingEnabled\":\"true\"} > /etc/dataplane-vars
+RUN echo {\"apiKeyAuth\":\"true\",\"egress\":{},\"trxLoggingEnabled\":\"true\"} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
 RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
 ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
@@ -462,7 +464,7 @@ RUN touch /hello-script;\
 RUN mkdir -p /opt/evervault
 ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
 RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
-RUN echo {\"apiKeyAuth\":\"true\",\"egress\":{},\"trxLoggingEnabled\":\"true\"} > /etc/dataplane-vars
+RUN echo {\"apiKeyAuth\":\"true\",\"egress\":{},\"trxLoggingEnabled\":\"true\"} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
 RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
 ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
