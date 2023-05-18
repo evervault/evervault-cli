@@ -281,7 +281,6 @@ mod tests {
         assert!(std::path::PathBuf::from(output_path_as_string).exists());
     }
 
-    
     #[tokio::test]
     #[cfg(feature = "repro_builds")]
     async fn test_reproducible_cage_builds_with_pinned_version() {

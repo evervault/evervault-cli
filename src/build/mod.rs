@@ -224,24 +224,6 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let installer_bundle = "runtime-dependencies.tar.gz";
     let installer_destination = format!("{INSTALLER_DIRECTORY}/{installer_bundle}");
 
-<<<<<<< HEAD
-    let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
-=======
-    let mut env_directives = vec![
-        // set cage name and app uuid as in enclave env vars
-        Directive::new_env("EV_CAGE_NAME", build_config.cage_name()),
-        Directive::new_env("CAGE_UUID", build_config.cage_uuid()),
-        Directive::new_env("EV_APP_UUID", build_config.app_uuid()),
-        Directive::new_env("EV_TEAM_UUID", build_config.team_uuid()),
-        Directive::new_env("DATA_PLANE_HEALTH_CHECKS", "true"),
-        Directive::new_env("EV_API_KEY_AUTH", &build_config.api_key_auth().to_string()),
-        Directive::new_env(
-            "EV_TRX_LOGGING_ENABLED",
-            &build_config.trx_logging_enabled().to_string(),
-        ),
-    ];
->>>>>>> e00a20a (Feature flag repro builds)
-
     let egress = build_config.clone().egress;
     let egress_settings = if egress.is_enabled() {
         json!({
@@ -293,7 +275,6 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     Ok([
         cleaned_instructions,
         injected_directives,
-        env_directives,
         vec![Directive::new_run(
             crate::docker::utils::write_command_to_script(
                 bootstrap_script_content,

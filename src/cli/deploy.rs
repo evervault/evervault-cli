@@ -106,10 +106,10 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
             }
         };
 
-    #[cfg(not(feature = "repro_builds"))]   
-    let from_existing = None;   
-    #[cfg(feature = "repro_builds")]   
-    let from_existing = deploy_args.from_existing;    
+    #[cfg(not(feature = "repro_builds"))]
+    let from_existing = None;
+    #[cfg(feature = "repro_builds")]
+    let from_existing = deploy_args.from_existing;
     let (eif_measurements, output_path) = match resolve_eif(
         &validated_config,
         &deploy_args.context_path,

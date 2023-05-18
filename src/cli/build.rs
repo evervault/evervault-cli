@@ -107,10 +107,10 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
 
     let runtime_info = RuntimeVersions::new(data_plane_version.clone(), installer_version.clone());
 
-    #[cfg(not(feature = "repro_builds"))]   
-    let from_existing = None;   
-    #[cfg(feature = "repro_builds")]   
-    let from_existing = build_args.from_existing; 
+    #[cfg(not(feature = "repro_builds"))]
+    let from_existing = None;
+    #[cfg(feature = "repro_builds")]
+    let from_existing = build_args.from_existing;
     let built_enclave = match build_enclave_image_file(
         &validated_config,
         &build_args.context_path,
