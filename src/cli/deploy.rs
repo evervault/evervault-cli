@@ -49,6 +49,8 @@ pub struct DeployArgs {
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 
+    #[cfg(feature = "repro_builds")]
+    /// Path to an enclave dockerfile to build from existing
     #[clap(long = "from-existing")]
     pub from_existing: Option<String>,
 }
@@ -104,13 +106,17 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
             }
         };
 
+    #[cfg(not(feature = "repro_builds"))]   
+    let from_existing = None;   
+    #[cfg(feature = "repro_builds")]   
+    let from_existing = deploy_args.from_existing;    
     let (eif_measurements, output_path) = match resolve_eif(
         &validated_config,
         &deploy_args.context_path,
         deploy_args.eif_path.as_deref(),
         !deploy_args.quiet,
         build_args,
-        deploy_args.from_existing,
+        from_existing,
         timestamp,
         data_plane_version.clone(),
         installer_version.clone(),

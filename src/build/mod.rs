@@ -224,7 +224,23 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let installer_bundle = "runtime-dependencies.tar.gz";
     let installer_destination = format!("{INSTALLER_DIRECTORY}/{installer_bundle}");
 
+<<<<<<< HEAD
     let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
+=======
+    let mut env_directives = vec![
+        // set cage name and app uuid as in enclave env vars
+        Directive::new_env("EV_CAGE_NAME", build_config.cage_name()),
+        Directive::new_env("CAGE_UUID", build_config.cage_uuid()),
+        Directive::new_env("EV_APP_UUID", build_config.app_uuid()),
+        Directive::new_env("EV_TEAM_UUID", build_config.team_uuid()),
+        Directive::new_env("DATA_PLANE_HEALTH_CHECKS", "true"),
+        Directive::new_env("EV_API_KEY_AUTH", &build_config.api_key_auth().to_string()),
+        Directive::new_env(
+            "EV_TRX_LOGGING_ENABLED",
+            &build_config.trx_logging_enabled().to_string(),
+        ),
+    ];
+>>>>>>> e00a20a (Feature flag repro builds)
 
     let egress = build_config.clone().egress;
     let egress_settings = if egress.is_enabled() {
@@ -273,31 +289,40 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         ))
     ];
 
-    let start_up_directives = vec![
-        // Add bootstrap script to configure enclave before starting services
-        Directive::new_run(crate::docker::utils::write_command_to_script(
-            bootstrap_script_content,
-            "/bootstrap",
-            &[],
-        )),
-        Directive::new_run(repro_time),
-        // Squash layers for reproducible builds
-        Directive::new_from("scratch".to_string()),
-        Directive::new_copy("--from=0 / /".to_string()),
-        // add entrypoint which starts the runit services
-        Directive::new_entrypoint(
-            Mode::Exec,
-            vec!["/bootstrap".to_string(), "1>&2".to_string()],
-        ),
-    ];
-
     // add custom directives to end of dockerfile
     Ok([
         cleaned_instructions,
         injected_directives,
-        start_up_directives,
+        env_directives,
+        vec![Directive::new_run(
+            crate::docker::utils::write_command_to_script(
+                bootstrap_script_content,
+                "/bootstrap",
+                &[],
+            ),
+        )],
+        reproducible_build_directives(),
+        vec![Directive::new_entrypoint(
+            Mode::Exec,
+            vec!["/bootstrap".to_string(), "1>&2".to_string()],
+        )],
     ]
     .concat())
+}
+
+#[cfg(feature = "repro_builds")]
+fn reproducible_build_directives() -> Vec<Directive> {
+    let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
+    vec![
+        Directive::new_run(repro_time),
+        // add entrypoint which starts the runit services
+        Directive::new_from("scratch".to_string()),
+        Directive::new_copy("--from=0 / /".to_string()),
+    ]
+}
+#[cfg(not(feature = "repro_builds"))]
+fn reproducible_build_directives() -> Vec<Directive> {
+    vec![]
 }
 
 #[cfg(test)]
