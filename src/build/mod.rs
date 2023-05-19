@@ -224,8 +224,6 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let installer_bundle = "runtime-dependencies.tar.gz";
     let installer_destination = format!("{INSTALLER_DIRECTORY}/{installer_bundle}");
 
-    let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
-
     let egress = build_config.clone().egress;
     let egress_settings = if egress.is_enabled() {
         json!({
@@ -273,31 +271,36 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         ))
     ];
 
-    let start_up_directives = vec![
-        // Add bootstrap script to configure enclave before starting services
-        Directive::new_run(crate::docker::utils::write_command_to_script(
-            bootstrap_script_content,
-            "/bootstrap",
-            &[],
-        )),
-        Directive::new_run(repro_time),
-        // Squash layers for reproducible builds
-        Directive::new_from("scratch".to_string()),
-        Directive::new_copy("--from=0 / /".to_string()),
-        // add entrypoint which starts the runit services
-        Directive::new_entrypoint(
-            Mode::Exec,
-            vec!["/bootstrap".to_string(), "1>&2".to_string()],
-        ),
-    ];
-
     // add custom directives to end of dockerfile
     Ok([
         cleaned_instructions,
         injected_directives,
-        start_up_directives,
+        vec![Directive::new_run(
+            crate::docker::utils::write_command_to_script(
+                bootstrap_script_content,
+                "/bootstrap",
+                &[],
+            ),
+        )],
+        #[cfg(feature = "repro_builds")]
+        reproducible_build_directives(),
+        vec![Directive::new_entrypoint(
+            Mode::Exec,
+            vec!["/bootstrap".to_string(), "1>&2".to_string()],
+        )],
     ]
     .concat())
+}
+
+#[cfg(feature = "repro_builds")]
+fn reproducible_build_directives() -> Vec<Directive> {
+    let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
+    vec![
+        Directive::new_run(repro_time),
+        // add entrypoint which starts the runit services
+        Directive::new_from("scratch".to_string()),
+        Directive::new_copy("--from=0 / /".to_string()),
+    ]
 }
 
 #[cfg(test)]
