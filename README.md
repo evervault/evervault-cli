@@ -2,7 +2,7 @@
 
 # Cages CLI
 
-Command Line Tool to build, deploy and manage Evervault (Cages)[https://github.com/evervault/cages/]
+Command Line Tool to build, deploy and manage Evervault [Cages](https://github.com/evervault/cages/)
 
 ## Notice on Open Source Status of this project
 The Evervault Cages product is open source with the aim of providing transparency to users — this is vital given that our process runs in the enclave, and is accounted for in the attestation.
@@ -13,7 +13,7 @@ The current state of this project does not allow for self-hosting. We plan on ad
 
 Reproducible builds will stay in the experimental phase until the release of Buildkit v0.12 which is expected in the next few weeks.
 
-We have implemented the work arounds for reproducible builds from this (blog post)[https://medium.com/nttlabs/bit-for-bit-reproducible-builds-with-dockerfile-7cc2b9faed9f]. These workout aounds won't be needed in v0.12 so we are going to wait till then to merge the feature into the CLI.
+We have implemented the work arounds for reproducible builds from this [blog post](https://medium.com/nttlabs/bit-for-bit-reproducible-builds-with-dockerfile-7cc2b9faed9f). These workout arounds won't be needed in v0.12 so we are going to wait till then to merge the feature into the CLI.
 
 To try out the feature now:
 ```
