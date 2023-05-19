@@ -155,7 +155,6 @@ pub fn build_image_repro(
                 dockerfile_path.as_os_str(),
                 "-t".as_ref(),
                 tag_name.as_ref(),
-                "--load".as_ref(),
             ],
             command_config.extra_build_args(),
             command_line_args,
