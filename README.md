@@ -13,6 +13,8 @@ The current state of this project does not allow for self-hosting. We plan on ad
 
 Reproducible builds will stay in the experimental phase until the release of Buildkit v0.12 which is expected in the next few weeks.
 
+We have implemented the work arounds for reproducible builds from this (blog post)[https://medium.com/nttlabs/bit-for-bit-reproducible-builds-with-dockerfile-7cc2b9faed9f]. These workout aounds won't be needed in v0.12 so we are going to wait till then to merge the feature into the CLI.
+
 To try out the feature now:
 ```
 cargo build --features repro_builds

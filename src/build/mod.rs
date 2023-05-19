@@ -282,6 +282,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
                 &[],
             ),
         )],
+        #[cfg(feature = "repro_builds")]
         reproducible_build_directives(),
         vec![Directive::new_entrypoint(
             Mode::Exec,
@@ -300,10 +301,6 @@ fn reproducible_build_directives() -> Vec<Directive> {
         Directive::new_from("scratch".to_string()),
         Directive::new_copy("--from=0 / /".to_string()),
     ]
-}
-#[cfg(not(feature = "repro_builds"))]
-fn reproducible_build_directives() -> Vec<Directive> {
-    vec![]
 }
 
 #[cfg(test)]
