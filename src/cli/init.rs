@@ -71,6 +71,10 @@ pub struct InitArgs {
     /// Comma separated list of destinations to allow traffic to from the enclave e.g api.evervault.com, default is allow all
     #[clap(long = "egress-destinations")]
     pub egress_destinations: Option<String>,
+
+    /// Enables forwarding proxy protocol when TLS Termination is disabled
+    #[clap(long = "forward-proxy-protocol")]
+    pub forward_proxy_protocol: bool,
 }
 
 impl std::convert::From<InitArgs> for CageConfig {
@@ -102,6 +106,7 @@ impl std::convert::From<InitArgs> for CageConfig {
             api_key_auth: !val.disable_api_key_auth,
             trx_logging: !val.trx_logging_disabled,
             runtime: None,
+            forward_proxy_protocol: val.forward_proxy_protocol,
         }
     }
 }
