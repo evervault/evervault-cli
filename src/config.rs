@@ -234,12 +234,13 @@ pub struct CageConfig {
     pub trx_logging: bool,
     #[serde(default)]
     pub disable_tls_termination: bool,
+    #[serde(default)]
+    pub forward_proxy_protocol: bool,
+    // Table configs
     pub egress: EgressSettings,
     pub signing: Option<SigningInfo>,
     pub attestation: Option<EIFMeasurements>,
     pub runtime: Option<RuntimeVersions>,
-    #[serde(default)]
-    pub forward_proxy_protocol: bool,
 }
 
 impl CageConfig {
@@ -547,8 +548,8 @@ mod test {
             attestation: None,
             api_key_auth: true,
             trx_logging: true,
-            runtime: None,
             forward_proxy_protocol: false,
+            runtime: None,
         };
 
         let test_args = ExampleArgs {
