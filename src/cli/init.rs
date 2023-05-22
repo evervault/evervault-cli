@@ -206,6 +206,7 @@ mod init_tests {
             trx_logging_disabled: false,
             egress_ports: Some("443".to_string()),
             egress_destinations: Some("evervault.com".to_string()),
+            forward_proxy_protocol: false,
         };
         init_local_config(init_args, sample_cage).await;
         let config_path = output_dir.path().join("cage.toml");

@@ -347,6 +347,7 @@ mod test {
             api_key_auth: true,
             trx_logging_enabled: true,
             runtime: None,
+            forward_proxy_protocol: false
         }
     }
 

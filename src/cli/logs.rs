@@ -81,9 +81,15 @@ pub async fn run(log_args: LogArgs) -> i32 {
     };
 
     let start_time = cage_logs.start_time().parse::<i64>().unwrap();
-    let logs_start = format_timestamp(start_time);
+    let Some(logs_start) = format_timestamp(start_time) else {
+      log::error!("Failed to parse timestamps.");
+      return exitcode::SOFTWARE;
+    };
     let end_time = cage_logs.end_time().parse::<i64>().unwrap();
-    let logs_end = format_timestamp(end_time);
+    let Some(logs_end) = format_timestamp(end_time) else {
+        log::error!("Failed to parse timestamps.");
+        return exitcode::SOFTWARE;
+     };
 
     if cage_logs.log_events().is_empty() {
         log::info!("No logs found between {logs_start} and {logs_end}",);
@@ -107,17 +113,18 @@ pub async fn run(log_args: LogArgs) -> i32 {
     cage_logs
         .log_events()
         .iter()
-        .map(|event| {
+        .filter_map(|event| {
             let mut instance_id = event.instance_id().to_string();
             let instance_len = instance_id.len();
             let _ = instance_id.drain(0..instance_len - 6);
-            let timestamp = format_timestamp(event.timestamp());
-            format!(
-                "[ Instance-{} @ {} ] {}",
-                instance_id,
-                timestamp,
-                event.message()
-            )
+            format_timestamp(event.timestamp()).map(|timestamp| {
+              format!(
+                  "[ Instance-{} @ {} ] {}",
+                  instance_id,
+                  timestamp,
+                  event.message()
+              )
+            })
         })
         .for_each(|log_event| {
             writeln!(output, "{}", log_event).unwrap();
@@ -131,10 +138,12 @@ pub async fn run(log_args: LogArgs) -> i32 {
     }
 }
 
-fn format_timestamp(epoch: i64) -> String {
+fn format_timestamp(epoch: i64) -> Option<String> {
     let epoch_secs = epoch / 1000;
     let epoch_nsecs = epoch % 1000;
     chrono::Utc
-        .timestamp(epoch_secs, epoch_nsecs as u32)
-        .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+        .timestamp_opt(epoch_secs, epoch_nsecs as u32)
+        .single()
+        .map(|timestamp| timestamp.to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
+        
 }
