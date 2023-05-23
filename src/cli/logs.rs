@@ -118,12 +118,12 @@ pub async fn run(log_args: LogArgs) -> i32 {
             let instance_len = instance_id.len();
             let _ = instance_id.drain(0..instance_len - 6);
             format_timestamp(event.timestamp()).map(|timestamp| {
-              format!(
-                  "[ Instance-{} @ {} ] {}",
-                  instance_id,
-                  timestamp,
-                  event.message()
-              )
+                format!(
+                    "[ Instance-{} @ {} ] {}",
+                    instance_id,
+                    timestamp,
+                    event.message()
+                )
             })
         })
         .for_each(|log_event| {
@@ -145,5 +145,4 @@ fn format_timestamp(epoch: i64) -> Option<String> {
         .timestamp_opt(epoch_secs, epoch_nsecs as u32)
         .single()
         .map(|timestamp| timestamp.to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
-        
 }
