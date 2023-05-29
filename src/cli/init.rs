@@ -71,6 +71,10 @@ pub struct InitArgs {
     /// Comma separated list of destinations to allow traffic to from the enclave e.g api.evervault.com, default is allow all
     #[clap(long = "egress-destinations")]
     pub egress_destinations: Option<String>,
+
+    /// Enables forwarding proxy protocol when TLS Termination is disabled
+    #[clap(long = "forward-proxy-protocol")]
+    pub forward_proxy_protocol: bool,
 }
 
 impl std::convert::From<InitArgs> for CageConfig {
@@ -102,6 +106,7 @@ impl std::convert::From<InitArgs> for CageConfig {
             api_key_auth: !val.disable_api_key_auth,
             trx_logging: !val.trx_logging_disabled,
             runtime: None,
+            forward_proxy_protocol: val.forward_proxy_protocol,
         }
     }
 }
@@ -201,12 +206,12 @@ mod init_tests {
             trx_logging_disabled: false,
             egress_ports: Some("443".to_string()),
             egress_destinations: Some("evervault.com".to_string()),
+            forward_proxy_protocol: false,
         };
         init_local_config(init_args, sample_cage).await;
         let config_path = output_dir.path().join("cage.toml");
         assert!(config_path.exists());
         let config_content = String::from_utf8(read(config_path).unwrap()).unwrap();
-        println!("cage_config_content: {}", config_content);
         let expected_config_content = r#"name = "hello"
 uuid = "1234"
 app_uuid = "1234"
@@ -216,6 +221,7 @@ dockerfile = "Dockerfile"
 api_key_auth = true
 trx_logging = true
 disable_tls_termination = false
+forward_proxy_protocol = false
 
 [egress]
 enabled = true

@@ -243,6 +243,10 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         dataplane_info["egress"] = egress_settings;
     }
 
+    if build_config.forward_proxy_protocol {
+        dataplane_info["forward_proxy_protocol"] = json!(&build_config.forward_proxy_protocol());
+    }
+
     let dataplane_env = format!(
         "echo {} > /etc/dataplane-config.json",
         dataplane_info.to_string().replace("\"", "\\\"")
@@ -342,6 +346,7 @@ mod test {
             api_key_auth: true,
             trx_logging_enabled: true,
             runtime: None,
+            forward_proxy_protocol: false,
         }
     }
 

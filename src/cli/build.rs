@@ -49,6 +49,10 @@ pub struct BuildArgs {
     /// Path to an enclave dockerfile to build from existing
     #[clap(long = "from-existing")]
     pub from_existing: Option<String>,
+
+    /// Enables forwarding proxy protocol when TLS Termination is disabled
+    #[clap(long = "forward-proxy-protocol")]
+    pub forward_proxy_protocol: bool,
 }
 
 impl BuildTimeConfig for BuildArgs {

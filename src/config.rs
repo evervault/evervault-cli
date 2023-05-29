@@ -234,6 +234,9 @@ pub struct CageConfig {
     pub trx_logging: bool,
     #[serde(default)]
     pub disable_tls_termination: bool,
+    #[serde(default)]
+    pub forward_proxy_protocol: bool,
+    // Table configs
     pub egress: EgressSettings,
     pub signing: Option<SigningInfo>,
     pub attestation: Option<EIFMeasurements>,
@@ -270,6 +273,7 @@ pub struct ValidatedCageBuildConfig {
     pub api_key_auth: bool,
     pub trx_logging_enabled: bool,
     pub runtime: Option<RuntimeVersions>,
+    pub forward_proxy_protocol: bool,
 }
 
 impl ValidatedCageBuildConfig {
@@ -325,6 +329,10 @@ impl ValidatedCageBuildConfig {
 
     pub fn trx_logging_enabled(&self) -> bool {
         self.trx_logging_enabled
+    }
+
+    pub fn forward_proxy_protocol(&self) -> bool {
+        self.forward_proxy_protocol
     }
 }
 
@@ -445,6 +453,7 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             api_key_auth: config.api_key_auth,
             trx_logging_enabled,
             runtime: config.runtime.clone(),
+            forward_proxy_protocol: config.forward_proxy_protocol,
         })
     }
 }
@@ -539,6 +548,7 @@ mod test {
             attestation: None,
             api_key_auth: true,
             trx_logging: true,
+            forward_proxy_protocol: false,
             runtime: None,
         };
 
