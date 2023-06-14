@@ -20,12 +20,12 @@ jobs:
   get-version:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.get-version.outputs.version }}
+      version: 0.0.29
     steps:
       - id: get-version
         run: |
           echo "using version tag ${GITHUB_REF:11}"
-          echo ::set-output name=version::${GITHUB_REF:11}
+
                 
   compile-ubuntu:
     runs-on: ubuntu-latest
