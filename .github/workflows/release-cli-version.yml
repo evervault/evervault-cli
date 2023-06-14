@@ -146,6 +146,10 @@ jobs:
           target: ${{ env.WINDOWS_TARGET }}
           override: true
 
+      - name: Inject Version
+        run: |
+          sh ./scripts/insert-cli-version.sh ${{ needs.get-version.outputs.version }}
+
       - name: Download cached dependencies
         uses: Swatinem/rust-cache@v2
         with:
