@@ -1,0 +1,4 @@
+export MY_VAR1=value1
+export MY_VAR2=value2
+export MY_VAR3=value3
+export MY_VAR4=abc 123

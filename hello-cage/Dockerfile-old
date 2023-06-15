@@ -1,0 +1,21 @@
+FROM node:18-alpine AS builder
+
+WORKDIR /usr/app
+COPY package.json .
+COPY yarn.lock .
+RUN yarn install
+
+RUN yarn run build
+
+FROM node:18-slim
+
+WORKDIR /usr/app
+RUN chown node:node .
+COPY package.json .
+COPY yarn.lock .
+RUN yarn install --production
+COPY --from=builder /usr/app/dist ./dist
+
+USER node
+EXPOSE 3123
+CMD yarn run start

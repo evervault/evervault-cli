@@ -1,0 +1,7 @@
+(/Users/<redacted>/Documents/workspaces/ethos-platform/packages/api-ethos-public/node_modules/@evervault/sdk/lib/utils/cageAttest.js:58:51)
+at tls.checkServerIdentity (/Users/<redacted>/Documents/workspaces/ethos-platform/packages/api-ethos-public/node_modules/@evervault/sdk/lib/utils/cageAttest.js:86:33)
+at Object.tls.checkServerIdentity (/Users/<redacted>/Documents/workspaces/ethos-platform/packages/api-ethos-public/node_modules/@evervault/sdk/lib/utils/cageAttest.js:96:12)
+at TLSSocket.onConnectSecure (node:_tls_wrap:1548:27)
+at TLSSocket.emit (node:events:513:28)
+at TLSSocket._finishInit (node:_tls_wrap:952:8)
+at TLSWrap.ssl.onhandshakedone (node:_tls_wrap:733:12)

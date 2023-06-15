@@ -1,0 +1,28 @@
+name = "donal-june-staging-15"
+uuid = "cage_378cd0836662"
+app_uuid = "app_9f61976ce919"
+team_uuid = "team_2eb0c2b75d66"
+debug = false
+dockerfile = "./Dockerfile"
+api_key_auth = true
+trx_logging = true
+disable_tls_termination = false
+forward_proxy_protocol = false
+
+[egress]
+enabled = false
+
+[signing]
+certPath = "./hello-cage/cert.pem"
+keyPath = "./hello-cage/key.pem"
+
+[attestation]
+HashAlgorithm = "Sha384 { ... }"
+PCR0 = "7ac2c124fde2f2d5e04a0f75c9d49064df2acc2fb222c10de518ef3814f61c0ffb8de1a84f65868f99f840a2f7946597"
+PCR1 = "bcdf05fefccaa8e55bf2c8d6dee9e79bbff31e34bf28a99aa19e6b29c37ee80b214a414b7607236edf26fcb78654e63f"
+PCR2 = "9141c6ef75e1f28d62f8d01d9f039b7588df5373d2149fcf0b7580cc2484ffcfb56035af13a5fac23bbc2fdc90b329dc"
+PCR8 = "4e50578f7b5d5d57bce2c3a47b7e0399702e23f46d730567d89849fc614e9c69d70f8ad6430f5e0430e8d2d6299eaaac"
+
+[runtime]
+data_plane_version = "0.0.35"
+installer_version = "b8073166b7c5bc8fe2abf192f66e1106f2d4be547b1841be69f95ff2c4ea578c"

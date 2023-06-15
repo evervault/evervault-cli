@@ -1,0 +1,38 @@
+name: Temp Compile Windows
+
+on:
+  push:
+    branches:
+      - donal/test
+
+env:
+  RUST_BACKTRACE: 1
+  WINDOWS_TARGET: x86_64-pc-windows-msvc
+
+jobs:
+  compile-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Rust
+        run: rustup update --no-self-update stable && rustup default stable
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ env.WINDOWS_TARGET }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Fetch dependencies
+        run: cargo fetch
+        env:
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY_TEMP }}
+
+      - name: Build CLI for Windows
+        run: |
+          cargo run --release -- cert new -o ./tests
+          cargo run --release -- build -c ./hello-cage/cage.toml -f ./hello-cage/Dockerfile -o ./hello-cage
+        env:
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY_TEMP }}

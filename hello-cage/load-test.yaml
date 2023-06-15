@@ -1,0 +1,17 @@
+config:
+  target: "https://donal-prod-june-12.app_ea99930955f2.cages.evervault.com/egress"
+  phases:
+    - duration: 30
+      arrivalRate: 5
+  defaults:
+    headers:
+      api-key: "ev:key:1:GKlIlOkBmDzoCG0oPyrrGOSd28k7hrJPqTm11L5vQn3sSqtTi3M6M7hHIlHI6459:oaQpXV:pguXrJ"
+      Content-Type: "application/json"
+scenarios:
+  - name: "Hello Endpoint Load Test"
+    flow:
+      - post:
+          url: "/"
+          weight: 1
+          json:
+            secretValue: ev:eLqhEc3SJjvcZ6fL:AySNgPifVJY+gpgxSduEN9YMGnJz8XbnIobowSBEm0Jf:3amFokX93VDYpVubNH1z9aYB7kyr:$
