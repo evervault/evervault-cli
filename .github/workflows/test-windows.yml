@@ -32,7 +32,7 @@ jobs:
 
       - name: Build CLI for Windows
         run: |
-          cargo run --release -- cert new -o ./tests
+          cargo run --release -- cert new -o ./hello-cage
           cargo run --release -- build -c ./hello-cage/cage.toml -f ./hello-cage/Dockerfile -o ./hello-cage
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY_TEMP }}
