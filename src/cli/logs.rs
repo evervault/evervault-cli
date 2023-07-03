@@ -82,14 +82,14 @@ pub async fn run(log_args: LogArgs) -> i32 {
 
     let start_time = cage_logs.start_time().parse::<i64>().unwrap();
     let Some(logs_start) = format_timestamp(start_time) else {
-      log::error!("Failed to parse timestamps.");
-      return exitcode::SOFTWARE;
+        log::error!("Failed to parse timestamps.");
+        return exitcode::SOFTWARE;
     };
     let end_time = cage_logs.end_time().parse::<i64>().unwrap();
     let Some(logs_end) = format_timestamp(end_time) else {
         log::error!("Failed to parse timestamps.");
         return exitcode::SOFTWARE;
-     };
+    };
 
     if cage_logs.log_events().is_empty() {
         log::info!("No logs found between {logs_start} and {logs_end}",);

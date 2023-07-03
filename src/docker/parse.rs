@@ -159,9 +159,10 @@ impl Directive {
                 let parsed_port = port_str.parse().map_err(DecodeError::InvalidExposedPort)?;
                 *port = Some(parsed_port);
             }
-            Self::Other { arguments, .. } | Self::Comment(arguments) | Self::Run(arguments) | Self::User(arguments) => {
-                *arguments = Bytes::from(given_arguments)
-            }
+            Self::Other { arguments, .. }
+            | Self::Comment(arguments)
+            | Self::Run(arguments)
+            | Self::User(arguments) => *arguments = Bytes::from(given_arguments),
         };
         Ok(())
     }
