@@ -572,7 +572,6 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
         {
             let expected_directive = expected_directive.to_string();
             let processed_directive = processed_directive.to_string();
-            println!("{}", processed_directive);
             assert_eq!(expected_directive, processed_directive);
         }
     }
