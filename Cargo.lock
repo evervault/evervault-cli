@@ -167,7 +167,7 @@ dependencies = [
 [[package]]
 name = "attestation-doc-validation"
 version = "0.2.1"
-source = "sparse+https://cargo.cloudsmith.io/evervault/rust-libraries/"
+source = "registry+https://dl.cloudsmith.io/tREKUrB8e35qy9O7/evervault/rust-libraries/cargo/index.git"
 checksum = "5466fdcc164977f408c3f2c821b00003b97febb830e42c56cf267e3c9b2b6609"
 dependencies = [
  "aws-nitro-enclaves-cose",
@@ -2052,7 +2052,7 @@ dependencies = [
 [[package]]
 name = "rust-crypto"
 version = "0.1.24"
-source = "sparse+https://cargo.cloudsmith.io/evervault/rust-libraries/"
+source = "registry+https://dl.cloudsmith.io/tREKUrB8e35qy9O7/evervault/rust-libraries/cargo/index.git"
 checksum = "cee2de111fd94746e67580b021e64cc05bf776b4c2f776d5c965887a20768011"
 dependencies = [
  "base-x",
