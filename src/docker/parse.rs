@@ -252,7 +252,7 @@ impl Directive {
         }
     }
 
-    pub fn new_user<B: Into<Bytes>>(user: B) -> Self {
+    pub fn new_user<S: Into<Bytes>>(user: S) -> Self {
         Self::User(user.into())
     }
 }

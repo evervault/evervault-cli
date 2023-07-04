@@ -1,11 +1,13 @@
 pub mod error;
+use bytes::Bytes;
 use error::BuildError;
+use x509_parser::nom::AsBytes;
 
 use crate::common::{resolve_output_path, OutputPath};
 use crate::config::ValidatedCageBuildConfig;
 use crate::docker::error::DockerError;
 use crate::docker::parse::{Directive, DockerfileDecoder, Mode};
-use crate::docker::utils::verify_docker_is_running;
+use crate::docker::utils::{verify_docker_is_running};
 use crate::enclave;
 use serde_json::json;
 use std::io::Write;
@@ -156,7 +158,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     // Filter out unwanted directives
     let mut last_cmd = None;
     let mut last_entrypoint = None;
-    let mut last_user = Directive::new_user("root");
+    let mut last_user = "root".to_string();
     let mut exposed_port: Option<u16> = None;
 
     let remove_unwanted_directives = |directive: &Directive| -> bool {
@@ -166,8 +168,10 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             last_entrypoint = Some(directive.clone());
         } else if let Directive::Expose { port } = directive {
             exposed_port = *port;
-        } else if directive.is_user() {
-            last_user = directive.clone();
+        } else if let Directive::User(b) = directive{
+            if let Ok(user) = String::from_utf8(b.to_vec()) {
+                last_user = user;
+            };
             return true;
         } else {
             return true;
@@ -187,17 +191,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     };
     let user_service_builder =
         crate::docker::utils::create_combined_docker_entrypoint(last_entrypoint, last_cmd).map(
-            |entrypoint| {
-                let entrypoint_script =
-                    format!("sleep 5\\necho \\\"Checking status of data-plane\\\"\\nSVDIR=/etc/service sv check data-plane || exit 1\\necho \\\"Data-plane up and running\\\"\\n{wait_for_env}\\necho \\\"Booting user service...\\\"\\ncd %s\\nexec {entrypoint}");
-                let user_service_runner = format!("{USER_ENTRYPOINT_SERVICE_PATH}/run");
-                let user_service_runit_wrapper = crate::docker::utils::write_command_to_script(
-                    entrypoint_script.as_str(),
-                    user_service_runner.as_str(),
-                    &[r#" "$PWD" "#],
-                );
-                Directive::new_run(user_service_runit_wrapper)
-            },
+            |entrypoint| build_user_service(entrypoint, wait_for_env, last_user)
         )?;
 
     if let Some(true) = exposed_port.map(|port| port == 443) {
@@ -293,7 +287,6 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         )],
         #[cfg(feature = "repro_builds")]
         reproducible_build_directives(),
-        vec![last_user],
         vec![Directive::new_entrypoint(
             Mode::Exec,
             vec!["/bootstrap".to_string(), "1>&2".to_string()],
@@ -311,6 +304,34 @@ fn reproducible_build_directives() -> Vec<Directive> {
         Directive::new_from("scratch".to_string()),
         Directive::new_copy("--from=0 / /".to_string()),
     ]
+}
+
+pub fn build_user_service(entrypoint: String, wait_for_env: &str, last_user: String) -> Directive {
+    let su_cmd = format!("su {last_user}");
+    let exec_cmd = format!("exec {}", entrypoint);
+
+    let cmds = vec![
+        su_cmd.as_str(),
+        "sleep 5",
+        "echo \"Checking status of data-plane\"",
+        "SVDIR=/etc/service sv check data-plane || exit 1",
+        "echo \"Data-plane up and running\"",
+        wait_for_env,
+        "echo \"Booting user service...\"",
+        "cd %s",
+        exec_cmd.as_str()
+    ];
+
+    let entrypoint_script = cmds.join("\\n");
+
+    let user_service_runner = format!("{USER_ENTRYPOINT_SERVICE_PATH}/run");
+    let user_service_runit_wrapper = crate::docker::utils::write_command_to_script(
+        entrypoint_script.as_str(),
+        user_service_runner.as_str(),
+        &[r#" "$PWD" "#],
+    );
+
+    Directive::new_run(user_service_runit_wrapper)
 }
 
 #[cfg(test)]
@@ -399,7 +420,6 @@ RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hos
 RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
 FROM scratch
 COPY --from=0 / /
-USER root
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
@@ -492,7 +512,6 @@ RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hos
 RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
 FROM scratch
 COPY --from=0 / /
-USER root
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
@@ -547,7 +566,7 @@ ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervau
 RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
 RUN echo {\"api_key_auth\":true,\"trx_logging_enabled\":true} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
-RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+RUN printf "#!/bin/sh\nsu someuser\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
 ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
 RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
@@ -556,7 +575,6 @@ RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hos
 RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
 FROM scratch
 COPY --from=0 / /
-USER someuser
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
