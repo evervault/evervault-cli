@@ -166,7 +166,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             last_entrypoint = Some(directive.clone());
         } else if let Directive::Expose { port } = directive {
             exposed_port = *port;
-        } else if let Directive::User(b) = directive{
+        } else if let Directive::User(b) = directive {
             if let Ok(user) = String::from_utf8(b.to_vec()) {
                 last_user = user;
             };
@@ -188,9 +188,8 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         r#"while ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n"#
     };
     let user_service_builder =
-        crate::docker::utils::create_combined_docker_entrypoint(last_entrypoint, last_cmd).map(
-            |entrypoint| build_user_service(entrypoint, wait_for_env, last_user)
-        )?;
+        crate::docker::utils::create_combined_docker_entrypoint(last_entrypoint, last_cmd)
+            .map(|entrypoint| build_user_service(entrypoint, wait_for_env, last_user))?;
 
     if let Some(true) = exposed_port.map(|port| port == 443) {
         return Err(DockerError::RestrictedPortExposed(exposed_port.unwrap()).into());
@@ -317,7 +316,7 @@ pub fn build_user_service(entrypoint: String, wait_for_env: &str, last_user: Str
         wait_for_env,
         "echo \\\"Booting user service...\\\"",
         "cd %s",
-        exec_cmd.as_str()
+        exec_cmd.as_str(),
     ];
 
     let entrypoint_script = cmds.join("\\n");
