@@ -1,13 +1,11 @@
 pub mod error;
-use bytes::Bytes;
 use error::BuildError;
-use x509_parser::nom::AsBytes;
 
 use crate::common::{resolve_output_path, OutputPath};
 use crate::config::ValidatedCageBuildConfig;
 use crate::docker::error::DockerError;
 use crate::docker::parse::{Directive, DockerfileDecoder, Mode};
-use crate::docker::utils::{verify_docker_is_running};
+use crate::docker::utils::verify_docker_is_running;
 use crate::enclave;
 use serde_json::json;
 use std::io::Write;
