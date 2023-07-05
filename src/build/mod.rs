@@ -156,8 +156,10 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     // Filter out unwanted directives
     let mut last_cmd = None;
     let mut last_entrypoint = None;
-    let mut last_user = "root".to_string();
+    let mut last_user = None;
     let mut exposed_port: Option<u16> = None;
+
+    let mut directive_parse_error = None;
 
     let remove_unwanted_directives = |directive: &Directive| -> bool {
         if directive.is_cmd() {
@@ -168,7 +170,11 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             exposed_port = *port;
         } else if let Directive::User(b) = directive {
             if let Ok(user) = String::from_utf8(b.to_vec()) {
-                last_user = user;
+                last_user = Some(user);
+            } else {
+                directive_parse_error = Some(BuildError::DockerBuildError(
+                    "Could not parse username from USER directive".to_string(),
+                ))
             };
             return true;
         } else {
@@ -181,6 +187,10 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .into_iter()
         .filter(remove_unwanted_directives)
         .collect();
+
+    if let Some(directive_parse_error) = directive_parse_error {
+        return Err(directive_parse_error);
+    }
 
     let wait_for_env = if build_config.disable_tls_termination {
         "echo TLS termination is off, not waiting for environment to be ready"
@@ -303,18 +313,26 @@ fn reproducible_build_directives() -> Vec<Directive> {
     ]
 }
 
-pub fn build_user_service(entrypoint: String, wait_for_env: &str, last_user: String) -> Directive {
-    let su_cmd = format!("su {last_user}");
+pub fn build_user_service(
+    entrypoint: String,
+    wait_for_env: &str,
+    last_user: Option<String>,
+) -> Directive {
+    let su_cmd = if let Some(last_user) = last_user {
+        format!("su {last_user}")
+    } else {
+        "".to_string()
+    };
     let exec_cmd = format!("exec {}", entrypoint);
 
     let cmds = vec![
         su_cmd.as_str(),
         "sleep 5",
-        "echo \\\"Checking status of data-plane\\\"",
+        r#"echo \"Checking status of data-plane\""#,
         "SVDIR=/etc/service sv check data-plane || exit 1",
-        "echo \\\"Data-plane up and running\\\"",
+        r#"echo \"Data-plane up and running\""#,
         wait_for_env,
-        "echo \\\"Booting user service...\\\"",
+        r#"echo \"Booting user service...\""#,
         "cd %s",
         exec_cmd.as_str(),
     ];
