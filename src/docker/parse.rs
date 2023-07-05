@@ -53,7 +53,8 @@ pub enum Directive {
         port: Option<u16>,
     },
     Run(Bytes),
-    // we only need to care about entrypoint, cmd, expose and run for cages
+    User(Bytes),
+    // we only need to care about entrypoint, cmd, expose, run and user for cages
     Other {
         directive: String,
         arguments: Bytes,
@@ -76,6 +77,10 @@ impl Directive {
     #[allow(dead_code)]
     pub fn is_run(&self) -> bool {
         matches!(self, Self::Run(_))
+    }
+
+    pub fn is_user(&self) -> bool {
+        matches!(self, Self::User(_))
     }
 
     pub fn set_mode(&mut self, new_mode: Mode) {
@@ -154,9 +159,10 @@ impl Directive {
                 let parsed_port = port_str.parse().map_err(DecodeError::InvalidExposedPort)?;
                 *port = Some(parsed_port);
             }
-            Self::Other { arguments, .. } | Self::Comment(arguments) | Self::Run(arguments) => {
-                *arguments = Bytes::from(given_arguments)
-            }
+            Self::Other { arguments, .. }
+            | Self::Comment(arguments)
+            | Self::Run(arguments)
+            | Self::User(arguments) => *arguments = Bytes::from(given_arguments),
         };
         Ok(())
     }
@@ -169,6 +175,7 @@ impl Directive {
             } => format!("{source_url} {destination_path}"),
             Self::Comment(bytes)
             | Self::Run(bytes)
+            | Self::User(bytes)
             | Self::Other {
                 arguments: bytes, ..
             } => std::str::from_utf8(bytes.as_ref())
@@ -244,6 +251,10 @@ impl Directive {
             destination_path: destination_path.into(),
         }
     }
+
+    pub fn new_user<S: Into<Bytes>>(user: S) -> Self {
+        Self::User(user.into())
+    }
 }
 
 impl std::fmt::Display for Directive {
@@ -255,6 +266,7 @@ impl std::fmt::Display for Directive {
             Self::Cmd { .. } => "CMD",
             Self::Expose { .. } => "EXPOSE",
             Self::Run(_) => "RUN",
+            Self::User(_) => "USER",
             Self::Other { directive, .. } => directive.as_str(),
         };
         write!(
@@ -290,6 +302,7 @@ impl TryFrom<&[u8]> for Directive {
             },
             "EXPOSE" => Self::Expose { port: None },
             "RUN" => Self::Run(Bytes::new()),
+            "USER" => Self::User(Bytes::new()),
             _ => Self::Other {
                 directive: directive_str.to_string(),
                 arguments: Bytes::new(),
