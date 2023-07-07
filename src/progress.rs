@@ -178,12 +178,10 @@ where
             Err(e) => {
                 poll_err_count += 1;
 
-                if poll_err_count < MAX_SUCCESSIVE_POLLING_ERRORS {
-                    continue;
+                if poll_err_count > MAX_SUCCESSIVE_POLLING_ERRORS {
+                    progress_bar.finish();
+                    return Err(e);
                 }
-
-                progress_bar.finish();
-                return Err(e);
             }
         };
         tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
