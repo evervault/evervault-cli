@@ -4,6 +4,8 @@ use indicatif::{ProgressBar, ProgressStyle};
 use crate::api::cage::CagesClient;
 use crate::common::CliError;
 
+const MAX_SUCCESSIVE_POLLING_ERRORS: i32 = 10; // 10 attempts at 6sec intervals (1min)
+
 fn get_progress_bar(start_msg: &str, upload_len: Option<u64>) -> ProgressBar {
     match upload_len {
         Some(len) => {
@@ -152,9 +154,13 @@ where
             .map(|given_msg| given_msg != new_msg)
             .unwrap_or(true)
     };
+    let mut poll_err_count = 0;
+
     loop {
         match poll_fn(api_client.clone(), poll_args.clone()).await {
             Ok(StatusReport::Update(msg)) => {
+                poll_err_count = 0; // only care about tracking *consecutive* poll errors
+
                 if is_new_update(most_recent_update.as_deref(), msg.as_str()) {
                     progress_bar.set_message(&msg);
                     most_recent_update = Some(msg);
@@ -170,6 +176,12 @@ where
             }
             Ok(StatusReport::NoOp) => {}
             Err(e) => {
+                poll_err_count += 1;
+
+                if poll_err_count < MAX_SUCCESSIVE_POLLING_ERRORS {
+                    continue;
+                }
+
                 progress_bar.finish();
                 return Err(e);
             }
