@@ -4,7 +4,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use crate::api::cage::CagesClient;
 use crate::common::CliError;
 
-const MAX_SUCCESSIVE_POLLING_ERRORS: i32 = 10; // 10 attempts at 6sec intervals (1min)
+const MAX_SUCCESSIVE_POLLING_ERRORS: i32 = 5; // #attempts allowed at 6s intervals
 
 fn get_progress_bar(start_msg: &str, upload_len: Option<u64>) -> ProgressBar {
     match upload_len {
