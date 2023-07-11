@@ -1,0 +1,95 @@
+---
+name: Compile CLI for Target
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+      release_dir:
+        required: true
+        type: string
+      artifact_name: 
+        required: true
+        type: string
+      platform:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      vcpkgrs_dynamic:
+        required: false
+        type: number
+        default: false
+      musl:
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      RUST_CRYPTO_REGISTRY:
+        required: true
+      CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN:
+        required: true
+jobs:
+  compile:
+    name: Compile CLI for ${{ inputs.target }}
+    runs-on: ${{ inputs.platform }}
+    env:
+      VCPKGRS_DYNAMIC: ${{ inputs.vcpkgrs_dynamic }}
+      BIN_DIR: bin
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install musl-tools
+        if: ${{ inputs.musl }}
+        run: sudo apt-get install musl-tools
+
+      - name: Install Rust
+        run: rustup update --no-self-update stable && rustup default stable
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          target: ${{ inputs.target }}
+          override: true
+          
+      - name: Inject Version
+        run: |
+          sh ./scripts/insert-cli-version.sh ${{ inputs.version }}
+      
+      - name: Download cached dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+            shared-key: "${{ inputs.target }}-cross-builds"
+
+      - name: Setup directories
+        shell: bash
+        run: |
+          mkdir ${{ env.BIN_DIR }}
+          mkdir ${{ inputs.release_dir }}
+
+      - name: Build CLI
+        run: |
+          cargo install cross
+          cross build --release --target ${{ inputs.target }} -Z registry-auth
+        env:
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
+          CARGO_HOME: ${{ github.workspace }}/.cargo
+
+      - name: Install 7zip
+        if: ${{ inputs.platform == 'macos-latest' }}
+        run: brew install p7zip
+      
+      - name: Compress Binary
+        run: |
+          mv ./target/${{ inputs.target }}/release/ev-cage ./${{ env.BIN_DIR }}/ev-cage
+          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ inputs.release_dir }}/ev-cage-${{ matrix.target }}-${{ inputs.version }}.tar.gz
+        
+      - name: Upload as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ./${{ inputs.release_dir }}
+    
