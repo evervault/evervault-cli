@@ -18,6 +18,9 @@ on:
       version:
         required: true
         type: string
+      toolchain:
+        required: true
+        type: string
       vcpkgrs_dynamic:
         required: false
         type: number
@@ -77,7 +80,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: ${{ inputs.profile }}
-          toolchain: nightly
+          toolchain: ${{ inputs.toolchain }}
           target: ${{ inputs.target }}
           override: true
           
@@ -100,7 +103,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           use-cross: true
-          toolchain: nightly
+          toolchain: ${{ inputs.toolchain }}
           command: build
           args: --release --target ${{ inputs.target }} -Z registry-auth
         env:
