@@ -57,9 +57,10 @@ jobs:
           . /etc/lsb-release
           sudo sed 's/deb http/deb \[arch=amd64\] http/' -i /etc/apt/sources.list
           sudo dpkg --add-architecture arm64
-          sudo echo "deb [arch=arm64] http://ports.ubuntu.com/ $DISTRIB_CODENAME main universe restricted multiverse" >> /etc/apt/sources.list
-          sudo echo "deb [arch=arm64] http://ports.ubuntu.com/ $DISTRIB_CODENAME-updates main universe restricted multiverse" >> /etc/apt/sources.list
-          sudo echo "deb [arch=arm64] http://ports.ubuntu.com/ $DISTRIB_CODENAME-security main universe restricted multiverse" >> /etc/apt/sources.list
+          sudo touch /etc/apt/sources.list.d/arm64.list
+          sudo echo "deb [arch=arm64] http://ports.ubuntu.com/ $DISTRIB_CODENAME main universe restricted multiverse" >> /etc/apt/sources.list.d/arm64.list
+          sudo echo "deb [arch=arm64] http://ports.ubuntu.com/ $DISTRIB_CODENAME-updates main universe restricted multiverse" >> /etc/apt/sources.list.d/arm64.list
+          sudo echo "deb [arch=arm64] http://ports.ubuntu.com/ $DISTRIB_CODENAME-security main universe restricted multiverse" >> /etc/apt/sources.list.d/arm64.list
           apt update
           apt-get install musl-tools:arm64
 
