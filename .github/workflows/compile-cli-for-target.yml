@@ -64,8 +64,8 @@ jobs:
           deb [arch=arm64] http://ports.ubuntu.com/ $DISTRIB_CODENAME-updates main universe restricted multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ $DISTRIB_CODENAME-security main universe restricted multiverse
           EOF
-          apt update
-          apt-get install musl-tools:arm64
+          sudo apt update
+          sudo apt-get install musl-tools:arm64
 
       - name: Install musl-tools
         if: ${{ inputs.musl && inputs.musl_suffix == '' }}
