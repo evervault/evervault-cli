@@ -125,19 +125,3 @@ jobs:
         with:
           name: ${{ inputs.artifact_name }}
           path: ./${{ inputs.release_dir }}
-
-deb [arch=arm64] http://ports.ubuntu.com/ focal main restricted
-deb [arch=arm64] http://ports.ubuntu.com/ focal-updates main restricted
-deb [arch=arm64] http://ports.ubuntu.com/ focal universe
-deb [arch=arm64] http://ports.ubuntu.com/ focal-updates universe
-deb [arch=arm64] http://ports.ubuntu.com/ focal multiverse
-deb [arch=arm64] http://ports.ubuntu.com/ focal-updates multiverse
-
-dpkg --add-architecture arm64
-sed 's/deb http/deb \[arch=amd64,i386\] http/' -i /etc/apt/sources.list
-echo >/etc/apt/sources.list <<EOF
-echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy main universe restricted multiverse" >> /etc/apt/sources.list
-echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy-updates main universe restricted multiverse" >> /etc/apt/sources.list
-echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy-security main universe restricted multiverse" >> /etc/apt/sources.list
-EOF
-apt update
