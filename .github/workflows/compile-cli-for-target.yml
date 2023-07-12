@@ -76,13 +76,6 @@ jobs:
 
       - name: Install Rust
         run: rustup update --no-self-update stable && rustup default stable
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: ${{ inputs.profile }}
-          toolchain: ${{ inputs.toolchain }}
-          target: ${{ inputs.target }}
-          override: true
           
       - name: Inject Version
         run: |
