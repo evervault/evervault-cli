@@ -55,7 +55,7 @@ jobs:
         # We then configure the existing apt sources to be scoped to amd64, and add the arm64 architecture sources before install musl-tools
         run: |
           . /etc/lsb-release
-          sed 's/deb http/deb \[arch=amd64\] http/' -i /etc/apt/sources.list
+          sudo sed 's/deb http/deb \[arch=amd64\] http/' -i /etc/apt/sources.list
           dpkg --add-architecture arm64
           echo "deb [arch=arm64] http://ports.ubuntu.com/ $DISTRIB_CODENAME main universe restricted multiverse" >> /etc/apt/sources.list
           echo "deb [arch=arm64] http://ports.ubuntu.com/ $DISTRIB_CODENAME-updates main universe restricted multiverse" >> /etc/apt/sources.list
