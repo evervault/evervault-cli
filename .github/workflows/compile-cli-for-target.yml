@@ -26,6 +26,10 @@ on:
         required: false
         type: boolean
         default: false
+      musl_suffix:
+        required: false
+        type: string
+        default: ''
       profile:
         required: false
         type: string
@@ -47,7 +51,7 @@ jobs:
 
       - name: Install musl-tools
         if: ${{ inputs.musl }}
-        run: sudo apt-get install musl-tools
+        run: sudo apt-get install musl-tools${{ inputs.musl_suffix }}
 
       - name: Install Rust
         run: rustup update --no-self-update stable && rustup default stable

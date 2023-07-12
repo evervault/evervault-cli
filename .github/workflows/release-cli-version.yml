@@ -52,6 +52,7 @@ jobs:
             artifact_name: "linux-arm64"
             platform: "ubuntu-latest"
             musl: true
+            musl_suffix: ":arm64"
             profile: "minimal"
           - target: x86_64-apple-darwin
             release_dir: "apple-x86"
