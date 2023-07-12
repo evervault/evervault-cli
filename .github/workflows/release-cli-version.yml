@@ -46,11 +46,13 @@ jobs:
             artifact_name: "linux-x86"
             platform: "ubuntu-latest"
             musl: true
+            profile: "minimal"
           - target: aarch64-unknown-linux-musl
             release_dir: "linux-arm64"
             artifact_name: "linux-arm64"
             platform: "ubuntu-latest"
             musl: true
+            profile: "minimal"
           - target: x86_64-apple-darwin
             release_dir: "apple-x86"
             artifact_name: "apple-x86"
