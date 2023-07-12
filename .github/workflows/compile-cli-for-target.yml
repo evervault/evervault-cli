@@ -49,9 +49,23 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Setup cross compilation
+        if: ${{ inputs.musl_suffix && inputs.platform == 'ubuntu-latest' }}
+        # Running /etc/lsb-release exports the DISTRIB_CODENAME variable which contains the OS codename used in ubuntu repositories
+        # We then configure the existing apt sources to be scoped to amd64, and add the arm64 architecture sources before install musl-tools
+        run: |
+          . /etc/lsb-release
+          sed 's/deb http/deb \[arch=amd64\] http/' -i /etc/apt/sources.list
+          dpkg --add-architecture arm64
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ $DISTRIB_CODENAME main universe restricted multiverse" >> /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ $DISTRIB_CODENAME-updates main universe restricted multiverse" >> /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ $DISTRIB_CODENAME-security main universe restricted multiverse" >> /etc/apt/sources.list
+          apt update
+          apt-get install musl-tools:arm64
+
       - name: Install musl-tools
-        if: ${{ inputs.musl }}
-        run: sudo apt-get install musl-tools${{ inputs.musl_suffix }}
+        if: ${{ inputs.musl && inputs.musl_suffix != '' }}
+        run: sudo apt-get install musl-tools
 
       - name: Install Rust
         run: rustup update --no-self-update stable && rustup default stable
@@ -111,4 +125,19 @@ jobs:
         with:
           name: ${{ inputs.artifact_name }}
           path: ./${{ inputs.release_dir }}
-    
+
+deb [arch=arm64] http://ports.ubuntu.com/ focal main restricted
+deb [arch=arm64] http://ports.ubuntu.com/ focal-updates main restricted
+deb [arch=arm64] http://ports.ubuntu.com/ focal universe
+deb [arch=arm64] http://ports.ubuntu.com/ focal-updates universe
+deb [arch=arm64] http://ports.ubuntu.com/ focal multiverse
+deb [arch=arm64] http://ports.ubuntu.com/ focal-updates multiverse
+
+dpkg --add-architecture arm64
+sed 's/deb http/deb \[arch=amd64,i386\] http/' -i /etc/apt/sources.list
+echo >/etc/apt/sources.list <<EOF
+echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy main universe restricted multiverse" >> /etc/apt/sources.list
+echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy-updates main universe restricted multiverse" >> /etc/apt/sources.list
+echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy-security main universe restricted multiverse" >> /etc/apt/sources.list
+EOF
+apt update
