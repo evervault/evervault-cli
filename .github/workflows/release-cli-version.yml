@@ -30,7 +30,7 @@ jobs:
         #   echo "version=${GITHUB_REF:11}" >> "$GITHUB_OUTPUT"
         run: |
           echo "using version tag ${GITHUB_REF:11}"
-          echo "version=v0.0.0" >> "$GITHUB_OUTPUT"
+          echo "version=0.0.0" >> "$GITHUB_OUTPUT"
 
   compile-cli-for-target:
     needs: get-version
