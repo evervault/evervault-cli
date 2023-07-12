@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Setup cross compilation
-        if: ${{ inputs.musl_suffix && inputs.platform == 'ubuntu-latest' }}
+        if: ${{ inputs.musl_suffix != '' && inputs.platform == 'ubuntu-latest' }}
         # Running /etc/lsb-release exports the DISTRIB_CODENAME variable which contains the OS codename used in ubuntu repositories
         # We then configure the existing apt sources to be scoped to amd64, and add the arm64 architecture sources before install musl-tools
         run: |
