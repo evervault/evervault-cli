@@ -25,10 +25,13 @@ jobs:
       version: ${{ steps.get-version.outputs.version }}
     steps:
       - id: get-version
+        # run: |
+        #   echo "using version tag ${GITHUB_REF:11}"
+        #   echo "version=${GITHUB_REF:11}" >> "$GITHUB_OUTPUT"
         run: |
           echo "using version tag ${GITHUB_REF:11}"
-          echo ::set-output name=version::${GITHUB_REF:11}
-                
+          echo "version=v0.0.0" >> "$GITHUB_OUTPUT"
+
   compile-cli-for-target:
     needs: get-version
     strategy:
