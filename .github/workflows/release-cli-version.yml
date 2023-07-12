@@ -41,6 +41,7 @@ jobs:
           # Set default for musl and vcpkgrs_dynamic, will be overridden for specific targets
           - musl: false
             vcpkgrs_dynamic: 0
+            musl_suffix: ""
           - target: x86_64-unknown-linux-musl
             release_dir: "linux-x86"
             artifact_name: "linux-x86"
@@ -80,6 +81,7 @@ jobs:
       platform: ${{ matrix.platform }}
       version: ${{ needs.get-version.outputs.version }}
       musl: ${{ matrix.musl }}
+      musl_suffix: ${{ matrix.musl_suffix }}
       vcpkgrs_dynamic: ${{ matrix.vcpkgrs_dynamic }}
     secrets: inherit
 
