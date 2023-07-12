@@ -54,7 +54,7 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          profile: ${{ inputs.platform }}
+          profile: ${{ inputs.profile }}
           toolchain: nightly
           target: ${{ inputs.target }}
           override: true
