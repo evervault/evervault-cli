@@ -11,7 +11,7 @@ env:
   MACOS_TARGET: x86_64-apple-darwin
   MACOS_ARM_TARGET: aarch64-apple-darwin
   LINUX_TARGET: x86_64-unknown-linux-musl
-  LINUX_ARM_TARGET: x86_64-unknown-linux-musl
+  LINUX_ARM_TARGET: aarch64-unknown-linux-musl
   STAGE: production
 
   # Directories to target during release
@@ -29,93 +29,50 @@ jobs:
           echo "using version tag ${GITHUB_REF:11}"
           echo ::set-output name=version::${GITHUB_REF:11}
                 
-  compile-linux-x86:
-    runs-on: ubuntu-latest
+  compile-cli-for-target:
     needs: get-version
+    strategy:
+      matrix:
+        target: [ "x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl", "x86_64-apple-darwin", "aarch64-apple-darwin", "x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc" ]
+        include:
+          - target: x86_64-unknown-linux-musl
+            release_dir: "linux-x86"
+            artifact_name: "linux-x86"
+            platform: "ubuntu-latest"
+            musl: true
+          - target: aarch64-unknown-linux-musl
+            release_dir: "linux-arm64"
+            artifact_name: "linux-arm64"
+            platform: "ubuntu-latest"
+            musl: true
+          - target: x86_64-apple-darwin
+            release_dir: "apple-x86"
+            artifact_name: "apple-x86"
+            platform: "macos-latest"
+          - target: aarch64-apple-darwin
+            release_dir: "apple-arm64"
+            artifact_name: "apple-arm64"
+            platform: "macos-latest"
+          - target: x86_64-pc-windows-msvc
+            release_dir: "windows-x86"
+            artifact_name: "windows-x86"
+            platform: "windows-latest"
+            vcpkgrs_dynamic: 1
+          - target: aarch64-pc-windows-msvc
+            release_dir: "windows-arm64"
+            artifact_name: "windows-arm64"
+            platform: "windows-latest"
+            vcpkgrs_dynamic: 1
     uses: ./.github/workflows/compile-cli-for-target.yml
     with:
-      target: ${{ env.LINUX_TARGET }}
-      release_dir: "linux-x86"
-      artifact_name: "linux_x86"
-      platform: "ubuntu-latest"
+      target: ${{ matrix.target }}
+      release_dir: ${{ matrix.release_dir }}
+      artifact_name: ${{ matrix.artifact_name }}
+      platform: ${{ matrix.platform }}
       version: ${{ needs.get-version.outputs.version }}
-      musl: true
-    secrets:
-      RUST_CRYPTO_REGISTRY: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-      CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
-
-  compile-linux-arm64:
-    runs-on: ubuntu-latest
-    needs: get-version
-    uses: ./.github/workflows/compile-cli-for-target.yml
-    with:
-      target: ${{ env.LINUX_ARM_TARGET } }}
-      release_dir: "linux-arm64"
-      artifact_name: "linux_arm64"
-      platform: "ubuntu-latest"
-      version: ${{ needs.get-version.outputs.version }}
-      musl: true
-    secrets:
-      RUST_CRYPTO_REGISTRY: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-      CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
-      
-  compile-macos-x86:
-    runs-on: macos-latest
-    needs: get-version
-    uses: ./.github/workflows/compile-cli-for-target.yml
-    with:
-      target: ${{ env.MACOS_TARGET }}
-      release_dir: "apple-x86"
-      artifact_name: "apple-x86"
-      platform: "macos-latest"
-      version: ${{ needs.get-version.outputs.version }}
-    secrets:
-      RUST_CRYPTO_REGISTRY: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-      CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
-    
-  compile-macos-arm64:
-    runs-on: macos-latest
-    needs: get-version
-    uses: ./.github/workflows/compile-cli-for-target.yml
-    with:
-      target: ${{ env.MACOS_ARM_TARGET }}
-      release_dir: "apple-arm64"
-      artifact_name: "apple-arm64"
-      platform: "macos-latest"
-      version: ${{ needs.get-version.outputs.version }}
-    secrets:
-      RUST_CRYPTO_REGISTRY: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-      CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
-    
-  compile-windows-x86:
-    runs-on: windows-latest
-    needs: get-version
-    uses: ./.github/workflows/compile-cli-for-target.yml
-    with:
-      target: ${{ env.WINDOWS_TARGET }}
-      release_dir: "windows-x86"
-      artifact_name: "windows-x86"
-      platform: "windows-latest"
-      version: ${{ needs.get-version.outputs.version }}
-      vcpkgrs_dynamic: 1
-    secrets:
-      RUST_CRYPTO_REGISTRY: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-      CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
-    
-  compile-windows-arm64:
-    runs-on: windows-latest
-    needs: get-version
-    uses: ./.github/workflows/compile-cli-for-target.yml
-    with:
-      target: ${{ env.WINDOWS_ARM_TARGET }}
-      release_dir: "windows-arm64"
-      artifact_name: "windows-arm64"
-      platform: "windows-latest"
-      version: ${{ needs.get-version.outputs.version }}
-      vcpkgrs_dynamic: 1
-    secrets:
-      RUST_CRYPTO_REGISTRY: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-      CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
+      musl: ${{ matrix.musl }}
+      vcpkgrs_dynamic: ${{ matrix.vcpkgrs_dynamic }}
+    secrets: inherit
 
   # release-cli-version:
   #   needs: [ get-version, compile-linux-x86, compile-linux-arm64, compile-macos-x86, compile-macos-arm64, compile-windows-x86, compile-windows-arm64 ]
@@ -226,7 +183,7 @@ jobs:
   #         asset_name: ev-cage-${{ env.WINDOWS_ARM_TARGET }}-${{ needs.get-version.outputs.version }}.tar.gz
 
   upload-artifacts-to-s3:
-    needs: [ get-version, compile-linux-x86, compile-linux-arm64, compile-macos-x86, compile-macos-arm64, compile-windows-x86, compile-windows-arm64 ]
+    needs: [ get-version, compile-cli-for-target ]
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
