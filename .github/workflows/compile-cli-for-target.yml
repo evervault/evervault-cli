@@ -21,7 +21,7 @@ on:
       vcpkgrs_dynamic:
         required: false
         type: number
-        default: false
+        default: 0
       musl:
         required: false
         type: boolean
