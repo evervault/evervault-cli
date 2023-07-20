@@ -54,6 +54,7 @@ pub enum Directive {
     },
     Run(Bytes),
     User(Bytes),
+    Env(Bytes),
     // we only need to care about entrypoint, cmd, expose, run and user for cages
     Other {
         directive: String,
@@ -81,6 +82,10 @@ impl Directive {
 
     pub fn is_user(&self) -> bool {
         matches!(self, Self::User(_))
+    }
+
+    pub fn is_env(&self) -> bool {
+        matches!(self, Self::Env(_))
     }
 
     pub fn set_mode(&mut self, new_mode: Mode) {
@@ -162,6 +167,7 @@ impl Directive {
             Self::Other { arguments, .. }
             | Self::Comment(arguments)
             | Self::Run(arguments)
+            | Self::Env(arguments)
             | Self::User(arguments) => *arguments = Bytes::from(given_arguments),
         };
         Ok(())
@@ -176,6 +182,7 @@ impl Directive {
             Self::Comment(bytes)
             | Self::Run(bytes)
             | Self::User(bytes)
+            | Self::Env(bytes)
             | Self::Other {
                 arguments: bytes, ..
             } => std::str::from_utf8(bytes.as_ref())
@@ -223,13 +230,14 @@ impl Directive {
         Self::Run(arguments.into())
     }
 
-    pub fn new_env(key: &str, val: &str) -> Self {
-        let env_string = format!("{}={}", key, val);
-        Self::Other {
-            directive: "ENV".into(),
-            arguments: env_string.into(),
-        }
-    }
+    // TODO(Mark): Remove?
+    // pub fn new_env(key: &str, val: &str) -> Self {
+    //     let env_string = format!("{}={}", key, val);
+    //     Self::Other {
+    //         directive: "ENV".into(),
+    //         arguments: env_string.into(),
+    //     }
+    // }
 
     pub fn new_from(key: String) -> Self {
         Self::Other {
@@ -255,6 +263,10 @@ impl Directive {
     pub fn new_user<S: Into<Bytes>>(user: S) -> Self {
         Self::User(user.into())
     }
+
+    pub fn new_env<S: Into<Bytes>>(env: S) -> Self {
+        Self::Env(env.into())
+    }
 }
 
 impl std::fmt::Display for Directive {
@@ -267,6 +279,7 @@ impl std::fmt::Display for Directive {
             Self::Expose { .. } => "EXPOSE",
             Self::Run(_) => "RUN",
             Self::User(_) => "USER",
+            Self::Env(_) => "ENV",
             Self::Other { directive, .. } => directive.as_str(),
         };
         write!(
@@ -303,6 +316,7 @@ impl TryFrom<&[u8]> for Directive {
             "EXPOSE" => Self::Expose { port: None },
             "RUN" => Self::Run(Bytes::new()),
             "USER" => Self::User(Bytes::new()),
+            "ENV" => Self::User(Bytes::new()),
             _ => Self::Other {
                 directive: directive_str.to_string(),
                 arguments: Bytes::new(),
