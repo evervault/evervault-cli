@@ -2,7 +2,7 @@ use bytes::{Buf, BufMut, Bytes, BytesMut};
 use futures::StreamExt;
 use itertools::join;
 use std::convert::{From, TryFrom, TryInto};
-use std::fmt::Formatter;
+use std::fmt::{Display, Formatter};
 use std::num::ParseIntError;
 use thiserror::Error;
 use tokio::io::AsyncRead;
@@ -38,6 +38,13 @@ impl From<u8> for Mode {
 pub struct EnvVar {
     pub key: String,
     pub val: String,
+}
+
+impl Display for EnvVar {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}={}", self.key, self.val)?;
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -224,7 +231,7 @@ impl Directive {
             } => format!("{source_url} {destination_path}"),
             Self::Env { vars } => vars
                 .into_iter()
-                .map(|var| format!("{}={}", var.key, var.val))
+                .map(ToString::to_string)
                 .collect::<Vec<String>>()
                 .join(" "),
             Self::Comment(bytes)
