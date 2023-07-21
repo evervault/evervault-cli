@@ -222,7 +222,11 @@ impl Directive {
                 source_url,
                 destination_path,
             } => format!("{source_url} {destination_path}"),
-            Self::Env { vars } => format!("todo(mark)"),
+            Self::Env { vars } => vars
+                .into_iter()
+                .map(|var| format!("{}={}", var.key, var.val))
+                .collect::<Vec<String>>()
+                .join(" "),
             Self::Comment(bytes)
             | Self::Run(bytes)
             | Self::User(bytes)
@@ -350,7 +354,7 @@ impl TryFrom<&[u8]> for Directive {
             "EXPOSE" => Self::Expose { port: None },
             "RUN" => Self::Run(Bytes::new()),
             "USER" => Self::User(Bytes::new()),
-            "ENV" => Self::User(Bytes::new()),
+            "ENV" => Self::Env { vars: Vec::new() },
             _ => Self::Other {
                 directive: directive_str.to_string(),
                 arguments: Bytes::new(),
@@ -982,6 +986,45 @@ ENTRYPOINT apk update && apk add python3 glib make g++ gcc libc-dev &&\
         assert!(matches!(directive, Directive::Expose { port: Some(80) }));
     }
 
+    #[test]
+    fn test_parsing_of_single_env_directives() {
+        let mut decoder = DockerfileDecoder::new();
+        let test_dockerfile = r#"ENV Hello=World"#;
+        let dockerfile_contents = format!("{}\n", test_dockerfile);
+        let mut buffer = BytesMut::from(dockerfile_contents.as_str());
+        let env_directive = decoder.decode(&mut buffer);
+        let directive = assert_directive_has_been_parsed(env_directive);
+
+        assert_eq!(directive.to_string(), test_dockerfile.to_string());
+        assert_eq!(directive.is_env(), true);
+    }
+
+    #[test]
+    fn test_parsing_of_multiple_env_directives() {
+        let mut decoder = DockerfileDecoder::new();
+        let test_dockerfile = r#"ENV Hello=World World=Hello"#;
+        let dockerfile_contents = format!("{}\n", test_dockerfile);
+        let mut buffer = BytesMut::from(dockerfile_contents.as_str());
+        let env_directive = decoder.decode(&mut buffer);
+        let directive = assert_directive_has_been_parsed(env_directive);
+
+        assert_eq!(directive.to_string(), test_dockerfile.to_string());
+        assert_eq!(directive.is_env(), true);
+    }
+
+    #[test]
+    fn test_parsing_of_non_standard_env_directives() {
+        let mut decoder = DockerfileDecoder::new();
+        let test_dockerfile = r#"ENV Hello World Spaces"#;
+        let dockerfile_contents = format!("{}\n", test_dockerfile);
+        let mut buffer = BytesMut::from(dockerfile_contents.as_str());
+        let env_directive = decoder.decode(&mut buffer);
+        let directive = assert_directive_has_been_parsed(env_directive);
+
+        assert_eq!(directive.to_string(), "ENV Hello=World Spaces".to_string());
+        assert_eq!(directive.is_env(), true);
+    }
+
     #[tokio::test]
     async fn test_decode_from_async_src() {
         let test_dockerfile = b"EXPOSE 80\nENTRYPOINT [\"echo\",\"yo\"]";
@@ -1034,5 +1077,32 @@ ENTRYPOINT apk update && apk add python3 glib make g++ gcc libc-dev &&\
             entrypoint_directive.to_string(),
             String::from("CMD echo 'Test'")
         )
+    }
+
+    #[test]
+    fn test_constructor_for_env_commands() {
+        let env_directive = Directive::new_env(vec![EnvVar {
+            key: "Hello".to_string(),
+            val: "World".to_string(),
+        }]);
+
+        assert_eq!(env_directive.is_env(), true);
+        assert_eq!(env_directive.to_string(), "ENV Hello=World".to_string());
+    }
+
+    #[test]
+    fn test_multiple_var_env_directive() {
+        let env_directive = Directive::new_env(vec![
+            EnvVar {
+                key: "Hello".to_string(),
+                val: "World".to_string(),
+            },
+            EnvVar {
+                key: "World".to_string(),
+                val: "Hello".to_string(),
+            },
+        ]);
+
+        assert_eq!(env_directive.to_string(), "ENV Hello=World World=Hello");
     }
 }
