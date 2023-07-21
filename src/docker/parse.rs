@@ -70,7 +70,6 @@ pub enum Directive {
     Env {
         vars: Vec<EnvVar>,
     },
-    // we only need to care about entrypoint, cmd, expose, run and user for cages
     Other {
         directive: String,
         arguments: Bytes,
@@ -120,7 +119,7 @@ impl Directive {
     }
 
     fn parse_env_directive(directive: String) -> Vec<EnvVar> {
-        let mut last_ident = None;
+        let mut last_ident: Option<String> = None;
         let mut env_vars: Vec<EnvVar> = vec![];
 
         let parts = directive.split(" ");

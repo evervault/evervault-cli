@@ -686,7 +686,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
         .await
         .unwrap();
 
-        // assert_eq!(expected_directives.len() - 2, processed_file.len());
+        assert_eq!(expected_directives.len(), processed_file.len());
         for (expected_directive, processed_directive) in
             zip(expected_directives.iter(), processed_file.iter())
         {
