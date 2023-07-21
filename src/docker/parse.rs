@@ -118,13 +118,17 @@ impl Directive {
         }
     }
 
-    fn parse_env_directive(directive: String) -> Vec<EnvVar> {
+    fn parse_env_directive(directive: String) -> Result<Vec<EnvVar>, DecodeError> {
         let mut last_ident: Option<String> = None;
         let mut env_vars: Vec<EnvVar> = vec![];
 
         let parts = directive.split(" ");
 
         for part in parts {
+            // ENV directive's do not have to contain an "="
+            // `ENV HELLO WORLD` is the same as `ENV HELLO=WORLD`
+            // However you must use an = if you want to assign multiple env vars on one line
+            // https://docs.docker.com/engine/reference/builder/#env
             let equals_assn_parts: Vec<&str> = part.split("=").collect();
 
             if equals_assn_parts.len() == 1 {
@@ -140,6 +144,12 @@ impl Directive {
             }
 
             if equals_assn_parts.len() == 2 {
+                // if our previous part was an env var identifier
+                // this should be the value, not a new assignment
+                if last_ident.is_some() {
+                    return Err(DecodeError::IncompleteInstruction);
+                }
+
                 env_vars.push(EnvVar {
                     key: equals_assn_parts[0].to_string(),
                     val: equals_assn_parts[1].replace(r#"""#, "").to_string(),
@@ -147,7 +157,7 @@ impl Directive {
             }
         }
 
-        env_vars
+        Ok(env_vars)
     }
 
     pub fn set_arguments(&mut self, given_arguments: Vec<u8>) -> Result<(), DecodeError> {
@@ -212,7 +222,7 @@ impl Directive {
             }
             Self::Env { vars } => {
                 let vars_str = std::str::from_utf8(&given_arguments)?;
-                *vars = Self::parse_env_directive(vars_str.into());
+                *vars = Self::parse_env_directive(vars_str.into())?;
             }
             Self::Other { arguments, .. }
             | Self::Comment(arguments)
