@@ -122,21 +122,22 @@ impl Directive {
         let mut last_ident: Option<String> = None;
         let mut env_vars: Vec<EnvVar> = vec![];
 
-        let parts = directive.split(" ");
+        let parts: Vec<&str> = directive.split(' ').collect();
 
-        for part in parts {
+        for (i, part) in parts.iter().enumerate() {
             // ENV directive's do not have to contain an "="
             // `ENV HELLO WORLD` is the same as `ENV HELLO=WORLD`
             // However you must use an = if you want to assign multiple env vars on one line
             // https://docs.docker.com/engine/reference/builder/#env
-            let equals_assn_parts: Vec<&str> = part.split("=").collect();
+            let equals_assn_parts: Vec<&str> = part.split('=').collect();
 
             if equals_assn_parts.len() == 1 {
                 if let Some(last_ident) = last_ident {
                     env_vars.push(EnvVar {
                         key: last_ident,
-                        val: part.replace(r#"""#, "").to_string(),
-                    })
+                        val: parts[i..].join(" ").replace('"', "").to_string(),
+                    });
+                    break;
                 }
 
                 last_ident = Some(part.to_string());
@@ -152,7 +153,7 @@ impl Directive {
 
                 env_vars.push(EnvVar {
                     key: equals_assn_parts[0].to_string(),
-                    val: equals_assn_parts[1].replace(r#"""#, "").to_string(),
+                    val: equals_assn_parts[1].replace('"', "").to_string(),
                 });
             }
         }
@@ -204,10 +205,10 @@ impl Directive {
                     .as_slice()
                     .split(|byte| &[*byte] == b" ")
                     .filter_map(|token| std::str::from_utf8(token).ok())
-                    .filter(|parsed_str| parsed_str.len() > 0)
+                    .filter(|parsed_str| !parsed_str.is_empty())
                     .collect::<Vec<&str>>();
                 *source_url = parsed_args
-                    .get(0)
+                    .first()
                     .ok_or_else(|| DecodeError::IncompleteInstruction)?
                     .to_string();
                 *destination_path = parsed_args
@@ -239,7 +240,7 @@ impl Directive {
                 destination_path,
             } => format!("{source_url} {destination_path}"),
             Self::Env { vars } => vars
-                .into_iter()
+                .iter()
                 .map(ToString::to_string)
                 .collect::<Vec<String>>()
                 .join(" "),
