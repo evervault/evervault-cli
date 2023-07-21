@@ -132,7 +132,7 @@ impl Directive {
                 if let Some(last_ident) = last_ident {
                     env_vars.push(EnvVar {
                         key: last_ident,
-                        val: part.to_string(),
+                        val: part.replace(r#"""#, "").to_string(),
                     })
                 }
 
@@ -143,7 +143,7 @@ impl Directive {
             if equals_assn_parts.len() == 2 {
                 env_vars.push(EnvVar {
                     key: equals_assn_parts[0].to_string(),
-                    val: equals_assn_parts[1].to_string(),
+                    val: equals_assn_parts[1].replace(r#"""#, "").to_string(),
                 });
             }
         }
