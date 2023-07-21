@@ -4,9 +4,10 @@ use error::BuildError;
 use crate::common::{resolve_output_path, OutputPath};
 use crate::config::ValidatedCageBuildConfig;
 use crate::docker::error::DockerError;
-use crate::docker::parse::{Directive, DockerfileDecoder, Mode};
+use crate::docker::parse::{Directive, DockerfileDecoder, EnvVar, Mode};
 use crate::docker::utils::verify_docker_is_running;
 use crate::enclave;
+
 use serde_json::json;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -144,24 +145,6 @@ pub async fn build_from_scratch(
     Ok(())
 }
 
-// ENV MY_NAME="John Doe"
-// ENV MY_DOG=Rex\ The\ Dog
-// ENV MY_CAT=fluffy
-// ENV MY_VAR my-value
-
-fn parse_env_directive(directive: String) -> Result<(String, String), BuildError> {
-    let directive = directive.replace("ENV ", "");
-    let standard_case: Vec<&str> = directive.split("=").collect();
-
-    if standard_case.len() == 2 {
-        return Ok((standard_case[0].to_string(), standard_case[1].to_string()));
-    }
-
-    let space_case: Vec<&str> = directive.split(" ").collect();
-
-    return Ok((space_case[0].to_string(), space_case[1..].join(" ")));
-}
-
 async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     build_config: &ValidatedCageBuildConfig,
     dockerfile_src: R,
@@ -176,7 +159,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let mut last_entrypoint = None;
     let mut last_user = None;
     let mut exposed_port: Option<u16> = None;
-    // let mut user_env_vars = vec![];
+    let mut user_env_vars: Vec<EnvVar> = vec![];
 
     let mut directive_parse_error = None;
 
@@ -189,50 +172,20 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
                 if let Ok(user) = String::from_utf8(b.to_vec()) {
                     last_user = Some(user);
                 } else {
+                    directive_parse_error = Some(BuildError::DockerBuildError(
+                        "Could not parse username from USER directive".to_string(),
+                    ))
                 }
+                return true;
             }
-            Directive::Env(b) => {
-                if let Ok(env) = String::from_utf8(b.to_vec()) {
-                    if let Ok((env_var_key, env_var_val)) = parse_env_directive(env) {
-                        println!("env_var_key: {}", env_var_key);
-                        println!("env_var_val: {}", env_var_val);
-                    };
-
-                    // user_env_vars.push(value)
-                } else {
-                }
+            Directive::Env { vars } => {
+                user_env_vars.extend(vars.to_owned());
+                return true;
             }
             _ => return true,
         }
 
         false
-
-        // if directive.is_cmd() {
-        //     last_cmd = Some(directive.clone());
-        // } else if directive.is_entrypoint() {
-        //     last_entrypoint = Some(directive.clone());
-        // } else if let Directive::Expose { port } = directive {
-        //     exposed_port = *port;
-        // } else if let Directive::User(b) = directive {
-        //     if let Ok(user) = String::from_utf8(b.to_vec()) {
-        //         last_user = Some(user);
-        //     } else {
-        //         directive_parse_error = Some(BuildError::DockerBuildError(
-        //             "Could not parse username from USER directive".to_string(),
-        //         ))
-        //     };
-        //     return true;
-        // } else if let Directive::Env(b) = directive {
-        //     if let Ok(env) = String::from_utf8(b.to_vec()) {
-        //     } else {
-        //         directive_parse_error = Some(BuildError::DockerBuildError(
-        //             "Could not parse env variable from ENV directive".to_string(),
-        //         ))
-        //     }
-        // } else {
-        //     return true;
-        // }
-        // false
     };
 
     let cleaned_instructions: Vec<Directive> = instruction_set
@@ -408,7 +361,6 @@ pub fn build_user_service(
 #[cfg(test)]
 mod test {
     use super::{process_dockerfile, BuildError};
-    use crate::build::parse_env_directive;
     use crate::cert::CertValidityPeriod;
     use crate::config::EgressSettings;
     use crate::config::ValidatedCageBuildConfig;
@@ -447,25 +399,6 @@ mod test {
             runtime: None,
             forward_proxy_protocol: false,
         }
-    }
-
-    #[tokio::test]
-    async fn test_parse_env_directive() {
-        let (k1, v1) = parse_env_directive("ENV API_KEY=12345".to_string()).unwrap();
-        assert_eq!(k1, "API_KEY");
-        assert_eq!(v1, "12345");
-        let (k2, v2) = parse_env_directive("ENV MY_NAME=\"John Doe\"".to_string()).unwrap();
-        assert_eq!(k2, "MY_NAME");
-        assert_eq!(v2, "JOHN DOE");
-        let (k3, v3) = parse_env_directive("ENV MY_DOG=Rex The Dog".to_string()).unwrap();
-        assert_eq!(k3, "MY_DOG");
-        assert_eq!(v3, "Rex The Dog");
-        let (k4, v4) = parse_env_directive("ENV MY_VAR my-value".to_string()).unwrap();
-        assert_eq!(k4, "MY_VAR");
-        assert_eq!(v4, "my-value");
-        let (k5, v5) = parse_env_directive("ENV ONE TWO= THREE=world".to_string()).unwrap();
-        assert_eq!(k5, "ONE");
-        assert_eq!(v5, "TWO = THREE=world");
     }
 
     #[tokio::test]

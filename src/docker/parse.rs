@@ -35,6 +35,12 @@ impl From<u8> for Mode {
 }
 
 #[derive(Clone, Debug)]
+pub struct EnvVar {
+    pub key: String,
+    pub val: String,
+}
+
+#[derive(Clone, Debug)]
 pub enum Directive {
     Add {
         source_url: String,
@@ -54,7 +60,9 @@ pub enum Directive {
     },
     Run(Bytes),
     User(Bytes),
-    Env(Bytes),
+    Env {
+        vars: Vec<EnvVar>,
+    },
     // we only need to care about entrypoint, cmd, expose, run and user for cages
     Other {
         directive: String,
@@ -85,7 +93,7 @@ impl Directive {
     }
 
     pub fn is_env(&self) -> bool {
-        matches!(self, Self::Env(_))
+        matches!(self, Self::Env { .. })
     }
 
     pub fn set_mode(&mut self, new_mode: Mode) {
@@ -102,6 +110,38 @@ impl Directive {
             Self::Entrypoint { mode, .. } | Self::Cmd { mode, .. } => mode.as_ref(),
             _ => None,
         }
+    }
+
+    fn parse_env_directive(directive: String) -> Vec<EnvVar> {
+        let mut last_ident = None;
+        let mut env_vars: Vec<EnvVar> = vec![];
+
+        let parts = directive.split(" ");
+
+        for part in parts {
+            let equals_assn_parts: Vec<&str> = part.split("=").collect();
+
+            if equals_assn_parts.len() == 1 {
+                if let Some(last_ident) = last_ident {
+                    env_vars.push(EnvVar {
+                        key: last_ident,
+                        val: part.to_string(),
+                    })
+                }
+
+                last_ident = Some(part.to_string());
+                continue;
+            }
+
+            if equals_assn_parts.len() == 2 {
+                env_vars.push(EnvVar {
+                    key: equals_assn_parts[0].to_string(),
+                    val: equals_assn_parts[1].to_string(),
+                });
+            }
+        }
+
+        env_vars
     }
 
     pub fn set_arguments(&mut self, given_arguments: Vec<u8>) -> Result<(), DecodeError> {
@@ -164,10 +204,13 @@ impl Directive {
                 let parsed_port = port_str.parse().map_err(DecodeError::InvalidExposedPort)?;
                 *port = Some(parsed_port);
             }
+            Self::Env { vars } => {
+                let vars_str = std::str::from_utf8(&given_arguments)?;
+                *vars = Self::parse_env_directive(vars_str.into());
+            }
             Self::Other { arguments, .. }
             | Self::Comment(arguments)
             | Self::Run(arguments)
-            | Self::Env(arguments)
             | Self::User(arguments) => *arguments = Bytes::from(given_arguments),
         };
         Ok(())
@@ -179,10 +222,10 @@ impl Directive {
                 source_url,
                 destination_path,
             } => format!("{source_url} {destination_path}"),
+            Self::Env { vars } => format!("todo(mark)"),
             Self::Comment(bytes)
             | Self::Run(bytes)
             | Self::User(bytes)
-            | Self::Env(bytes)
             | Self::Other {
                 arguments: bytes, ..
             } => std::str::from_utf8(bytes.as_ref())
@@ -230,14 +273,6 @@ impl Directive {
         Self::Run(arguments.into())
     }
 
-    // pub fn new_env(key: &str, val: &str) -> Self {
-    //     let env_string = format!("{}={}", key, val);
-    //     Self::Other {
-    //         directive: "ENV".into(),
-    //         arguments: env_string.into(),
-    //     }
-    // }
-
     pub fn new_from(key: String) -> Self {
         Self::Other {
             directive: "FROM".into(),
@@ -263,8 +298,8 @@ impl Directive {
         Self::User(user.into())
     }
 
-    pub fn new_env<S: Into<Bytes>>(env: S) -> Self {
-        Self::Env(env.into())
+    pub fn new_env(vars: Vec<EnvVar>) -> Self {
+        Self::Env { vars }
     }
 }
 
@@ -278,7 +313,7 @@ impl std::fmt::Display for Directive {
             Self::Expose { .. } => "EXPOSE",
             Self::Run(_) => "RUN",
             Self::User(_) => "USER",
-            Self::Env(_) => "ENV",
+            Self::Env { .. } => "ENV",
             Self::Other { directive, .. } => directive.as_str(),
         };
         write!(
