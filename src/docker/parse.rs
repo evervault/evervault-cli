@@ -230,7 +230,6 @@ impl Directive {
         Self::Run(arguments.into())
     }
 
-    // TODO(Mark): Remove?
     // pub fn new_env(key: &str, val: &str) -> Self {
     //     let env_string = format!("{}={}", key, val);
     //     Self::Other {
