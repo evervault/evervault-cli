@@ -1,0 +1,58 @@
+use crate::{
+    api::{self, AuthMode},
+    config::{CageConfig, CageConfigError},
+    progress::get_tracker,
+};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum RestartError {
+    #[error("An error occurred while reading the cage config — {0}")]
+    CageConfigError(#[from] crate::config::CageConfigError),
+    #[error("No Cage Uuid given. You can provide one by using either the --cage-uuid flag, or using the --config flag to point to a Cage.toml")]
+    MissingUuid,
+    #[error("An IO error occurred {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("An error contacting the API — {0}")]
+    ApiError(#[from] crate::api::client::ApiError),
+}
+
+fn resolve_cage_uuid(
+    given_uuid: Option<&str>,
+    config_path: &str,
+) -> Result<Option<String>, CageConfigError> {
+    if let Some(given_uuid) = given_uuid {
+        return Ok(Some(given_uuid.to_string()));
+    }
+    let config = CageConfig::try_from_filepath(config_path)?;
+    Ok(config.uuid)
+}
+
+pub async fn restart_cage(
+    config: &str,
+    cage_uuid: Option<&str>,
+    api_key: &str,
+    background: bool,
+) -> Result<(), RestartError> {
+    let maybe_cage_uuid = resolve_cage_uuid(cage_uuid, config)?;
+    let cage_uuid = match maybe_cage_uuid {
+        Some(given_cage_uuid) => given_cage_uuid,
+        _ => return Err(RestartError::MissingUuid),
+    };
+
+    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
+
+    let restarted_cage = match cage_api.restart_cage(&cage_uuid).await {
+        Ok(cage_ref) => cage_ref,
+        Err(e) => {
+            log::error!("Error initiating cage deletion — {:?}", e);
+            return Err(RestartError::ApiError(e));
+        }
+    };
+
+    if !background {
+        let progress_bar = get_tracker("Restarting Cage...", None);
+    }
+
+    Ok(())
+}
