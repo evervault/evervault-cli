@@ -95,6 +95,10 @@ pub trait ApiClient {
         self.prepare(self.client().delete(url))
     }
 
+    fn patch(&self, url: &String) -> RequestBuilder {
+        self.prepare(self.client().patch(url))
+    }
+
     fn prepare(&self, mut request_builder: RequestBuilder) -> RequestBuilder {
         request_builder = request_builder.header("user-agent", self.user_agent());
         match &self.auth() {
