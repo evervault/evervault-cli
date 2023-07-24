@@ -5,8 +5,7 @@ use env_logger::{Builder, Env};
 #[cfg(not(target_os = "windows"))]
 use ev_cage::cli::attest;
 use ev_cage::cli::{
-    build, cert, delete, deploy, describe, dev, encrypt, env, init, list, logs, restart, update,
-    Command,
+    build, cert, delete, deploy, describe, dev, encrypt, env, init, list, logs, update, Command,
 };
 use human_panic::setup_panic;
 use log::Record;
@@ -60,7 +59,6 @@ async fn main() {
         Command::Attest(attest_args) => attest::run(attest_args).await,
         Command::Env(env_args) => env::run(env_args).await,
         Command::Encrypt(env_args) => encrypt::run(env_args).await,
-        Command::Restart(restart_args) => restart::run(restart_args).await,
     };
     std::process::exit(exit_code);
 }
