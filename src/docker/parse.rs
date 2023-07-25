@@ -141,7 +141,6 @@ impl Directive {
                 }
 
                 last_ident = Some(part.to_string());
-                continue;
             }
 
             if equals_assn_parts.len() == 2 {
