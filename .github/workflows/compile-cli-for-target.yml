@@ -95,7 +95,10 @@ jobs:
           cargo install cross
           ls
           cargo metadata || exit 1
-
+        env:
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
+      
       - name: Build CLI
         run: |
           cross +nightly-${{ inputs.target }} build --release --target ${{ inputs.target }} -Z registry-auth
