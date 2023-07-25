@@ -101,7 +101,7 @@ jobs:
           index = "$CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX"
           token = "$CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN"
           EOF
-          cargo +nightly metadata || exit 1
+          cargo metadata || exit 1
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
