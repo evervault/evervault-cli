@@ -93,13 +93,16 @@ jobs:
       - name: Install Cross
         run: |
           cargo install cross
-          ls
           sudo mkdir .cargo
           sudo chown $USER .cargo
           sudo cat <<EOF > .cargo/config.toml
           [registries.evervault-rust-libraries]
           index = "${{ secrets.RUST_CRYPTO_REGISTRY }}"
           token = "${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}"
+          EOF
+          sudo cat <<EOF > Cross.toml
+          [build.env]
+          passthrough = ["CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX=${{ secrets.RUST_CRYPTO_REGISTRY }}", "CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN=${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}"]
           EOF
 
       - name: Build CLI
