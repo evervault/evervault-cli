@@ -79,6 +79,7 @@ jobs:
           profile: ${{ inputs.profile }}
           toolchain: nightly
           target: ${{ inputs.target }}
+          default: true
           
       - name: Inject Version
         run: |
@@ -99,7 +100,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           use-cross: true
-          toolchain: nightly-${{ inputs.target }}
+          toolchain: nightly
           command: build
           args: --release --target ${{ inputs.target }} -Z registry-auth
         env:
