@@ -94,17 +94,18 @@ jobs:
         run: |
           cargo install cross
           ls
-          cargo metadata || exit 1
+          cargo metadata -Z registry-auth || exit 1
+          sudo cat <<EOF > .cargo/config.toml
+          [registries.evervault-rust-libraries]
+          index = "$CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX"
+          token = "$CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN"
+          EOF
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
-      
       - name: Build CLI
         run: |
           cross +nightly-${{ inputs.target }} build --release --target ${{ inputs.target }} -Z registry-auth
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
 
       - name: Compress macos binary
         if: ${{ inputs.platform == 'macos-latest' }}
