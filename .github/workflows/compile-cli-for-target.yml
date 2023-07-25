@@ -101,7 +101,6 @@ jobs:
           index = "${{ secrets.RUST_CRYPTO_REGISTRY }}"
           token = "${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}"
           EOF
-          cargo +nightly-${{ inputs.target }} metadata -Z registry-auth || exit 1
 
       - name: Build CLI
         run: |
