@@ -93,6 +93,8 @@ jobs:
       - name: Install Cross
         run: |
           cargo install cross
+          ls
+          cargo metadata || exit 1
 
       - name: Build CLI
         run: |
