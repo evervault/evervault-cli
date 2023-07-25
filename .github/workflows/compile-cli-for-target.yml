@@ -72,14 +72,8 @@ jobs:
         run: sudo apt-get install musl-tools
 
       - name: Install Rust
-        run: rustup update --no-self-update stable && rustup default stable
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: ${{ inputs.profile }}
-          toolchain: nightly
-          target: ${{ inputs.target }}
-          default: true
+        run: |
+          rustup update --no-self-update stable && rustup toolchain install nightly-${{ inputs.target }} --force-non-host
           
       - name: Inject Version
         run: |
@@ -96,13 +90,13 @@ jobs:
           mkdir ${{ env.BIN_DIR }}
           mkdir ${{ inputs.release_dir }}
 
+      - name: Install Cross
+        run: |
+          cargo install cross
+
       - name: Build CLI
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          toolchain: nightly
-          command: build
-          args: --release --target ${{ inputs.target }} -Z registry-auth
+        run: |
+          cross +nightly-${{ inputs.target }} build --release --target ${{ inputs.target }} -Z registry-auth
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
