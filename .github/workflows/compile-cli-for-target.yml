@@ -73,7 +73,7 @@ jobs:
 
       - name: Install Rust
         run: |
-          rustup update --no-self-update stable && rustup toolchain install nightly-${{ inputs.target }} --force-non-host
+          rustup update --no-self-update stable && rustup default stable && rustup toolchain install nightly-${{ inputs.target }} --force-non-host
           
       - name: Inject Version
         run: |
@@ -96,7 +96,7 @@ jobs:
 
       - name: Build CLI
         run: |
-          cross +nightly-${{ inputs.target }} build --release --target ${{ inputs.target }} -Z registry-auth --verbose
+          cross +nightly build --release --target ${{ inputs.target }} -Z registry-auth --verbose
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
