@@ -95,12 +95,13 @@ jobs:
           cargo install cross
           ls
           sudo mkdir .cargo
+          sudo chown $USER .cargo
           sudo cat <<EOF > .cargo/config.toml
           [registries.evervault-rust-libraries]
           index = "$CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX"
           token = "$CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN"
           EOF
-          cargo +nightly metadata -Z registry-auth || exit 1
+          cargo +nightly metadata || exit 1
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
