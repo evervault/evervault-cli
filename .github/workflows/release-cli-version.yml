@@ -48,7 +48,6 @@ jobs:
             platform: "ubuntu-latest"
             musl: true
             profile: "minimal"
-            toolchain: "nightly-x86_64-unknown-linux-musl"
           - target: aarch64-unknown-linux-musl
             release_dir: "linux-arm64"
             artifact_name: "linux-arm64"
@@ -56,29 +55,24 @@ jobs:
             musl: true
             musl_suffix: ":arm64"
             profile: "minimal"
-            toolchain: "nightly-aarch64-unknown-linux-musl"
           - target: x86_64-apple-darwin
             release_dir: "apple-x86"
             artifact_name: "apple-x86"
             platform: "macos-latest"
-            toolchain: "nightly-x86_64-apple-darwin"
           - target: aarch64-apple-darwin
             release_dir: "apple-arm64"
             artifact_name: "apple-arm64"
             platform: "macos-latest"
-            toolchain: "nightly-aarch64-apple-darwin"
           - target: x86_64-pc-windows-msvc
             release_dir: "windows-x86"
             artifact_name: "windows-x86"
             platform: "windows-latest"
             vcpkgrs_dynamic: 1
-            toolchain: "nightly-x86_64-pc-windows-msvc"
           - target: aarch64-pc-windows-msvc
             release_dir: "windows-arm64"
             artifact_name: "windows-arm64"
             platform: "windows-latest"
             vcpkgrs_dynamic: 1
-            toolchain: "nightly-aarch64-pc-windows-msvc"
     uses: ./.github/workflows/compile-cli-for-target.yml
     with:
       target: ${{ matrix.target }}
@@ -89,7 +83,6 @@ jobs:
       musl: ${{ matrix.musl }}
       musl_suffix: ${{ matrix.musl_suffix }}
       vcpkgrs_dynamic: ${{ matrix.vcpkgrs_dynamic }}
-      toolchain: ${{ matrix.toolchain }}
     secrets: inherit
 
   # release-cli-version:
