@@ -99,7 +99,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           use-cross: true
-          toolchain: nightly
+          toolchain: nightly-${{ inputs.target }}
           command: build
           args: --release --target ${{ inputs.target }} -Z registry-auth
         env:
