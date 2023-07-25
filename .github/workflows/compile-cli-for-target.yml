@@ -98,13 +98,11 @@ jobs:
           sudo chown $USER .cargo
           sudo cat <<EOF > .cargo/config.toml
           [registries.evervault-rust-libraries]
-          index = "$CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX"
-          token = "$CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN"
+          index = "${{ secrets.RUST_CRYPTO_REGISTRY }}"
+          token = "${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}"
           EOF
-          cargo metadata || exit 1
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
+          cargo +nightly-${{ inputs.target }} metadata -Z registry-auth || exit 1
+
       - name: Build CLI
         run: |
           cross +nightly-${{ inputs.target }} build --release --target ${{ inputs.target }} -Z registry-auth
