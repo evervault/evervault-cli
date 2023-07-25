@@ -18,9 +18,6 @@ on:
       version:
         required: true
         type: string
-      toolchain:
-        required: true
-        type: string
       vcpkgrs_dynamic:
         required: false
         type: number
@@ -76,6 +73,12 @@ jobs:
 
       - name: Install Rust
         run: rustup update --no-self-update stable && rustup default stable
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: ${{ inputs.profile }}
+          toolchain: nightly
+          target: ${{ inputs.target }}
           
       - name: Inject Version
         run: |
@@ -96,7 +99,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           use-cross: true
-          toolchain: ${{ inputs.toolchain }}
+          toolchain: nightly
           command: build
           args: --release --target ${{ inputs.target }} -Z registry-auth
         env:
