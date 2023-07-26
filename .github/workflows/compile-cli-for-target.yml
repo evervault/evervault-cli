@@ -99,7 +99,6 @@ jobs:
           [registries.evervault-rust-libraries]
           index = "${{ secrets.RUST_CRYPTO_AUTHENTICATED_REGISTRY_URL }}"
           EOF
-          cargo +nightly metadata || exit 1
 
       - name: Build CLI
         run: |
