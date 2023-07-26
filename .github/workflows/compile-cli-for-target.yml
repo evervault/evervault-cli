@@ -93,10 +93,17 @@ jobs:
       - name: Install Cross
         run: |
           cargo install cross
+          sudo mkdir .cargo
+          sudo chown $USER .cargo
+          sudo cat <<EOF > .cargo/config.toml
+          [registries.evervault-rust-libraries]
+          index = "${{ secrets.RUST_CRYPTO_AUTHENTICATED_REGISTRY_URL }}"
+          EOF
+          cargo +nightly metadata || exit 1
 
       - name: Build CLI
         run: |
-          cross +nightly build --release --target ${{ inputs.target }} -Z registry-auth --verbose
+          cross +nightly build --release --target ${{ inputs.target }} --verbose
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
