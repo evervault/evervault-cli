@@ -97,10 +97,8 @@ jobs:
           cargo install cross
           sudo mkdir .cargo
           sudo chown $USER .cargo
-          sudo cat <<EOF > .cargo/config.toml
-          [registries.evervault-rust-libraries]
-          index = "${{ secrets.RUST_CRYPTO_AUTHENTICATED_REGISTRY_URL }}"
-          EOF
+          sudo echo "[registries.evervault-rust-libraries]" >> .cargo/config.toml
+          sudo echo "index = \"${{ secrets.RUST_CRYPTO_AUTHENTICATED_REGISTRY_URL }}\"" >> .cargo/config.toml
 
       - name: Build CLI
         run: |
