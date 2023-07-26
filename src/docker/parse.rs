@@ -119,20 +119,31 @@ impl Directive {
     }
 
     fn parse_env_directive(directive: String) -> Result<Vec<EnvVar>, DecodeError> {
-        let mut last_ident: Option<String> = None;
+        let mut last_key: Option<String> = None;
         let mut env_vars: Vec<EnvVar> = vec![];
 
         let parts: Vec<&str> = directive.split(' ').collect();
 
         for (i, part) in parts.iter().enumerate() {
+            let equals_assignment_parts = &part.split('=').collect::<Vec<&str>>();
+            let is_equals_assignment = equals_assignment_parts.len() == 2;
+
             // ENV directive's do not have to contain an "="
             // `ENV HELLO WORLD` is the same as `ENV HELLO=WORLD`
             // However you must use an = if you want to assign multiple env vars on one line
             // https://docs.docker.com/engine/reference/builder/#env
-            let equals_assn_parts: Vec<&str> = part.split('=').collect();
+            if is_equals_assignment {
+                // if previous part was an env var key then this should be it's value, not a new key
+                if last_key.is_some() {
+                    return Err(DecodeError::IncompleteInstruction);
+                }
 
-            if equals_assn_parts.len() == 1 {
-                if let Some(last_ident) = last_ident {
+                env_vars.push(EnvVar {
+                    key: equals_assignment_parts[0].to_string(),
+                    val: equals_assignment_parts[1].replace('"', "").to_string(),
+                });
+            } else {
+                if let Some(last_ident) = last_key {
                     env_vars.push(EnvVar {
                         key: last_ident,
                         val: parts[i..].join(" ").replace('"', "").to_string(),
@@ -140,20 +151,7 @@ impl Directive {
                     break;
                 }
 
-                last_ident = Some(part.to_string());
-            }
-
-            if equals_assn_parts.len() == 2 {
-                // if our previous part was an env var identifier
-                // this should be the value, not a new assignment
-                if last_ident.is_some() {
-                    return Err(DecodeError::IncompleteInstruction);
-                }
-
-                env_vars.push(EnvVar {
-                    key: equals_assn_parts[0].to_string(),
-                    val: equals_assn_parts[1].replace('"', "").to_string(),
-                });
+                last_key = Some(part.to_string());
             }
         }
 
