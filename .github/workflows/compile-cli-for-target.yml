@@ -73,7 +73,9 @@ jobs:
 
       - name: Install Rust
         run: |
-          rustup update --no-self-update stable && rustup default stable && rustup toolchain install nightly-${{ inputs.target }} --force-non-host
+          rustup update --no-self-update stable && rustup default stable 
+          rustup toolchain install nightly
+          rustup target add ${{ inputs.target }}
           
       - name: Inject Version
         run: |
