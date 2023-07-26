@@ -105,9 +105,6 @@ jobs:
       - name: Build CLI
         run: |
           cross +nightly build --release --target ${{ inputs.target }} --verbose
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
 
       - name: Compress macos binary
         if: ${{ inputs.platform == 'macos-latest' }}
