@@ -2,7 +2,7 @@ use bytes::{Buf, BufMut, Bytes, BytesMut};
 use futures::StreamExt;
 use itertools::join;
 use std::convert::{From, TryFrom, TryInto};
-use std::fmt::Formatter;
+use std::fmt::{Display, Formatter};
 use std::num::ParseIntError;
 use thiserror::Error;
 use tokio::io::AsyncRead;
@@ -35,6 +35,19 @@ impl From<u8> for Mode {
 }
 
 #[derive(Clone, Debug)]
+pub struct EnvVar {
+    pub key: String,
+    pub val: String,
+}
+
+impl Display for EnvVar {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}={}", self.key, self.val)?;
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum Directive {
     Add {
         source_url: String,
@@ -54,7 +67,9 @@ pub enum Directive {
     },
     Run(Bytes),
     User(Bytes),
-    // we only need to care about entrypoint, cmd, expose, run and user for cages
+    Env {
+        vars: Vec<EnvVar>,
+    },
     Other {
         directive: String,
         arguments: Bytes,
@@ -83,6 +98,10 @@ impl Directive {
         matches!(self, Self::User(_))
     }
 
+    pub fn is_env(&self) -> bool {
+        matches!(self, Self::Env { .. })
+    }
+
     pub fn set_mode(&mut self, new_mode: Mode) {
         match self {
             Self::Entrypoint { mode, .. } | Self::Cmd { mode, .. } => {
@@ -97,6 +116,46 @@ impl Directive {
             Self::Entrypoint { mode, .. } | Self::Cmd { mode, .. } => mode.as_ref(),
             _ => None,
         }
+    }
+
+    fn parse_env_directive(directive: String) -> Result<Vec<EnvVar>, DecodeError> {
+        let mut last_key: Option<String> = None;
+        let mut env_vars: Vec<EnvVar> = vec![];
+
+        let parts: Vec<&str> = directive.split(' ').collect();
+
+        for (i, part) in parts.iter().enumerate() {
+            let equals_assignment_parts = &part.split('=').collect::<Vec<&str>>();
+            let is_equals_assignment = equals_assignment_parts.len() == 2;
+
+            // ENV directive's do not have to contain an "="
+            // `ENV HELLO WORLD` is the same as `ENV HELLO=WORLD`
+            // However you must use an = if you want to assign multiple env vars on one line
+            // https://docs.docker.com/engine/reference/builder/#env
+            if is_equals_assignment {
+                // if previous part was an env var key then this should be it's value, not a new key
+                if last_key.is_some() {
+                    return Err(DecodeError::IncompleteInstruction);
+                }
+
+                env_vars.push(EnvVar {
+                    key: equals_assignment_parts[0].to_string(),
+                    val: equals_assignment_parts[1].replace('"', "").to_string(),
+                });
+            } else {
+                if let Some(last_ident) = last_key {
+                    env_vars.push(EnvVar {
+                        key: last_ident,
+                        val: parts[i..].join(" ").replace('"', "").to_string(),
+                    });
+                    break;
+                }
+
+                last_key = Some(part.to_string());
+            }
+        }
+
+        Ok(env_vars)
     }
 
     pub fn set_arguments(&mut self, given_arguments: Vec<u8>) -> Result<(), DecodeError> {
@@ -143,10 +202,10 @@ impl Directive {
                     .as_slice()
                     .split(|byte| &[*byte] == b" ")
                     .filter_map(|token| std::str::from_utf8(token).ok())
-                    .filter(|parsed_str| parsed_str.len() > 0)
+                    .filter(|parsed_str| !parsed_str.is_empty())
                     .collect::<Vec<&str>>();
                 *source_url = parsed_args
-                    .get(0)
+                    .first()
                     .ok_or_else(|| DecodeError::IncompleteInstruction)?
                     .to_string();
                 *destination_path = parsed_args
@@ -158,6 +217,10 @@ impl Directive {
                 let port_str = std::str::from_utf8(&given_arguments)?;
                 let parsed_port = port_str.parse().map_err(DecodeError::InvalidExposedPort)?;
                 *port = Some(parsed_port);
+            }
+            Self::Env { vars } => {
+                let vars_str = std::str::from_utf8(&given_arguments)?;
+                *vars = Self::parse_env_directive(vars_str.into())?;
             }
             Self::Other { arguments, .. }
             | Self::Comment(arguments)
@@ -173,6 +236,11 @@ impl Directive {
                 source_url,
                 destination_path,
             } => format!("{source_url} {destination_path}"),
+            Self::Env { vars } => vars
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<String>>()
+                .join(" "),
             Self::Comment(bytes)
             | Self::Run(bytes)
             | Self::User(bytes)
@@ -223,14 +291,6 @@ impl Directive {
         Self::Run(arguments.into())
     }
 
-    pub fn new_env(key: &str, val: &str) -> Self {
-        let env_string = format!("{}={}", key, val);
-        Self::Other {
-            directive: "ENV".into(),
-            arguments: env_string.into(),
-        }
-    }
-
     pub fn new_from(key: String) -> Self {
         Self::Other {
             directive: "FROM".into(),
@@ -255,6 +315,10 @@ impl Directive {
     pub fn new_user<S: Into<Bytes>>(user: S) -> Self {
         Self::User(user.into())
     }
+
+    pub fn new_env(vars: Vec<EnvVar>) -> Self {
+        Self::Env { vars }
+    }
 }
 
 impl std::fmt::Display for Directive {
@@ -267,6 +331,7 @@ impl std::fmt::Display for Directive {
             Self::Expose { .. } => "EXPOSE",
             Self::Run(_) => "RUN",
             Self::User(_) => "USER",
+            Self::Env { .. } => "ENV",
             Self::Other { directive, .. } => directive.as_str(),
         };
         write!(
@@ -303,6 +368,7 @@ impl TryFrom<&[u8]> for Directive {
             "EXPOSE" => Self::Expose { port: None },
             "RUN" => Self::Run(Bytes::new()),
             "USER" => Self::User(Bytes::new()),
+            "ENV" => Self::Env { vars: Vec::new() },
             _ => Self::Other {
                 directive: directive_str.to_string(),
                 arguments: Bytes::new(),
@@ -934,6 +1000,45 @@ ENTRYPOINT apk update && apk add python3 glib make g++ gcc libc-dev &&\
         assert!(matches!(directive, Directive::Expose { port: Some(80) }));
     }
 
+    #[test]
+    fn test_parsing_of_single_env_directives() {
+        let mut decoder = DockerfileDecoder::new();
+        let test_dockerfile = r#"ENV Hello=World"#;
+        let dockerfile_contents = format!("{}\n", test_dockerfile);
+        let mut buffer = BytesMut::from(dockerfile_contents.as_str());
+        let env_directive = decoder.decode(&mut buffer);
+        let directive = assert_directive_has_been_parsed(env_directive);
+
+        assert_eq!(directive.to_string(), test_dockerfile.to_string());
+        assert_eq!(directive.is_env(), true);
+    }
+
+    #[test]
+    fn test_parsing_of_multiple_env_directives() {
+        let mut decoder = DockerfileDecoder::new();
+        let test_dockerfile = r#"ENV Hello=World World=Hello"#;
+        let dockerfile_contents = format!("{}\n", test_dockerfile);
+        let mut buffer = BytesMut::from(dockerfile_contents.as_str());
+        let env_directive = decoder.decode(&mut buffer);
+        let directive = assert_directive_has_been_parsed(env_directive);
+
+        assert_eq!(directive.to_string(), test_dockerfile.to_string());
+        assert_eq!(directive.is_env(), true);
+    }
+
+    #[test]
+    fn test_parsing_of_non_standard_env_directives() {
+        let mut decoder = DockerfileDecoder::new();
+        let test_dockerfile = r#"ENV Hello World Spaces"#;
+        let dockerfile_contents = format!("{}\n", test_dockerfile);
+        let mut buffer = BytesMut::from(dockerfile_contents.as_str());
+        let env_directive = decoder.decode(&mut buffer);
+        let directive = assert_directive_has_been_parsed(env_directive);
+
+        assert_eq!(directive.to_string(), "ENV Hello=World Spaces".to_string());
+        assert_eq!(directive.is_env(), true);
+    }
+
     #[tokio::test]
     async fn test_decode_from_async_src() {
         let test_dockerfile = b"EXPOSE 80\nENTRYPOINT [\"echo\",\"yo\"]";
@@ -986,5 +1091,32 @@ ENTRYPOINT apk update && apk add python3 glib make g++ gcc libc-dev &&\
             entrypoint_directive.to_string(),
             String::from("CMD echo 'Test'")
         )
+    }
+
+    #[test]
+    fn test_constructor_for_env_commands() {
+        let env_directive = Directive::new_env(vec![EnvVar {
+            key: "Hello".to_string(),
+            val: "World".to_string(),
+        }]);
+
+        assert_eq!(env_directive.is_env(), true);
+        assert_eq!(env_directive.to_string(), "ENV Hello=World".to_string());
+    }
+
+    #[test]
+    fn test_multiple_var_env_directive() {
+        let env_directive = Directive::new_env(vec![
+            EnvVar {
+                key: "Hello".to_string(),
+                val: "World".to_string(),
+            },
+            EnvVar {
+                key: "World".to_string(),
+                val: "Hello".to_string(),
+            },
+        ]);
+
+        assert_eq!(env_directive.to_string(), "ENV Hello=World World=Hello");
     }
 }

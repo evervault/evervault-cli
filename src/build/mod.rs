@@ -4,9 +4,10 @@ use error::BuildError;
 use crate::common::{resolve_output_path, OutputPath};
 use crate::config::ValidatedCageBuildConfig;
 use crate::docker::error::DockerError;
-use crate::docker::parse::{Directive, DockerfileDecoder, Mode};
+use crate::docker::parse::{Directive, DockerfileDecoder, EnvVar, Mode};
 use crate::docker::utils::verify_docker_is_running;
 use crate::enclave;
+
 use serde_json::json;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -158,28 +159,31 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let mut last_entrypoint = None;
     let mut last_user = None;
     let mut exposed_port: Option<u16> = None;
+    let mut user_env_vars: Vec<EnvVar> = vec![];
 
     let mut directive_parse_error = None;
 
     let remove_unwanted_directives = |directive: &Directive| -> bool {
-        if directive.is_cmd() {
-            last_cmd = Some(directive.clone());
-        } else if directive.is_entrypoint() {
-            last_entrypoint = Some(directive.clone());
-        } else if let Directive::Expose { port } = directive {
-            exposed_port = *port;
-        } else if let Directive::User(b) = directive {
-            if let Ok(user) = String::from_utf8(b.to_vec()) {
-                last_user = Some(user);
-            } else {
-                directive_parse_error = Some(BuildError::DockerBuildError(
-                    "Could not parse username from USER directive".to_string(),
-                ))
-            };
-            return true;
-        } else {
-            return true;
+        match directive {
+            Directive::Cmd { .. } => last_cmd = Some(directive.clone()),
+            Directive::Entrypoint { .. } => last_entrypoint = Some(directive.clone()),
+            Directive::Expose { port } => exposed_port = *port,
+            Directive::User(b) => {
+                if let Ok(user) = String::from_utf8(b.to_vec()) {
+                    last_user = Some(user);
+                } else {
+                    directive_parse_error = Some(BuildError::DockerBuildError(
+                        "Could not parse username from USER directive".to_string(),
+                    ))
+                }
+                return true;
+            }
+            Directive::Env { vars } => {
+                user_env_vars.extend(vars.to_owned());
+            }
+            _ => return true,
         }
+
         false
     };
 
@@ -198,8 +202,9 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         r#"while ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n"#
     };
     let user_service_builder =
-        crate::docker::utils::create_combined_docker_entrypoint(last_entrypoint, last_cmd)
-            .map(|entrypoint| build_user_service(entrypoint, wait_for_env, last_user))?;
+        crate::docker::utils::create_combined_docker_entrypoint(last_entrypoint, last_cmd).map(
+            |entrypoint| build_user_service(entrypoint, wait_for_env, last_user, user_env_vars),
+        )?;
 
     if let Some(true) = exposed_port.map(|port| port == 443) {
         return Err(DockerError::RestrictedPortExposed(exposed_port.unwrap()).into());
@@ -317,6 +322,7 @@ pub fn build_user_service(
     entrypoint: String,
     wait_for_env: &str,
     last_user: Option<String>,
+    user_env_vars: Vec<EnvVar>,
 ) -> Directive {
     let su_cmd = if let Some(last_user) = last_user {
         format!("su {last_user}")
@@ -325,7 +331,21 @@ pub fn build_user_service(
     };
     let exec_cmd = format!("exec {}", entrypoint);
 
+    let env_cmd = if user_env_vars.len() > 0 {
+        format!(
+            "export {}",
+            user_env_vars
+                .into_iter()
+                .map(|env| env.to_string())
+                .collect::<Vec<String>>()
+                .join(" ")
+        )
+    } else {
+        "".to_string()
+    };
+
     let cmds = vec![
+        env_cmd.as_str(),
         su_cmd.as_str(),
         "sleep 5",
         r#"echo \"Checking status of data-plane\""#,
@@ -399,7 +419,6 @@ mod test {
     #[tokio::test]
     async fn test_process_dockerfile() {
         let sample_dockerfile_contents = r#"FROM alpine
-
 RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
 
@@ -586,6 +605,70 @@ RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh
 RUN echo {\"api_key_auth\":true,\"trx_logging_enabled\":true} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
 RUN printf "#!/bin/sh\nsu someuser\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN chmod +x /opt/evervault/data-plane
+RUN mkdir -p /etc/service/data-plane
+RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
+FROM scratch
+COPY --from=0 / /
+ENTRYPOINT ["/bootstrap", "1>&2"]
+"##;
+
+        let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
+            expected_output_contents.as_bytes(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(expected_directives.len(), processed_file.len());
+        for (expected_directive, processed_directive) in
+            zip(expected_directives.iter(), processed_file.iter())
+        {
+            let expected_directive = expected_directive.to_string();
+            let processed_directive = processed_directive.to_string();
+            assert_eq!(expected_directive, processed_directive);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_process_dockerfile_with_env_directive() {
+        let sample_dockerfile_contents = r#"FROM alpine
+
+ENV Hello=World Ever=Vault
+ENV Cages Secure
+ENV CRAB="Ferris"
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+EXPOSE 3443
+ENTRYPOINT ["sh", "/hello-script"]"#;
+        let mut readable_contents = sample_dockerfile_contents.as_bytes();
+
+        let config = get_config();
+
+        let data_plane_version = "0.0.0".to_string();
+        let installer_version = "abcdef".to_string();
+        let processed_file = process_dockerfile(
+            &config,
+            &mut readable_contents,
+            data_plane_version,
+            installer_version,
+        )
+        .await;
+        assert_eq!(processed_file.is_ok(), true);
+        let processed_file = processed_file.unwrap();
+
+        let expected_output_contents = r##"FROM alpine
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+USER root
+RUN mkdir -p /opt/evervault
+ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
+RUN echo {\"api_key_auth\":true,\"trx_logging_enabled\":true} > /etc/dataplane-config.json
+RUN mkdir -p /etc/service/user-entrypoint
+RUN printf "#!/bin/sh\nexport Hello=World Ever=Vault Cages=Secure CRAB=Ferris\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
 ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
 RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
