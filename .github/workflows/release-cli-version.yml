@@ -103,13 +103,6 @@ jobs:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
 
-      - name: Compress macos binary
-        uses: svenstaro/upx-action@v2
-        with:
-          file: target/${{env.MACOS_TARGET}}/release/ev-cage
-          args: --best --lzma
-          strip: true
-
       - name: Install 7z cli
         run: brew install p7zip
 
