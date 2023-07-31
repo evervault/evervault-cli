@@ -1,7 +1,6 @@
 use crate::{
     api::{self, AuthMode},
     config::{CageConfig, CageConfigError},
-    progress::get_tracker,
 };
 use thiserror::Error;
 
@@ -32,7 +31,7 @@ pub async fn restart_cage(
     config: &str,
     cage_uuid: Option<&str>,
     api_key: &str,
-    background: bool,
+    _background: bool, // TODO(Mark): implement cage restart polling
 ) -> Result<(), RestartError> {
     let maybe_cage_uuid = resolve_cage_uuid(cage_uuid, config)?;
     let cage_uuid = match maybe_cage_uuid {
@@ -42,17 +41,11 @@ pub async fn restart_cage(
 
     let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
 
-    let restarted_cage = match cage_api.restart_cage(&cage_uuid).await {
-        Ok(cage_ref) => cage_ref,
+    match cage_api.restart_cage(&cage_uuid).await {
+        Ok(_) => Ok(()),
         Err(e) => {
             log::error!("Error initiating cage deletion — {:?}", e);
             return Err(RestartError::ApiError(e));
         }
-    };
-
-    if !background {
-        let progress_bar = get_tracker("Restarting Cage...", None);
     }
-
-    Ok(())
 }

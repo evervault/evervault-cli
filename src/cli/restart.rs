@@ -1,7 +1,7 @@
 use crate::{get_api_key, restart::restart_cage};
 use clap::Parser;
 
-/// Validate the attestation doc provided by a Cage
+/// Restart the Cage deployment
 #[derive(Debug, Parser)]
 #[clap(name = "restart", about)]
 pub struct RestartArgs {
@@ -29,7 +29,7 @@ pub async fn run(restart_args: RestartArgs) -> i32 {
     )
     .await
     {
-        Ok(_) => println!("cage restarted!"),
+        Ok(_) => println!("Cage restart started"),
         Err(e) => panic!("{e}"),
     };
 

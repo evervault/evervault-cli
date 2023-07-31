@@ -224,8 +224,7 @@ impl CagesClient {
         self.patch(&patch_cage_url)
             .send()
             .await
-            .handle_json_response()
-            .await
+            .handle_no_op_response()
     }
 }
 
