@@ -30,8 +30,11 @@ pub async fn run(restart_args: RestartArgs) -> i32 {
     .await
     {
         Ok(_) => println!("Cage restart started"),
-        Err(e) => panic!("{e}"),
+        Err(e) => {
+            log::info!("{}", e);
+            return e.exitcode();
+        }
     };
 
-    exitcode::SOFTWARE
+    exitcode::OK
 }
