@@ -29,9 +29,7 @@ pub async fn run(restart_args: RestartArgs) -> i32 {
     )
     .await
     {
-        Ok(_) => println!(
-            "Cage restart started, progress can be observed in the Evervault dashboard https://app.evervault.com"
-        ),
+        Ok(_) => println!("Cage restart started"),
         Err(e) => panic!("{e}"),
     };
 
