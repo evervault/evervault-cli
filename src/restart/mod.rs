@@ -1,5 +1,6 @@
 use crate::{
     api::{self, AuthMode},
+    common::CliError,
     config::{CageConfig, CageConfigError},
 };
 use thiserror::Error;
@@ -14,6 +15,17 @@ pub enum RestartError {
     IoError(#[from] std::io::Error),
     #[error("An error contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),
+}
+
+impl CliError for RestartError {
+    fn exitcode(&self) -> exitcode::ExitCode {
+        match self {
+            Self::CageConfigError(config_err) => config_err.exitcode(),
+            Self::IoError(_) => exitcode::IOERR,
+            Self::ApiError(api_err) => api_err.exitcode(),
+            Self::MissingUuid => exitcode::DATAERR,
+        }
+    }
 }
 
 fn resolve_cage_uuid(

@@ -1,4 +1,4 @@
-use crate::{get_api_key, restart::restart_cage};
+use crate::{common::CliError, get_api_key, restart::restart_cage};
 use clap::Parser;
 
 /// Restart the Cage deployment
