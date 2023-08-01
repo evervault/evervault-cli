@@ -282,7 +282,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg(feature = "repro_builds")]
     async fn test_reproducible_cage_builds_with_pinned_version() {
         let current_dir = std::env::current_dir().unwrap();
         let (build_output, output_path) = test_utils::build_test_cage(
@@ -297,7 +296,7 @@ mod tests {
         let expected_pcrs: PCRs = serde_json::from_str(r#"{
             "PCR0": "4d99ce0096bffeea435c41016e9d64aa51caae95d7846fb7c8708f590d31be1fc704adc13bedabbcb2980d6612dde6e9",
             "PCR1": "bcdf05fefccaa8e55bf2c8d6dee9e79bbff31e34bf28a99aa19e6b29c37ee80b214a414b7607236edf26fcb78654e63f",
-            "PCR2": "42997b22af1f96a6b32372402af03a5d16e47316e7990314bdb01c0759fa11a7ae88e3ae2f3628b1c1ab734ea2f2ba34"
+            "PCR2": "e44d206c46d1f41dd4a5333c8374612b567940737f90d64f332d69d9598614ff95d1696d6af03dd005946a25c5c52ed9"
         }"#).unwrap();
         assert_eq!(&eif_pcrs.pcr0, &expected_pcrs.pcr0);
         assert_eq!(&eif_pcrs.pcr1, &expected_pcrs.pcr1);
