@@ -4,7 +4,7 @@ use error::BuildError;
 use crate::common::{resolve_output_path, OutputPath};
 use crate::config::ValidatedCageBuildConfig;
 use crate::docker::error::DockerError;
-use crate::docker::parse::{Directive, DockerfileDecoder, EnvVar};
+use crate::docker::parse::{Directive, DockerfileDecoder, EnvVar, Mode};
 use crate::docker::utils::verify_docker_is_running;
 use crate::enclave;
 
@@ -262,6 +262,8 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         dataplane_info.to_string().replace("\"", "\\\"")
     );
 
+    let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
+
     let injected_directives = vec![
         Directive::new_user("root"),
         // install dependencies
@@ -284,11 +286,21 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             format!("{DATA_PLANE_SERVICE_PATH}/run").as_str(),
             &[],
         )),
-        Directive::new_run(crate::docker::utils::write_command_to_script(
-            bootstrap_script_content,
-            "/bootstrap",
-            &[],
-        )),
+        Directive::new_run(
+            crate::docker::utils::write_command_to_script(
+                bootstrap_script_content,
+                "/bootstrap",
+                &[],
+            ),
+        ),
+        Directive::new_run(repro_time),
+        // add entrypoint which starts the runit services
+        Directive::new_from("scratch".to_string()),
+        Directive::new_copy("--from=0 / /".to_string()),
+        Directive::new_entrypoint(
+            Mode::Exec,
+            vec!["/bootstrap".to_string(), "1>&2".to_string()],
+        ),
     ];
 
     Ok([cleaned_instructions, injected_directives].concat())
@@ -431,6 +443,9 @@ RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
+FROM scratch
+COPY --from=0 / /
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
@@ -520,6 +535,9 @@ RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
+FROM scratch
+COPY --from=0 / /
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
@@ -580,6 +598,9 @@ RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
+FROM scratch
+COPY --from=0 / /
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
@@ -640,6 +661,9 @@ RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
+FROM scratch
+COPY --from=0 / /
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
