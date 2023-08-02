@@ -18,7 +18,7 @@ pub enum DeployError {
     ZipError(#[from] zip::result::ZipError),
     #[error("An error occurred while uploading to S3 — {0}")]
     RequestError(#[from] reqwest::Error),
-    #[error("An error contacting the API — {0}")]
+    #[error("An error occured contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),
     #[error("Cage failed to upload - {0}")]
     UploadError(String),

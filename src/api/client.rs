@@ -1,7 +1,7 @@
 use super::AuthMode;
 use crate::common::CliError;
 use async_trait::async_trait;
-use reqwest::{Client, RequestBuilder, Response};
+use reqwest::{Client, RequestBuilder, Response, StatusCode};
 use reqwest::{Error, Result as ReqwestResult};
 use serde::de::DeserializeOwned;
 use std::fmt::Formatter;
@@ -123,9 +123,9 @@ impl HandleResponse for ReqwestResult<Response> {
             Ok(res) if res.status().is_success() => res
                 .json()
                 .await
-                .map_err(|e| ApiError::ParsingError(e.to_string())),
-            Ok(res) => Err(ApiError::get_error_from_status(res.status().as_u16())),
-            Err(e) => Err(ApiError::Unknown(Some(e))),
+                .map_err(|e| ApiError::new(ApiErrorKind::ParsingError(e.to_string()))),
+            Ok(res) => Err(ApiError::get_error_detais_from_res(res).await),
+            Err(e) => Err(e.into()),
         }
     }
 
@@ -134,23 +134,23 @@ impl HandleResponse for ReqwestResult<Response> {
             Ok(res) if res.status().is_success() => res
                 .text()
                 .await
-                .map_err(|e| ApiError::ParsingError(e.to_string())),
-            Ok(res) => Err(ApiError::get_error_from_status(res.status().as_u16())),
-            Err(e) => Err(ApiError::Unknown(Some(e))),
+                .map_err(|e| ApiError::new(ApiErrorKind::ParsingError(e.to_string()))),
+            Ok(res) => Err(res.status().into()),
+            Err(e) => Err(e.into()),
         }
     }
 
     fn handle_no_op_response(self) -> ApiResult<()> {
         match self {
             Ok(res) if res.status().is_success() => Ok(()),
-            Ok(res) => Err(ApiError::get_error_from_status(res.status().as_u16())),
-            Err(e) => Err(ApiError::Unknown(Some(e))),
+            Ok(res) => Err(res.status().into()),
+            Err(e) => Err(e.into()),
         }
     }
 }
 
 #[derive(Error, Debug)]
-pub enum ApiError {
+pub enum ApiErrorKind {
     BadRequest,
     NotFound,
     Unauthorized,
@@ -161,40 +161,20 @@ pub enum ApiError {
     ParsingError(String),
 }
 
-impl CliError for ApiError {
-    fn exitcode(&self) -> exitcode::ExitCode {
-        match self {
-            Self::BadRequest | Self::NotFound => exitcode::DATAERR,
-            Self::Unauthorized => exitcode::NOUSER,
-            Self::Internal | Self::ParsingError(_) => exitcode::SOFTWARE,
-            Self::Forbidden => exitcode::NOPERM,
-            Self::Conflict => exitcode::DATAERR,
-            Self::Unknown(_) => exitcode::UNAVAILABLE,
-        }
-    }
+pub struct ApiError {
+    kind: ApiErrorKind,
+    details: Option<ApiErrorDetails>,
 }
 
 pub type ApiResult<T> = core::result::Result<T, ApiError>;
 
-impl std::fmt::Display for ApiError {
+impl std::fmt::Display for ApiErrorKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.to_msg())
     }
 }
 
-impl ApiError {
-    pub fn get_error_from_status(code: u16) -> Self {
-        match code {
-            400 => Self::BadRequest,
-            401 => Self::Unauthorized,
-            403 => Self::Forbidden,
-            404 => Self::NotFound,
-            409 => Self::Conflict,
-            500 => Self::Internal,
-            _ => Self::Unknown(None),
-        }
-    }
-
+impl ApiErrorKind {
     pub fn to_msg(&self) -> String {
         match self {
             Self::BadRequest => "400: Bad Request".to_owned(),
@@ -208,5 +188,71 @@ impl ApiError {
                 "An error occurred while parsing the server's response.to_owned()".to_owned()
             }
         }
+    }
+}
+
+impl CliError for ApiError {
+    fn exitcode(&self) -> exitcode::ExitCode {
+        match self.kind {
+            ApiErrorKind::BadRequest | ApiErrorKind::NotFound => exitcode::DATAERR,
+            ApiErrorKind::Unauthorized => exitcode::NOUSER,
+            ApiErrorKind::Internal | ApiErrorKind::ParsingError(_) => exitcode::SOFTWARE,
+            ApiErrorKind::Forbidden => exitcode::NOPERM,
+            ApiErrorKind::Conflict => exitcode::DATAERR,
+            ApiErrorKind::Unknown(_) => exitcode::UNAVAILABLE,
+        }
+    }
+}
+
+impl From<StatusCode> for ApiError {
+    fn from(status: StatusCode) -> Self {
+        Self::new(Self::get_error_from_status(status.into()))
+    }
+}
+
+impl From<Error> for ApiError {
+    fn from(e: Error) -> Self {
+        Self::new(ApiErrorKind::Unknown(Some(e)))
+    }
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct ApiErrorDetails {
+    pub status_code: u16,
+    pub message: String,
+    pub code: String,
+}
+
+impl ApiError {
+    pub fn new(kind: ApiErrorKind) -> Self {
+        Self {
+            kind,
+            details: None,
+        }
+    }
+
+    pub fn get_error_from_status(code: u16) -> ApiErrorKind {
+        match code {
+            400 => ApiErrorKind::BadRequest,
+            401 => ApiErrorKind::Unauthorized,
+            403 => ApiErrorKind::Forbidden,
+            404 => ApiErrorKind::NotFound,
+            409 => ApiErrorKind::Conflict,
+            500 => ApiErrorKind::Internal,
+            _ => ApiErrorKind::Unknown(None),
+        }
+    }
+
+    pub async fn get_error_detais_from_res(res: Response) -> ApiError {
+        let mut api_error: ApiError = res.status().into();
+
+        let details = res.json::<ApiErrorDetails>().await;
+
+        if let Ok(details) = details {
+            api_error.details = Some(details);
+        }
+
+        api_error
     }
 }
