@@ -13,7 +13,7 @@ pub enum RestartError {
     MissingUuid,
     #[error("An IO error occurred {0}")]
     IoError(#[from] std::io::Error),
-    #[error("An error contacting the API — {0}")]
+    #[error("An error occurred contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),
 }
 

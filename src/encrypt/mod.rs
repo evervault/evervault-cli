@@ -13,7 +13,7 @@ use thiserror::Error;
 pub enum EncryptError {
     #[error("Team uuid and app uuid must be provided as arg or in cage toml")]
     MissingUuid,
-    #[error("An error contacting the API — {0}")]
+    #[error("An error occurred contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),
     #[error("Error decoding public key — {0}")]
     Base64DecodeError(#[from] base64::DecodeError),
