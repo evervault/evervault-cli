@@ -7,7 +7,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum EnvError {
-    #[error("An error contacting the API — {0}")]
+    #[error("An error occurred contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),
     #[error("Error decoding public key — {0}")]
     Base64DecodeError(#[from] base64::DecodeError),

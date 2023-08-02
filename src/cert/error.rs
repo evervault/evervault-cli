@@ -23,7 +23,7 @@ pub enum CertError {
     InvalidDate,
     #[error("The specificied cert path does not exist: {0:?}")]
     CertPathDoesNotExist(std::path::PathBuf),
-    #[error("An error contacting the API — {0}")]
+    #[error("An error occurred contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),
     #[error("An error occurred calculating the hash of the cert — {0}")]
     HashError(String),
