@@ -220,7 +220,7 @@ impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.details {
             Some(details) => {
-                write!(f, "{:?}", details.message)
+                write!(f, "{}", details.message)
             }
             None => self.kind.fmt(f),
         }
