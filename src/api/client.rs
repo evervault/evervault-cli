@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use reqwest::{Client, RequestBuilder, Response, StatusCode};
 use reqwest::{Error, Result as ReqwestResult};
 use serde::de::DeserializeOwned;
-use std::fmt::Formatter;
+use std::fmt::{Display, Formatter};
 use std::time::Duration;
 use thiserror::Error;
 
@@ -216,12 +216,31 @@ impl From<Error> for ApiError {
     }
 }
 
-#[derive(serde::Deserialize)]
+impl std::fmt::Display for ApiError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.details {
+            Some(details) => {
+                write!(f, "{:?}", details.message)
+            }
+            None => self.kind.fmt(f),
+        }
+    }
+}
+
+impl std::fmt::Debug for ApiError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self::Display::fmt(&self, f)
+    }
+}
+
+impl std::error::Error for ApiError {}
+
+#[derive(serde::Deserialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct ApiErrorDetails {
-    pub status_code: u16,
+    pub status_code: Option<u16>,
     pub message: String,
-    pub code: String,
+    pub code: Option<String>,
 }
 
 impl ApiError {
