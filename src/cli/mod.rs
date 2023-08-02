@@ -12,6 +12,7 @@ pub mod env;
 pub mod init;
 pub mod list;
 pub mod logs;
+pub mod restart;
 pub mod update;
 
 #[derive(Debug, Subcommand)]
@@ -30,4 +31,5 @@ pub enum Command {
     Attest(attest::AttestArgs),
     Env(env::EnvArgs),
     Encrypt(encrypt::EncryptArgs),
+    Restart(restart::RestartArgs),
 }

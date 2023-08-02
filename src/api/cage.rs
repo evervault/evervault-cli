@@ -218,6 +218,14 @@ impl CagesClient {
             .handle_json_response()
             .await
     }
+
+    pub async fn restart_cage(&self, cage_uuid: &str) -> ApiResult<()> {
+        let patch_cage_url = format!("{}/{}", self.base_url(), cage_uuid);
+        self.patch(&patch_cage_url)
+            .send()
+            .await
+            .handle_no_op_response()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
