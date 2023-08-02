@@ -141,7 +141,7 @@ pub fn build_image_repro(
         ]
         .concat()
     } else {
-        // log::warn!("Your docker version is too old for reproducible builds, attempting build without buildkit. Please upgrade docker for build reproducibility");
+        log::warn!("Your docker version is too old for reproducible builds, attempting build without buildkit. Please upgrade docker for build reproducibility");
         [
             vec![
                 "build".as_ref(),
