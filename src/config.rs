@@ -339,7 +339,7 @@ impl ValidatedCageBuildConfig {
     }
 
     pub fn trusted_headers(&self) -> &[String] {
-      &self.trusted_headers
+        &self.trusted_headers
     }
 }
 
@@ -461,7 +461,7 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             trx_logging_enabled,
             runtime: config.runtime.clone(),
             forward_proxy_protocol: config.forward_proxy_protocol,
-            trusted_headers: config.trusted_headers.clone()
+            trusted_headers: config.trusted_headers.clone(),
         })
     }
 }
@@ -557,7 +557,7 @@ mod test {
             trx_logging: true,
             forward_proxy_protocol: false,
             runtime: None,
-            trusted_headers: vec![]
+            trusted_headers: vec![],
         };
 
         let test_args = ExampleArgs {

@@ -258,7 +258,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     }
 
     if !build_config.trusted_headers().is_empty() {
-      dataplane_info["trusted_headers"] = json!(build_config.trusted_headers());
+        dataplane_info["trusted_headers"] = json!(build_config.trusted_headers());
     }
 
     let dataplane_env = format!(
@@ -417,7 +417,7 @@ mod test {
             trx_logging_enabled: true,
             runtime: None,
             forward_proxy_protocol: false,
-            trusted_headers: vec!["X-Evervault-*".to_string()]
+            trusted_headers: vec!["X-Evervault-*".to_string()],
         }
     }
 
