@@ -236,6 +236,8 @@ pub struct CageConfig {
     pub disable_tls_termination: bool,
     #[serde(default)]
     pub forward_proxy_protocol: bool,
+    #[serde(default)]
+    pub trusted_headers: Vec<String>,
     // Table configs
     pub egress: EgressSettings,
     pub signing: Option<SigningInfo>,
@@ -274,6 +276,7 @@ pub struct ValidatedCageBuildConfig {
     pub trx_logging_enabled: bool,
     pub runtime: Option<RuntimeVersions>,
     pub forward_proxy_protocol: bool,
+    pub trusted_headers: Vec<String>,
 }
 
 impl ValidatedCageBuildConfig {
@@ -333,6 +336,10 @@ impl ValidatedCageBuildConfig {
 
     pub fn forward_proxy_protocol(&self) -> bool {
         self.forward_proxy_protocol
+    }
+
+    pub fn trusted_headers(&self) -> &[String] {
+      &self.trusted_headers
     }
 }
 
@@ -454,6 +461,7 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             trx_logging_enabled,
             runtime: config.runtime.clone(),
             forward_proxy_protocol: config.forward_proxy_protocol,
+            trusted_headers: config.trusted_headers.clone()
         })
     }
 }
@@ -499,7 +507,6 @@ pub fn read_and_validate_config<B: BuildTimeConfig>(
 ) -> Result<(CageConfig, ValidatedCageBuildConfig), CageConfigError> {
     let cage_config = CageConfig::try_from_filepath(config_path)?;
     let merged_config = args.merge_with_config(&cage_config);
-
     let validated_config: ValidatedCageBuildConfig = merged_config.as_ref().try_into()?;
 
     Ok((cage_config, validated_config))
@@ -550,6 +557,7 @@ mod test {
             trx_logging: true,
             forward_proxy_protocol: false,
             runtime: None,
+            trusted_headers: vec![]
         };
 
         let test_args = ExampleArgs {
