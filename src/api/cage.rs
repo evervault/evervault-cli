@@ -243,6 +243,7 @@ pub struct CreateCageDeploymentIntentRequest {
     #[serde(flatten)]
     pcrs: crate::enclave::PCRs,
     debug_mode: bool,
+    trusted_headers: Vec<String>,
     egress_enabled: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     egress_domains: Option<Vec<String>>,
@@ -267,6 +268,7 @@ impl CreateCageDeploymentIntentRequest {
             debug_mode: config.debug,
             egress_enabled: config.egress.enabled,
             egress_domains: config.egress.destinations.clone(),
+            trusted_headers: config.trusted_headers().to_vec(),
             eif_size_bytes,
             not_before: config.signing.not_before(),
             not_after: config.signing.not_after(),
