@@ -75,6 +75,10 @@ pub struct InitArgs {
     /// Enables forwarding proxy protocol when TLS Termination is disabled
     #[clap(long = "forward-proxy-protocol")]
     pub forward_proxy_protocol: bool,
+
+    /// Trusted headers sent into the Cage will be persisted without redaction in the Cage's transaction logs
+    #[clap(long = "trusted_headers")]
+    pub trusted_headers: Option<String>,
 }
 
 impl std::convert::From<InitArgs> for CageConfig {
@@ -107,6 +111,7 @@ impl std::convert::From<InitArgs> for CageConfig {
             trx_logging: !val.trx_logging_disabled,
             runtime: None,
             forward_proxy_protocol: val.forward_proxy_protocol,
+            trusted_headers: convert_comma_list(val.trusted_headers).unwrap_or_else(|| vec![]),
         }
     }
 }
@@ -207,6 +212,7 @@ mod init_tests {
             egress_ports: Some("443".to_string()),
             egress_destinations: Some("evervault.com".to_string()),
             forward_proxy_protocol: false,
+            trusted_headers: Some("X-Evervault-*".to_string()),
         };
         init_local_config(init_args, sample_cage).await;
         let config_path = output_dir.path().join("cage.toml");
@@ -222,6 +228,7 @@ api_key_auth = true
 trx_logging = true
 disable_tls_termination = false
 forward_proxy_protocol = false
+trusted_headers = ["X-Evervault-*"]
 
 [egress]
 enabled = true
