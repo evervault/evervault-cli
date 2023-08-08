@@ -34,7 +34,6 @@ pub async fn delete_cage(
     let deleted_cage = match cage_api.delete_cage(&cage_uuid).await {
         Ok(cage_ref) => cage_ref,
         Err(e) => {
-            log::error!("Error initiating cage deletion — {:?}", e);
             return Err(DeleteError::ApiError(e));
         }
     };

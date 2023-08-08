@@ -62,7 +62,7 @@ pub async fn run(delete_args: DeleteArgs) -> exitcode::ExitCode {
             }
         }
         Err(e) => {
-            log::info!("{}", e);
+            log::error!("{}", e);
             return e.exitcode();
         }
     };

@@ -56,7 +56,6 @@ pub async fn restart_cage(
     match cage_api.restart_cage(&cage_uuid).await {
         Ok(_) => Ok(()),
         Err(e) => {
-            log::error!("Error initiating cage deletion — {:?}", e);
             return Err(RestartError::ApiError(e));
         }
     }
