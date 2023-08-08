@@ -31,7 +31,7 @@ pub async fn run(restart_args: RestartArgs) -> i32 {
     {
         Ok(_) => println!("Cage restart started"),
         Err(e) => {
-            log::info!("{}", e);
+            log::error!("{}", e);
             return e.exitcode();
         }
     };

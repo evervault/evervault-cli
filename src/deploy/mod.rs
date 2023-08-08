@@ -169,10 +169,7 @@ async fn watch_deployment(
                 };
                 Ok(status_report)
             }
-            Err(e) => {
-                log::error!("Unable to retrieve deployment status. Error: {:?}", e);
-                Ok(StatusReport::Failed)
-            }
+            Err(e) => Ok(StatusReport::Failed),
         }
     }
 
