@@ -692,6 +692,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_choose_output_dir() {
         let output_dir = TempDir::new().unwrap();
 
