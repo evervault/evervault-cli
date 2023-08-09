@@ -219,12 +219,13 @@ impl CagesClient {
             .await
     }
 
-    pub async fn restart_cage(&self, cage_uuid: &str) -> ApiResult<()> {
+    pub async fn restart_cage(&self, cage_uuid: &str) -> ApiResult<CageDeployment> {
         let patch_cage_url = format!("{}/{}", self.base_url(), cage_uuid);
         self.patch(&patch_cage_url)
             .send()
             .await
-            .handle_no_op_response()
+            .handle_json_response()
+            .await
     }
 }
 
@@ -476,6 +477,14 @@ pub struct CageDeployment {
 impl CageDeployment {
     pub fn is_finished(&self) -> bool {
         self.completed_at.is_some()
+    }
+
+    pub fn cage_uuid(&self) -> &str {
+        &self.cage_uuid
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
     }
 }
 
