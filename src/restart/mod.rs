@@ -1,5 +1,5 @@
 use crate::{
-    api::{self, AuthMode},
+    api::cage::{CageDeployment, CagesClient},
     common::CliError,
     config::{CageConfig, CageConfigError},
 };
@@ -42,21 +42,16 @@ fn resolve_cage_uuid(
 pub async fn restart_cage(
     config: &str,
     cage_uuid: Option<&str>,
-    api_key: &str,
-    _background: bool, // TODO(Mark): implement cage restart polling
-) -> Result<(), RestartError> {
+    cage_api: &CagesClient,
+    _background: bool,
+) -> Result<CageDeployment, RestartError> {
     let maybe_cage_uuid = resolve_cage_uuid(cage_uuid, config)?;
     let cage_uuid = match maybe_cage_uuid {
         Some(given_cage_uuid) => given_cage_uuid,
         _ => return Err(RestartError::MissingUuid),
     };
 
-    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
+    println!("Restarting cage {}...", cage_uuid);
 
-    match cage_api.restart_cage(&cage_uuid).await {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            return Err(RestartError::ApiError(e));
-        }
-    }
+    Ok(cage_api.restart_cage(&cage_uuid).await?)
 }

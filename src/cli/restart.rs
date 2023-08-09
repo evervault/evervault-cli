@@ -1,4 +1,11 @@
-use crate::{common::CliError, get_api_key, restart::restart_cage};
+use crate::{
+    api::{cage::CagesClient, AuthMode},
+    common::CliError,
+    deploy::{timed_operation, watch_deployment, DEPLOY_WATCH_TIMEOUT_SECONDS},
+    get_api_key,
+    progress::get_tracker,
+    restart::restart_cage,
+};
 use clap::Parser;
 
 /// Restart the Cage deployment
@@ -21,20 +28,49 @@ pub struct RestartArgs {
 pub async fn run(restart_args: RestartArgs) -> i32 {
     let api_key = get_api_key!();
 
-    match restart_cage(
+    let cage_api = CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
+
+    let new_deployment = match restart_cage(
         restart_args.config.as_str(),
         restart_args.cage_uuid.as_deref(),
-        api_key.as_str(),
+        &cage_api,
         restart_args.background,
     )
     .await
     {
-        Ok(_) => println!("Cage restart started"),
+        Ok(depl) => depl,
         Err(e) => {
             log::error!("{}", e);
             return e.exitcode();
         }
     };
 
-    exitcode::OK
+    if restart_args.background {
+        println!("Cage restarting. You can observe the restart progress in the Cages Dashboard");
+        return exitcode::OK;
+    }
+
+    let progress_bar = get_tracker(
+        "Deploying Cage into a Trusted Execution Environment...",
+        None,
+    );
+
+    match timed_operation(
+        "Cage Deployment",
+        DEPLOY_WATCH_TIMEOUT_SECONDS,
+        watch_deployment(
+            cage_api,
+            new_deployment.cage_uuid(),
+            new_deployment.uuid(),
+            progress_bar,
+        ),
+    )
+    .await
+    {
+        Ok(_) => exitcode::OK,
+        Err(e) => {
+            log::error!("{}", e);
+            e.exitcode()
+        }
+    }
 }

@@ -19,7 +19,7 @@ use tokio_stream::StreamExt;
 use tokio_util::codec::{BytesCodec, FramedRead};
 
 const ENCLAVE_ZIP_FILENAME: &str = "enclave.zip";
-const DEPLOY_WATCH_TIMEOUT_SECONDS: u64 = 600; //10 minutes
+pub const DEPLOY_WATCH_TIMEOUT_SECONDS: u64 = 600; //10 minutes
 
 pub async fn deploy_eif(
     validated_config: &ValidatedCageBuildConfig,
@@ -137,7 +137,7 @@ async fn watch_build(
     .await;
 }
 
-async fn watch_deployment(
+pub async fn watch_deployment(
     cage_api: CagesClient,
     cage_uuid: &str,
     deployment_uuid: &str,
@@ -169,7 +169,7 @@ async fn watch_deployment(
                 };
                 Ok(status_report)
             }
-            Err(e) => Ok(StatusReport::Failed),
+            Err(_) => Ok(StatusReport::Failed),
         }
     }
 
