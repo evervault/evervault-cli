@@ -50,6 +50,11 @@ pub async fn run(restart_args: RestartArgs) -> i32 {
         None,
     );
 
+    if restart_args.background {
+        println!("Cage restarted started. You can observe it's progess in the Cages Dashboard");
+        return exitcode::OK;
+    }
+
     match timed_operation(
         "Cage Deployment",
         DEPLOY_WATCH_TIMEOUT_SECONDS,
