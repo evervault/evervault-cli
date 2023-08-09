@@ -45,15 +45,15 @@ pub async fn run(restart_args: RestartArgs) -> i32 {
         }
     };
 
-    let progress_bar = get_tracker(
-        "Deploying Cage into a Trusted Execution Environment...",
-        None,
-    );
-
     if restart_args.background {
         println!("Cage restarted started. You can observe it's progess in the Cages Dashboard");
         return exitcode::OK;
     }
+
+    let progress_bar = get_tracker(
+        "Deploying Cage into a Trusted Execution Environment...",
+        None,
+    );
 
     match timed_operation(
         "Cage Deployment",
