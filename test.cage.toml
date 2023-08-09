@@ -7,6 +7,7 @@ dockerfile = "./sample-user.Dockerfile"
 api_key_auth = true
 trx_logging = true
 disable_tls_termination = false
+forward_proxy_protocol = false
 
 [egress]
 enabled = false
@@ -20,8 +21,8 @@ HashAlgorithm = "Sha384 { ... }"
 PCR0 = "4d99ce0096bffeea435c41016e9d64aa51caae95d7846fb7c8708f590d31be1fc704adc13bedabbcb2980d6612dde6e9"
 PCR1 = "bcdf05fefccaa8e55bf2c8d6dee9e79bbff31e34bf28a99aa19e6b29c37ee80b214a414b7607236edf26fcb78654e63f"
 PCR2 = "42997b22af1f96a6b32372402af03a5d16e47316e7990314bdb01c0759fa11a7ae88e3ae2f3628b1c1ab734ea2f2ba34"
-PCR8 = "7c898f1dfd7983c8824af69b4fa693812236a7aedf3a7b13488d710250c0ac29cbe8748a29e49473779b1f568204bb81"
+PCR8 = "e17f6163fad2b52657fbd3ea4e55f4df0cb1baeba2a76ca27b1d4b78531a00069ed9510319d24e1d080bcaefcd0690a1"
 
 [runtime]
-data_plane_version = "0.0.31"
+data_plane_version = "0.0.37"
 installer_version = "b8073166b7c5bc8fe2abf192f66e1106f2d4be547b1841be69f95ff2c4ea578c"
