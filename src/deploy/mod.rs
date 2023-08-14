@@ -279,7 +279,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial_test::serial]
+    #[cfg(feature = "repro_builds")]
     async fn test_reproducible_cage_builds_with_pinned_version() {
         let current_dir = std::env::current_dir().unwrap();
         let (build_output, output_path) = test_utils::build_test_cage(

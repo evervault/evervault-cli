@@ -45,7 +45,6 @@ sha2 = "0.9.9"
 git2 = "0.17.1"
 version-compare = "0.1.1"
 regex = "1.8.1"
-serial_test = "2.0.0"
 
 [dev-dependencies]
 tokio-test = "0.4.2"
@@ -53,3 +52,6 @@ tokio-test = "0.4.2"
 [target.'cfg(unix)'.dependencies]
 aws-nitro-enclaves-nsm-api = { version = "0.2.1" }
 attestation-doc-validation = { version = "0.2.0", registry="evervault-rust-libraries" }
+
+[features]
+repro_builds = []

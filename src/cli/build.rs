@@ -45,6 +45,7 @@ pub struct BuildArgs {
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 
+    #[cfg(feature = "repro_builds")]
     /// Path to an enclave dockerfile to build from existing
     #[clap(long = "from-existing")]
     pub from_existing: Option<String>,
@@ -110,6 +111,9 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
 
     let runtime_info = RuntimeVersions::new(data_plane_version.clone(), installer_version.clone());
 
+    #[cfg(not(feature = "repro_builds"))]
+    let from_existing = None;
+    #[cfg(feature = "repro_builds")]
     let from_existing = build_args.from_existing;
     let built_enclave = match build_enclave_image_file(
         &validated_config,
