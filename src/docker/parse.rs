@@ -357,10 +357,6 @@ impl TryFrom<&[u8]> for Directive {
         }
 
         let directive = match directive_str.to_ascii_uppercase().as_str() {
-            "ADD" => Self::Add {
-                source_url: String::new(),
-                destination_path: String::new(),
-            },
             "ENTRYPOINT" => Self::Entrypoint {
                 mode: None,
                 tokens: Vec::new(),

@@ -266,26 +266,6 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         dataplane_info.to_string().replace("\"", "\\\"")
     );
 
-    let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
-
-    let start_up_directives = vec![
-        // Add bootstrap script to configure enclave before starting services
-        Directive::new_run(crate::docker::utils::write_command_to_script(
-            bootstrap_script_content,
-            "/bootstrap",
-            &[],
-        )),
-        Directive::new_run(repro_time),
-        // Squash layers for reproducible builds
-        Directive::new_from("scratch".to_string()),
-        Directive::new_copy("--from=0 / /".to_string()),
-        // add entrypoint which starts the runit services
-        Directive::new_entrypoint(
-            Mode::Exec,
-            vec!["/bootstrap".to_string(), "1>&2".to_string()],
-        ),
-    ];
-
     let injected_directives = vec![
         Directive::new_user("root"),
         // install dependencies
@@ -307,15 +287,39 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             data_plane_run_script.as_str(),
             format!("{DATA_PLANE_SERVICE_PATH}/run").as_str(),
             &[],
-        )),
+        ))
     ];
 
+    // add custom directives to end of dockerfile
     Ok([
         cleaned_instructions,
         injected_directives,
-        start_up_directives,
+        vec![Directive::new_run(
+            crate::docker::utils::write_command_to_script(
+                bootstrap_script_content,
+                "/bootstrap",
+                &[],
+            ),
+        )],
+        #[cfg(feature = "repro_builds")]
+        reproducible_build_directives(),
+        vec![Directive::new_entrypoint(
+            Mode::Exec,
+            vec!["/bootstrap".to_string(), "1>&2".to_string()],
+        )],
     ]
     .concat())
+}
+
+#[cfg(feature = "repro_builds")]
+fn reproducible_build_directives() -> Vec<Directive> {
+    let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
+    vec![
+        Directive::new_run(repro_time),
+        // add entrypoint which starts the runit services
+        Directive::new_from("scratch".to_string()),
+        Directive::new_copy("--from=0 / /".to_string()),
+    ]
 }
 
 pub fn build_user_service(
@@ -636,6 +640,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
     #[tokio::test]
     async fn test_process_dockerfile_with_env_directive() {
         let sample_dockerfile_contents = r#"FROM alpine
+
 ENV Hello=World Ever=Vault
 ENV Cages Secure
 ENV CRAB="Ferris"
@@ -697,7 +702,6 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
     }
 
     #[tokio::test]
-    #[serial_test::serial]
     async fn test_choose_output_dir() {
         let output_dir = TempDir::new().unwrap();
 
