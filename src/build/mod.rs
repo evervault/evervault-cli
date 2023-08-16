@@ -306,7 +306,11 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
                 &[],
             ),
         )],
-        reproducible_build_directives(reproducible),
+        if reproducible {
+            reproducible_build_directives()
+        } else {
+            vec![]
+        },
         vec![Directive::new_entrypoint(
             Mode::Exec,
             vec!["/bootstrap".to_string(), "1>&2".to_string()],
@@ -315,18 +319,14 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     .concat())
 }
 
-fn reproducible_build_directives(reproducible: bool) -> Vec<Directive> {
+fn reproducible_build_directives() -> Vec<Directive> {
     let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
-    if reproducible {
-        vec![
-            Directive::new_run(repro_time),
-            // add entrypoint which starts the runit services
-            Directive::new_from("scratch".to_string()),
-            Directive::new_copy("--from=0 / /".to_string()),
-        ]
-    } else {
-        vec![]
-    }
+    vec![
+        Directive::new_run(repro_time),
+        // add entrypoint which starts the runit services
+        Directive::new_from("scratch".to_string()),
+        Directive::new_copy("--from=0 / /".to_string()),
+    ]
 }
 
 pub fn build_user_service(
