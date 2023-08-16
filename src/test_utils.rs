@@ -5,6 +5,9 @@ use crate::common::OutputPath;
 use crate::config::{read_and_validate_config, ValidatedCageBuildConfig};
 use crate::enclave::BuiltEnclave;
 
+// anytime this is called by a test, the test should be run sequentially
+// using the #[serial_test::serial] macro, this prevents issues with conflicting
+// eifs throwing PCRs off in repro builds
 pub async fn build_test_cage(
     output_dir: Option<&str>,
     from_existing: Option<String>,

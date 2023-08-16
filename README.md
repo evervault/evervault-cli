@@ -9,29 +9,6 @@ The Evervault Cages product is open source with the aim of providing transparenc
 
 The current state of this project does not allow for self-hosting. We plan on addressing this by abstracting away the Evervault-specific elements of the Cages product.
 
-## Try out Reproducible Builds
-
-Reproducible builds will stay in the experimental phase until the release of Buildkit v0.12 which is expected in the next few weeks.
-
-We have implemented the work arounds for reproducible builds from this [blog post](https://medium.com/nttlabs/bit-for-bit-reproducible-builds-with-dockerfile-7cc2b9faed9f). These workout arounds won't be needed in v0.12 so we are going to wait till then to merge the feature into the CLI.
-
-To try out the feature now:
-```
-cargo build --features repro_builds
-sudo ln -s ${PROJECT_DIR}/target/debug/ev-cage /usr/local/bin/ev-cage
-```
-
-Build a Cage:
-```
-ev-cage init --name test-repro-builds
-ev-cage build
-```
-
-Reproduce the same Cage anywhere:
-```
-ev-cage build --from-existing enclave.Dockerfile
-```
-
 ## Subcommands
 
 ### init
