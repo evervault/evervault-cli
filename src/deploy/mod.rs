@@ -271,7 +271,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_eif_size() {
-        let (_, output_path) = test_utils::build_test_cage(None, None).await.unwrap();
+        let (_, output_path) = test_utils::build_test_cage(None, None, false)
+            .await
+            .unwrap();
         let output_path_as_string = output_path.path().to_str().unwrap().to_string();
 
         // ensure temp output directory still exists after running function
@@ -279,12 +281,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg(feature = "repro_builds")]
     async fn test_reproducible_cage_builds_with_pinned_version() {
         let current_dir = std::env::current_dir().unwrap();
         let (build_output, output_path) = test_utils::build_test_cage(
             None,
             Some(format!("{}/testRepro.Dockerfile", current_dir.to_str().unwrap()).to_string()),
+            true,
         )
         .await
         .unwrap();

@@ -29,6 +29,7 @@ pub async fn build_enclave_image_file(
     installer_version: String,
     timestamp: String,
     from_existing: Option<String>,
+    reproducible: bool,
 ) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
     let context_path = Path::new(&context_path);
     if !context_path.exists() {
@@ -66,6 +67,7 @@ pub async fn build_enclave_image_file(
                 installer_version,
                 output_path.path(),
                 timestamp,
+                reproducible,
             )
             .await?;
         }
@@ -92,6 +94,7 @@ pub async fn build_from_scratch(
     installer_version: String,
     output_path: &PathBuf,
     timestamp: String,
+    reproducible: bool,
 ) -> Result<(), BuildError> {
     if !verify_docker_is_running()? {
         return Err(DockerError::DaemonNotRunning.into());
@@ -114,6 +117,7 @@ pub async fn build_from_scratch(
         dockerfile,
         data_plane_version,
         installer_version,
+        reproducible,
     )
     .await?;
 
@@ -150,6 +154,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     dockerfile_src: R,
     data_plane_version: String,
     installer_version: String,
+    reproducible: bool,
 ) -> Result<Vec<Directive>, BuildError> {
     // Decode dockerfile from file
     let instruction_set = DockerfileDecoder::decode_dockerfile_from_src(dockerfile_src).await?;
@@ -301,8 +306,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
                 &[],
             ),
         )],
-        #[cfg(feature = "repro_builds")]
-        reproducible_build_directives(),
+        reproducible_build_directives(reproducible),
         vec![Directive::new_entrypoint(
             Mode::Exec,
             vec!["/bootstrap".to_string(), "1>&2".to_string()],
@@ -311,15 +315,18 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     .concat())
 }
 
-#[cfg(feature = "repro_builds")]
-fn reproducible_build_directives() -> Vec<Directive> {
+fn reproducible_build_directives(reproducible: bool) -> Vec<Directive> {
     let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
-    vec![
-        Directive::new_run(repro_time),
-        // add entrypoint which starts the runit services
-        Directive::new_from("scratch".to_string()),
-        Directive::new_copy("--from=0 / /".to_string()),
-    ]
+    if reproducible {
+        vec![
+            Directive::new_run(repro_time),
+            // add entrypoint which starts the runit services
+            Directive::new_from("scratch".to_string()),
+            Directive::new_copy("--from=0 / /".to_string()),
+        ]
+    } else {
+        vec![]
+    }
 }
 
 pub fn build_user_service(
@@ -422,7 +429,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_process_dockerfile() {
+    async fn test_process_dockerfile_reproducible() {
         let sample_dockerfile_contents = r#"FROM alpine
 RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
@@ -440,6 +447,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
             &mut readable_contents,
             data_plane_version,
             installer_version,
+            true,
         )
         .await;
         assert_eq!(processed_file.is_ok(), true);
@@ -483,6 +491,65 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
     }
 
     #[tokio::test]
+    async fn test_process_dockerfile_not_reproducible() {
+        let sample_dockerfile_contents = r#"FROM alpine
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+
+ENTRYPOINT ["sh", "/hello-script"]"#;
+        let mut readable_contents = sample_dockerfile_contents.as_bytes();
+
+        let config = get_config();
+
+        let data_plane_version = "0.0.0".to_string();
+        let installer_version = "abcdef".to_string();
+
+        let processed_file = process_dockerfile(
+            &config,
+            &mut readable_contents,
+            data_plane_version,
+            installer_version,
+            false,
+        )
+        .await;
+        assert_eq!(processed_file.is_ok(), true);
+        let processed_file = processed_file.unwrap();
+
+        let expected_output_contents = r##"FROM alpine
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+USER root
+RUN mkdir -p /opt/evervault
+ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
+RUN echo {\"api_key_auth\":true,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
+RUN mkdir -p /etc/service/user-entrypoint
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN chmod +x /opt/evervault/data-plane
+RUN mkdir -p /etc/service/data-plane
+RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+ENTRYPOINT ["/bootstrap", "1>&2"]
+"##;
+
+        let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
+            expected_output_contents.as_bytes(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(expected_directives.len(), processed_file.len());
+        for (expected_directive, processed_directive) in
+            zip(expected_directives.iter(), processed_file.iter())
+        {
+            let expected_directive = expected_directive.to_string();
+            let processed_directive = processed_directive.to_string();
+            assert_eq!(expected_directive, processed_directive);
+        }
+    }
+
+    #[tokio::test]
     async fn test_process_dockerfile_with_restricted_reserved_port() {
         let sample_dockerfile_contents = r#"FROM alpine
 
@@ -501,6 +568,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
             &mut readable_contents,
             data_plane_version,
             installer_version,
+            false,
         )
         .await;
         assert_eq!(processed_file.is_err(), true);
@@ -532,6 +600,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
             &mut readable_contents,
             data_plane_version,
             installer_version,
+            false,
         )
         .await;
         assert_eq!(processed_file.is_ok(), true);
@@ -552,9 +621,6 @@ RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
-RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
-FROM scratch
-COPY --from=0 / /
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
@@ -594,6 +660,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
             &mut readable_contents,
             data_plane_version,
             installer_version,
+            false,
         )
         .await;
         assert_eq!(processed_file.is_ok(), true);
@@ -615,9 +682,6 @@ RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
-RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
-FROM scratch
-COPY --from=0 / /
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
@@ -659,6 +723,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
             &mut readable_contents,
             data_plane_version,
             installer_version,
+            false,
         )
         .await;
         assert_eq!(processed_file.is_ok(), true);
@@ -679,9 +744,6 @@ RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
-RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
-FROM scratch
-COPY --from=0 / /
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
@@ -705,7 +767,8 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
     async fn test_choose_output_dir() {
         let output_dir = TempDir::new().unwrap();
 
-        let _ = test_utils::build_test_cage(Some(output_dir.path().to_str().unwrap()), None).await;
+        let _ = test_utils::build_test_cage(Some(output_dir.path().to_str().unwrap()), None, false)
+            .await;
 
         let paths = std::fs::read_dir(output_dir.path().to_str().unwrap().to_string()).unwrap();
 

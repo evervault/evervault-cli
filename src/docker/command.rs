@@ -48,7 +48,6 @@ pub fn load_image_into_local_docker_registry(
     Ok(docker_load_result)
 }
 
-#[cfg(feature = "repro_builds")]
 fn docker_buildkit_enabled() -> Result<bool, CommandError> {
     use regex::Regex;
     use version_compare::Version;
@@ -65,11 +64,6 @@ fn docker_buildkit_enabled() -> Result<bool, CommandError> {
     let min_version = Version::from("0.10.0").ok_or(CommandError::SemverParseError)?;
     let user_version = Version::from(&semver_match).ok_or(CommandError::SemverParseError)?;
     Ok(user_version >= min_version)
-}
-
-#[cfg(not(feature = "repro_builds"))]
-fn docker_buildkit_enabled() -> Result<bool, CommandError> {
-    Ok(false)
 }
 
 pub fn get_git_hash() -> String {

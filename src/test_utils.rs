@@ -8,6 +8,7 @@ use crate::enclave::BuiltEnclave;
 pub async fn build_test_cage(
     output_dir: Option<&str>,
     from_existing: Option<String>,
+    reproducible: bool,
 ) -> Result<(BuiltEnclave, OutputPath), BuildError> {
     let dn_string = crate::cert::DistinguishedName::default();
     crate::cert::create_new_cert(std::path::Path::new("."), dn_string)
@@ -29,6 +30,7 @@ pub async fn build_test_cage(
         installer_version,
         timestamp,
         from_existing,
+        reproducible,
     )
     .await
 }
