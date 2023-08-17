@@ -197,6 +197,8 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .filter(remove_unwanted_directives)
         .collect();
 
+    let (instructions, layer_name) = handle_multi_step_builds(cleaned_instructions.clone());
+
     if let Some(directive_parse_error) = directive_parse_error {
         return Err(directive_parse_error);
     }
@@ -297,7 +299,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
 
     // add custom directives to end of dockerfile
     Ok([
-        cleaned_instructions,
+        instructions,
         injected_directives,
         vec![Directive::new_run(
             crate::docker::utils::write_command_to_script(
@@ -307,7 +309,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             ),
         )],
         if reproducible {
-            reproducible_build_directives()
+            reproducible_build_directives(layer_name)
         } else {
             vec![]
         },
@@ -319,14 +321,54 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     .concat())
 }
 
-fn reproducible_build_directives() -> Vec<Directive> {
+
+// TODO: remove when https://github.com/moby/buildkit/pull/4057 is released
+fn reproducible_build_directives(layer_name: Option<String>) -> Vec<Directive> {
     let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
+    let squash_directive = match layer_name {
+        Some(name) => format!("--from={} / /", name),
+        None => "--from=0 / /".to_string(),
+    };
     vec![
         Directive::new_run(repro_time),
         // add entrypoint which starts the runit services
         Directive::new_from("scratch".to_string()),
-        Directive::new_copy("--from=0 / /".to_string()),
+        Directive::new_copy(squash_directive),
     ]
+}
+
+// TODO: remove when https://github.com/moby/buildkit/pull/4057 is released
+fn handle_multi_step_builds(instructions: Vec<Directive>) -> (Vec<Directive>, Option<String>) {
+    let from_directives: Vec<_> = instructions
+        .iter()
+        .enumerate()
+        .filter(|(_, instruction)| instruction.is_from())
+        .collect();
+    if from_directives.len() > 1 {
+        let (index, last_from) = from_directives.last().unwrap();
+        match last_from {
+            Directive::From { arguments } => {
+                let args = std::str::from_utf8(arguments).unwrap();
+                if args.to_ascii_lowercase().contains(" as ") {
+                    let args = std::str::from_utf8(arguments).unwrap();
+                    let ww = args.split_whitespace().last().unwrap();
+                    (instructions.clone(), Some(ww.to_string()))
+                } else {
+                    let mut arguments_to_edit = arguments.to_vec();
+                    arguments_to_edit.extend_from_slice(b" AS lastlayer");
+                    let dir: Directive = Directive::From {
+                        arguments: arguments_to_edit.into(),
+                    };
+                    let mut updated_directives = instructions.clone();
+                    updated_directives[index.to_owned()] = dir;
+                    (updated_directives, Some("lastlayer".to_string()))
+                }
+            }
+            _ => (instructions.clone(), None),
+        }
+    } else {
+        (instructions.clone(), None)
+    }
 }
 
 pub fn build_user_service(

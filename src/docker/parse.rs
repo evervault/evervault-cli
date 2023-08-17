@@ -74,6 +74,9 @@ pub enum Directive {
         directive: String,
         arguments: Bytes,
     },
+    From {
+        arguments: Bytes,
+    },
 }
 
 impl Directive {
@@ -100,6 +103,10 @@ impl Directive {
 
     pub fn is_env(&self) -> bool {
         matches!(self, Self::Env { .. })
+    }
+
+    pub fn is_from(&self) -> bool {
+        matches!(self, Self::From { .. })
     }
 
     pub fn set_mode(&mut self, new_mode: Mode) {
@@ -225,6 +232,7 @@ impl Directive {
             Self::Other { arguments, .. }
             | Self::Comment(arguments)
             | Self::Run(arguments)
+            | Self::From { arguments, .. }
             | Self::User(arguments) => *arguments = Bytes::from(given_arguments),
         };
         Ok(())
@@ -244,6 +252,9 @@ impl Directive {
             Self::Comment(bytes)
             | Self::Run(bytes)
             | Self::User(bytes)
+            | Self::From {
+                arguments: bytes, ..
+            }
             | Self::Other {
                 arguments: bytes, ..
             } => std::str::from_utf8(bytes.as_ref())
@@ -292,8 +303,7 @@ impl Directive {
     }
 
     pub fn new_from(key: String) -> Self {
-        Self::Other {
-            directive: "FROM".into(),
+        Self::From {
             arguments: key.clone().into(),
         }
     }
@@ -333,6 +343,7 @@ impl std::fmt::Display for Directive {
             Self::User(_) => "USER",
             Self::Env { .. } => "ENV",
             Self::Other { directive, .. } => directive.as_str(),
+            Self::From { .. } => "FROM",
         };
         write!(
             f,
@@ -369,6 +380,9 @@ impl TryFrom<&[u8]> for Directive {
             "RUN" => Self::Run(Bytes::new()),
             "USER" => Self::User(Bytes::new()),
             "ENV" => Self::Env { vars: Vec::new() },
+            "FROM" => Self::From {
+                arguments: Bytes::new(),
+            },
             _ => Self::Other {
                 directive: directive_str.to_string(),
                 arguments: Bytes::new(),
