@@ -197,6 +197,8 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .filter(remove_unwanted_directives)
         .collect();
 
+    let (instructions, layer_name) = handle_multi_step_builds(cleaned_instructions.clone())?;
+
     if let Some(directive_parse_error) = directive_parse_error {
         return Err(directive_parse_error);
     }
@@ -297,7 +299,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
 
     // add custom directives to end of dockerfile
     Ok([
-        cleaned_instructions,
+        instructions,
         injected_directives,
         vec![Directive::new_run(
             crate::docker::utils::write_command_to_script(
@@ -307,7 +309,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             ),
         )],
         if reproducible {
-            reproducible_build_directives()
+            reproducible_build_directives(layer_name)
         } else {
             vec![]
         },
@@ -319,14 +321,56 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     .concat())
 }
 
-fn reproducible_build_directives() -> Vec<Directive> {
+// TODO: remove when https://github.com/moby/buildkit/pull/4057 is released
+fn reproducible_build_directives(layer_name: Option<String>) -> Vec<Directive> {
     let repro_time = r#"find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true"#.to_string();
+    let squash_directive = match layer_name {
+        Some(name) => format!("--from={} / /", name),
+        None => "--from=0 / /".to_string(),
+    };
     vec![
         Directive::new_run(repro_time),
         // add entrypoint which starts the runit services
         Directive::new_from("scratch".to_string()),
-        Directive::new_copy("--from=0 / /".to_string()),
+        Directive::new_copy(squash_directive),
     ]
+}
+
+// TODO: remove when https://github.com/moby/buildkit/pull/4057 is released
+fn handle_multi_step_builds(
+    instructions: Vec<Directive>,
+) -> Result<(Vec<Directive>, Option<String>), BuildError> {
+    let from_directives: Vec<_> = instructions
+        .iter()
+        .enumerate()
+        .filter(|(_, instruction)| instruction.is_from())
+        .collect();
+    if from_directives.len() > 1 {
+        let (index, last_from) = from_directives
+            .last()
+            .expect("infallible - directives larger than 1");
+        match last_from {
+            Directive::From { arguments } => {
+                let args = std::str::from_utf8(arguments)?;
+                if args.to_ascii_lowercase().contains(" as ") {
+                    let alias = args.split_whitespace().last().expect("infallible");
+                    Ok((instructions.clone(), Some(alias.to_string())))
+                } else {
+                    let mut arguments_to_edit = arguments.to_vec();
+                    arguments_to_edit.extend_from_slice(b" AS lastlayer");
+                    let dir: Directive = Directive::From {
+                        arguments: arguments_to_edit.into(),
+                    };
+                    let mut updated_directives = instructions.clone();
+                    updated_directives[index.to_owned()] = dir;
+                    Ok((updated_directives, Some("lastlayer".to_string())))
+                }
+            }
+            _ => Ok((instructions.clone(), None)),
+        }
+    } else {
+        Ok((instructions.clone(), None))
+    }
 }
 
 pub fn build_user_service(
@@ -471,6 +515,136 @@ RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hos
 RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
 FROM scratch
 COPY --from=0 / /
+ENTRYPOINT ["/bootstrap", "1>&2"]
+"##;
+
+        let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
+            expected_output_contents.as_bytes(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(expected_directives.len(), processed_file.len());
+        for (expected_directive, processed_directive) in
+            zip(expected_directives.iter(), processed_file.iter())
+        {
+            let expected_directive = expected_directive.to_string();
+            let processed_directive = processed_directive.to_string();
+            assert_eq!(expected_directive, processed_directive);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_process_dockerfile_multistage_no_alias() {
+        let sample_dockerfile_contents = r#"FROM node:18-alpine AS builder
+# Do stuff
+FROM alpine
+RUN touch /hello-script;\
+/bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+ENTRYPOINT ["sh", "/hello-script"]"#;
+        let mut readable_contents = sample_dockerfile_contents.as_bytes();
+
+        let config = get_config();
+
+        let data_plane_version = "0.0.0".to_string();
+        let installer_version = "abcdef".to_string();
+
+        let processed_file = process_dockerfile(
+            &config,
+            &mut readable_contents,
+            data_plane_version,
+            installer_version,
+            true,
+        )
+        .await;
+        assert_eq!(processed_file.is_ok(), true);
+        let processed_file = processed_file.unwrap();
+
+        let expected_output_contents = r##"FROM node:18-alpine AS builder
+# Do stuff
+FROM alpine AS lastlayer
+RUN touch /hello-script;\
+/bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+USER root
+RUN mkdir -p /opt/evervault
+ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
+RUN echo {\"api_key_auth\":true,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
+RUN mkdir -p /etc/service/user-entrypoint
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN chmod +x /opt/evervault/data-plane
+RUN mkdir -p /etc/service/data-plane
+RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
+FROM scratch
+COPY --from=lastlayer / /
+ENTRYPOINT ["/bootstrap", "1>&2"]
+"##;
+
+        let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
+            expected_output_contents.as_bytes(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(expected_directives.len(), processed_file.len());
+        for (expected_directive, processed_directive) in
+            zip(expected_directives.iter(), processed_file.iter())
+        {
+            let expected_directive = expected_directive.to_string();
+            let processed_directive = processed_directive.to_string();
+            assert_eq!(expected_directive, processed_directive);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_process_dockerfile_multistage_alias() {
+        let sample_dockerfile_contents = r#"FROM node:18-alpine AS builder
+# Do stuff
+FROM alpine AS alias
+RUN touch /hello-script;\
+/bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+ENTRYPOINT ["sh", "/hello-script"]"#;
+        let mut readable_contents = sample_dockerfile_contents.as_bytes();
+
+        let config = get_config();
+
+        let data_plane_version = "0.0.0".to_string();
+        let installer_version = "abcdef".to_string();
+
+        let processed_file = process_dockerfile(
+            &config,
+            &mut readable_contents,
+            data_plane_version,
+            installer_version,
+            true,
+        )
+        .await;
+        assert_eq!(processed_file.is_ok(), true);
+        let processed_file = processed_file.unwrap();
+
+        let expected_output_contents = r##"FROM node:18-alpine AS builder
+# Do stuff
+FROM alpine AS alias
+RUN touch /hello-script;\
+/bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+USER root
+RUN mkdir -p /opt/evervault
+ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
+RUN echo {\"api_key_auth\":true,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
+RUN mkdir -p /etc/service/user-entrypoint
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN chmod +x /opt/evervault/data-plane
+RUN mkdir -p /etc/service/data-plane
+RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+RUN find $( ls / | grep -E -v "^(dev|mnt|proc|sys)$" ) -xdev | xargs touch --date="@0" --no-dereference || true
+FROM scratch
+COPY --from=alias / /
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
