@@ -49,10 +49,13 @@ pub struct DeployArgs {
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 
-    #[cfg(feature = "repro_builds")]
     /// Path to an enclave dockerfile to build from existing
     #[clap(long = "from-existing")]
     pub from_existing: Option<String>,
+
+    /// Deterministic builds
+    #[clap(long = "reproducible")]
+    pub reproducible: bool,
 }
 
 impl BuildTimeConfig for DeployArgs {
@@ -106,9 +109,6 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
             }
         };
 
-    #[cfg(not(feature = "repro_builds"))]
-    let from_existing = None;
-    #[cfg(feature = "repro_builds")]
     let from_existing = deploy_args.from_existing;
     let (eif_measurements, output_path) = match resolve_eif(
         &validated_config,
@@ -120,6 +120,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         timestamp,
         data_plane_version.clone(),
         installer_version.clone(),
+        deploy_args.reproducible,
     )
     .await
     {
@@ -181,6 +182,7 @@ async fn resolve_eif(
     timestamp: String,
     data_plane_version: String,
     installer_version: String,
+    reproducible: bool,
 ) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
     if let Some(path) = eif_path {
         get_eif(path, verbose).map_err(|e| {
@@ -198,6 +200,7 @@ async fn resolve_eif(
             installer_version,
             timestamp,
             from_existing,
+            reproducible,
         )
         .await
         .map_err(|build_err| {
