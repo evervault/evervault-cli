@@ -197,7 +197,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .filter(remove_unwanted_directives)
         .collect();
 
-    let (instructions, layer_name) = handle_multi_step_builds(cleaned_instructions.clone());
+    let (instructions, layer_name) = handle_multi_step_builds(cleaned_instructions.clone())?;
 
     if let Some(directive_parse_error) = directive_parse_error {
         return Err(directive_parse_error);
@@ -337,20 +337,24 @@ fn reproducible_build_directives(layer_name: Option<String>) -> Vec<Directive> {
 }
 
 // TODO: remove when https://github.com/moby/buildkit/pull/4057 is released
-fn handle_multi_step_builds(instructions: Vec<Directive>) -> (Vec<Directive>, Option<String>) {
+fn handle_multi_step_builds(
+    instructions: Vec<Directive>,
+) -> Result<(Vec<Directive>, Option<String>), BuildError> {
     let from_directives: Vec<_> = instructions
         .iter()
         .enumerate()
         .filter(|(_, instruction)| instruction.is_from())
         .collect();
     if from_directives.len() > 1 {
-        let (index, last_from) = from_directives.last().unwrap();
+        let (index, last_from) = from_directives
+            .last()
+            .expect("infallible - directives larger than 1");
         match last_from {
             Directive::From { arguments } => {
-                let args = std::str::from_utf8(arguments).unwrap();
+                let args = std::str::from_utf8(arguments)?;
                 if args.to_ascii_lowercase().contains(" as ") {
                     let alias = args.split_whitespace().last().expect("infallible");
-                    (instructions.clone(), Some(alias.to_string()))
+                    Ok((instructions.clone(), Some(alias.to_string())))
                 } else {
                     let mut arguments_to_edit = arguments.to_vec();
                     arguments_to_edit.extend_from_slice(b" AS lastlayer");
@@ -359,13 +363,13 @@ fn handle_multi_step_builds(instructions: Vec<Directive>) -> (Vec<Directive>, Op
                     };
                     let mut updated_directives = instructions.clone();
                     updated_directives[index.to_owned()] = dir;
-                    (updated_directives, Some("lastlayer".to_string()))
+                    Ok((updated_directives, Some("lastlayer".to_string())))
                 }
             }
-            _ => (instructions.clone(), None),
+            _ => Ok((instructions.clone(), None)),
         }
     } else {
-        (instructions.clone(), None)
+        Ok((instructions.clone(), None))
     }
 }
 

@@ -26,6 +26,8 @@ pub enum BuildError {
     EnclaveConversionError(String),
     #[error(transparent)]
     EnclaveError(#[from] EnclaveError),
+    #[error(transparent)]
+    Utf8Error(#[from] std::str::Utf8Error),
 }
 
 impl CliError for BuildError {
@@ -37,7 +39,9 @@ impl CliError for BuildError {
             Self::FailedToAccessOutputDir(_) | Self::FailedToWriteCageDockerfile(_) => {
                 exitcode::IOERR
             }
-            Self::DockerError(_) | Self::DockerBuildError(_) => exitcode::SOFTWARE,
+            Self::DockerError(_) | Self::DockerBuildError(_) | Self::Utf8Error(_) => {
+                exitcode::SOFTWARE
+            }
             Self::EnclaveConversionError(_) => exitcode::SOFTWARE,
             Self::EnclaveError(e) => e.exitcode(),
         }
