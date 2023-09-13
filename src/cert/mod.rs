@@ -220,7 +220,7 @@ pub async fn lock_cage_to_certs(
     let certs_for_select = get_certs_for_selection(cage_api.clone(), cage_uuid).await?;
 
     if certs_for_select.is_empty() {
-        log::error!("No certs found for {cage_name}. You must upload a cert using the `ev cert upload` command or perform a deployment before you can create a cert lock.");
+        log::error!("No certs found for the current app. You must upload a cert using the `ev cert upload` command or deployment a Cage before you can create a cert lock.");
         return Err(CertError::NoCertsFound);
     }
 
