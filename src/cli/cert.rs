@@ -165,7 +165,7 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
             };
 
             if let Err(e) = cert::lock_cage_to_certs(&api_key, &cage_uuid, &cage_name).await {
-              return e.exitcode();
+                return e.exitcode();
             }
         }
     }
