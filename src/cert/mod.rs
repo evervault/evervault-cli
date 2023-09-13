@@ -221,7 +221,7 @@ pub async fn lock_cage_to_certs(
 
     if certs_for_select.is_empty() {
         log::error!("No certs found for {cage_name}. You must upload a cert using the `ev cert upload` command or perform a deployment before you can create a cert lock.");
-        return Ok(());
+        return Err(CertError::NoCertsFound);
     }
 
     let sorted_certs_for_select = sort_certs_by_expiry(certs_for_select)?;
