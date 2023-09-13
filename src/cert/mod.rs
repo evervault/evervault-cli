@@ -114,7 +114,7 @@ pub async fn upload_new_cert_ref(
 }
 
 fn format_cert_for_multi_select(cert: &CageSigningCert) -> String {
-    let name = cert.name().unwrap_or_else(|| "".to_string());
+    let name = cert.name().unwrap_or_default();
     let cert_hash = cert.cert_hash();
     let not_after = cert
         .not_after()
@@ -241,12 +241,11 @@ pub async fn lock_cage_to_certs(
 
     let chosen_cert_uuids = chosen
         .iter()
-        .map(|index| {
+        .filter_map(|index| {
             sorted_certs_for_select
                 .get(*index)
-                .and_then(|cert| Some(cert.cert.uuid().to_string()))
+                .map(|cert| cert.cert.uuid().to_string())
         })
-        .flatten()
         .collect::<Vec<String>>();
 
     let payload = UpdateLockedCageSigningCertRequest::new(chosen_cert_uuids.clone());

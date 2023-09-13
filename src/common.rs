@@ -78,7 +78,9 @@ pub fn update_cage_config_with_eif_measurements(
     runtime_info: Option<RuntimeVersions>,
 ) {
     cage_config.set_attestation(eif_measurements);
-    runtime_info.map(|info| cage_config.set_runtime_info(info));
+    if let Some(info) = runtime_info {
+        cage_config.set_runtime_info(info);
+    }
 
     if let Ok(serialized_config) = toml::ser::to_vec(&cage_config) {
         match std::fs::write(config_path, serialized_config) {

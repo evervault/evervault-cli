@@ -1,7 +1,7 @@
 use super::error::CommandError;
 use git2::Repository;
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::{Command, ExitStatus, Output, Stdio};
 
 pub struct CommandConfig {
@@ -27,7 +27,7 @@ impl CommandConfig {
 }
 
 pub fn load_image_into_local_docker_registry(
-    image_archive: &PathBuf,
+    image_archive: &Path,
     verbose: bool,
 ) -> Result<ExitStatus, CommandError> {
     let command_config = CommandConfig::new(verbose);
@@ -62,7 +62,7 @@ fn docker_buildkit_enabled() -> Result<bool, CommandError> {
         .as_str();
 
     let min_version = Version::from("0.10.0").ok_or(CommandError::SemverParseError)?;
-    let user_version = Version::from(&semver_match).ok_or(CommandError::SemverParseError)?;
+    let user_version = Version::from(semver_match).ok_or(CommandError::SemverParseError)?;
     Ok(user_version >= min_version)
 }
 
