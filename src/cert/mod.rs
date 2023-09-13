@@ -219,6 +219,11 @@ pub async fn lock_cage_to_certs(
 
     let certs_for_select = get_certs_for_selection(cage_api.clone(), cage_uuid).await?;
 
+    if certs_for_select.is_empty() {
+      log::error!("No certs found for {cage_name}. You must upload a cert using the `ev cert upload` command or perform a deployment before you can create a cert lock.");
+      return Ok(());
+    }
+
     let sorted_certs_for_select = sort_certs_by_expiry(certs_for_select)?;
 
     let chosen: Vec<usize> = MultiSelect::new()
@@ -277,7 +282,7 @@ pub async fn lock_cage_to_certs(
         .update_cage_locked_signing_certs(cage_uuid, payload)
         .await
     {
-        log::error!("Error locking cage to certs — {:?}", e);
+        log::error!("Error locking Cage to certs - {e}");
         return Err(CertError::ApiError(e));
     };
 
