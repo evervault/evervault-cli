@@ -73,10 +73,9 @@ pub async fn build_enclave_image_file(
         }
     };
 
-    log::debug!(
-        "Building Nitro CLI image... {}",
-        output_path.path().as_os_str().to_str().unwrap()
-    );
+    if let Some(output_path) = output_path.path().as_os_str().to_str() {
+      log::debug!("Building Nitro CLI image... {output_path}");
+    }
 
     enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose)?;
     log::info!("Converting docker image to EIF...");
