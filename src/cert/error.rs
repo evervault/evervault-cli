@@ -29,6 +29,8 @@ pub enum CertError {
     HashError(String),
     #[error("Failed to parse timestamp")]
     TimstampParseError(#[from] chrono::ParseError),
+    #[error("No certs found for the current Cage.")]
+    NoCertsFound,
 }
 
 impl CliError for CertError {
@@ -46,6 +48,7 @@ impl CliError for CertError {
             | Self::CertPathDoesNotExist(_)
             | Self::TimstampParseError(_) => exitcode::DATAERR,
             Self::ApiError(inner) => inner.exitcode(),
+            Self::NoCertsFound => exitcode::USAGE,
         }
     }
 }

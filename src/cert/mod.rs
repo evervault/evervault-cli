@@ -114,7 +114,7 @@ pub async fn upload_new_cert_ref(
 }
 
 fn format_cert_for_multi_select(cert: &CageSigningCert) -> String {
-    let name = cert.name().unwrap_or_else(|| "".to_string());
+    let name = cert.name().unwrap_or_default();
     let cert_hash = cert.cert_hash();
     let not_after = cert
         .not_after()
@@ -219,6 +219,11 @@ pub async fn lock_cage_to_certs(
 
     let certs_for_select = get_certs_for_selection(cage_api.clone(), cage_uuid).await?;
 
+    if certs_for_select.is_empty() {
+        log::error!("No certs found for the current app. You must upload a cert using the `ev cert upload` command or deployment a Cage before you can create a cert lock.");
+        return Err(CertError::NoCertsFound);
+    }
+
     let sorted_certs_for_select = sort_certs_by_expiry(certs_for_select)?;
 
     let chosen: Vec<usize> = MultiSelect::new()
@@ -236,12 +241,11 @@ pub async fn lock_cage_to_certs(
 
     let chosen_cert_uuids = chosen
         .iter()
-        .map(|index| {
+        .filter_map(|index| {
             sorted_certs_for_select
                 .get(*index)
-                .and_then(|cert| Some(cert.cert.uuid().to_string()))
+                .map(|cert| cert.cert.uuid().to_string())
         })
-        .flatten()
         .collect::<Vec<String>>();
 
     let payload = UpdateLockedCageSigningCertRequest::new(chosen_cert_uuids.clone());
@@ -277,7 +281,7 @@ pub async fn lock_cage_to_certs(
         .update_cage_locked_signing_certs(cage_uuid, payload)
         .await
     {
-        log::error!("Error locking cage to certs — {:?}", e);
+        log::error!("Error locking Cage to certs - {e}");
         return Err(CertError::ApiError(e));
     };
 

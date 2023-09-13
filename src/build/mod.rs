@@ -10,7 +10,7 @@ use crate::enclave;
 
 use serde_json::json;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tokio::fs::File;
 use tokio::io::AsyncRead;
 
@@ -19,6 +19,7 @@ const INSTALLER_DIRECTORY: &str = "/opt/evervault";
 const USER_ENTRYPOINT_SERVICE_PATH: &str = "/etc/service/user-entrypoint";
 const DATA_PLANE_SERVICE_PATH: &str = "/etc/service/data-plane";
 
+#[allow(clippy::too_many_arguments)]
 pub async fn build_enclave_image_file(
     cage_config: &ValidatedCageBuildConfig,
     context_path: &str,
@@ -73,10 +74,9 @@ pub async fn build_enclave_image_file(
         }
     };
 
-    log::debug!(
-        "Building Nitro CLI image... {}",
-        output_path.path().as_os_str().to_str().unwrap()
-    );
+    if let Some(output_path) = output_path.path().as_os_str().to_str() {
+        log::debug!("Building Nitro CLI image... {output_path}");
+    }
 
     enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose)?;
     log::info!("Converting docker image to EIF...");
@@ -85,6 +85,7 @@ pub async fn build_enclave_image_file(
         .map_err(|e| e.into())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn build_from_scratch(
     cage_config: &ValidatedCageBuildConfig,
     context_path: &Path,
@@ -92,7 +93,7 @@ pub async fn build_from_scratch(
     docker_build_args: Option<Vec<&str>>,
     data_plane_version: String,
     installer_version: String,
-    output_path: &PathBuf,
+    output_path: &Path,
     timestamp: String,
     reproducible: bool,
 ) -> Result<(), BuildError> {
@@ -122,7 +123,7 @@ pub async fn build_from_scratch(
     .await?;
 
     // write new dockerfile to fs
-    let user_dockerfile_path = output_path.as_path().join(EV_USER_DOCKERFILE_PATH);
+    let user_dockerfile_path = output_path.join(EV_USER_DOCKERFILE_PATH);
 
     let mut ev_user_dockerfile = std::fs::File::create(&user_dockerfile_path)
         .map_err(BuildError::FailedToWriteCageDockerfile)?;
@@ -271,7 +272,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
 
     let dataplane_env = format!(
         "echo {} > /etc/dataplane-config.json",
-        dataplane_info.to_string().replace("\"", "\\\"")
+        dataplane_info.to_string().replace('"', "\\\"")
     );
 
     let injected_directives = vec![
@@ -387,7 +388,7 @@ pub fn build_user_service(
     };
     let exec_cmd = format!("exec {}", entrypoint);
 
-    let env_cmd = if user_env_vars.len() > 0 {
+    let env_cmd = if !user_env_vars.is_empty() {
         format!(
             "export {}",
             user_env_vars

@@ -172,6 +172,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     exitcode::OK
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn resolve_eif(
     validated_config: &ValidatedCageBuildConfig,
     context_path: &str,

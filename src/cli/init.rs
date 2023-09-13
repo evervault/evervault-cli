@@ -111,7 +111,7 @@ impl std::convert::From<InitArgs> for CageConfig {
             trx_logging: !val.trx_logging_disabled,
             runtime: None,
             forward_proxy_protocol: val.forward_proxy_protocol,
-            trusted_headers: convert_comma_list(val.trusted_headers).unwrap_or_else(|| vec![]),
+            trusted_headers: convert_comma_list(val.trusted_headers).unwrap_or_default(),
         }
     }
 }
