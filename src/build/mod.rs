@@ -471,6 +471,7 @@ mod test {
             runtime: None,
             forward_proxy_protocol: false,
             trusted_headers: vec!["X-Evervault-*".to_string()],
+            healthcheck: None,
         }
     }
 

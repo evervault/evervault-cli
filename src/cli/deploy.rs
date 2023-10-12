@@ -56,6 +56,10 @@ pub struct DeployArgs {
     /// Deterministic builds
     #[clap(long = "reproducible")]
     pub reproducible: bool,
+
+    /// Healthcheck path exposed by your service
+    #[clap(long = "healthcheck")]
+    pub healthcheck: Option<String>,
 }
 
 impl BuildTimeConfig for DeployArgs {

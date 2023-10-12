@@ -16,7 +16,7 @@ jobs:
           SKIP_LOGIN: true
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: nightly-2023-09-13
           override: true
           components: rustfmt, clippy
       - name: Compile project
