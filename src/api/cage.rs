@@ -779,6 +779,7 @@ mod test {
             build_status: BuildStatus::Ready,
             failure_reason: None,
             started_at: None,
+            healthcheck: None
         }
     }
 

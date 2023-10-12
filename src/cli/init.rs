@@ -218,6 +218,7 @@ mod init_tests {
             egress_destinations: Some("evervault.com".to_string()),
             forward_proxy_protocol: false,
             trusted_headers: Some("X-Evervault-*".to_string()),
+            healthcheck: None,
         };
         init_local_config(init_args, sample_cage).await;
         let config_path = output_dir.path().join("cage.toml");
