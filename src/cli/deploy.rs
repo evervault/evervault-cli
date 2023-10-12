@@ -59,7 +59,7 @@ pub struct DeployArgs {
 
     /// Healthcheck path exposed by your service
     #[clap(long = "healthcheck")]
-    pub healthcheck: Option<String>
+    pub healthcheck: Option<String>,
 }
 
 impl BuildTimeConfig for DeployArgs {

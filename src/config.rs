@@ -279,7 +279,7 @@ pub struct ValidatedCageBuildConfig {
     pub runtime: Option<RuntimeVersions>,
     pub forward_proxy_protocol: bool,
     pub trusted_headers: Vec<String>,
-    pub healthcheck: Option<String>
+    pub healthcheck: Option<String>,
 }
 
 impl ValidatedCageBuildConfig {
@@ -346,7 +346,7 @@ impl ValidatedCageBuildConfig {
     }
 
     pub fn healthcheck(&self) -> Option<&str> {
-      self.healthcheck.as_deref()
+        self.healthcheck.as_deref()
     }
 }
 
@@ -469,7 +469,7 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             runtime: config.runtime.clone(),
             forward_proxy_protocol: config.forward_proxy_protocol,
             trusted_headers: config.trusted_headers.clone(),
-            healthcheck: config.healthcheck.clone()
+            healthcheck: config.healthcheck.clone(),
         })
     }
 }
@@ -566,7 +566,7 @@ mod test {
             forward_proxy_protocol: false,
             runtime: None,
             trusted_headers: vec![],
-            healthcheck: Some("/health".to_string())
+            healthcheck: Some("/health".to_string()),
         };
 
         let test_args = ExampleArgs {

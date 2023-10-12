@@ -252,7 +252,7 @@ pub struct CreateCageDeploymentIntentRequest {
     not_before: String,
     not_after: String,
     metadata: VersionMetadata,
-    healthcheck: Option<String>
+    healthcheck: Option<String>,
 }
 
 impl CreateCageDeploymentIntentRequest {
@@ -264,7 +264,7 @@ impl CreateCageDeploymentIntentRequest {
         installer_version: String,
         git_timestamp: String,
         git_hash: String,
-        healthcheck: Option<String>
+        healthcheck: Option<String>,
     ) -> Self {
         Self {
             pcrs: pcrs.clone(),
@@ -281,7 +281,7 @@ impl CreateCageDeploymentIntentRequest {
                 data_plane_version,
                 git_timestamp,
             },
-            healthcheck
+            healthcheck,
         }
     }
 }
@@ -511,7 +511,7 @@ pub struct CageVersion {
     build_status: BuildStatus,
     failure_reason: Option<String>,
     started_at: Option<String>,
-    healthcheck: Option<String>
+    healthcheck: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, PartialOrd)]
@@ -779,7 +779,7 @@ mod test {
             build_status: BuildStatus::Ready,
             failure_reason: None,
             started_at: None,
-            healthcheck: None
+            healthcheck: None,
         }
     }
 

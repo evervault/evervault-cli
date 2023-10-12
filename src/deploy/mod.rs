@@ -48,7 +48,7 @@ pub async fn deploy_eif(
         installer_version,
         get_source_date_epoch(),
         get_git_hash(),
-        validated_config.healthcheck().map(String::from)
+        validated_config.healthcheck().map(String::from),
     );
 
     let deployment_intent = cage_api

@@ -116,7 +116,7 @@ impl std::convert::From<InitArgs> for CageConfig {
             runtime: None,
             forward_proxy_protocol: val.forward_proxy_protocol,
             trusted_headers: convert_comma_list(val.trusted_headers).unwrap_or_default(),
-            healthcheck: val.healthcheck
+            healthcheck: val.healthcheck,
         }
     }
 }
