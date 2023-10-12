@@ -40,7 +40,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: nightly-2023-09-13
           override: true
           target: ${{ env.LINUX_TARGET }}
 
@@ -86,7 +86,7 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: nightly-2023-09-13
           target: ${{ env.MACOS_TARGET }}
           override: true
       
@@ -135,7 +135,7 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: nightly-2023-09-13
           target: ${{ env.WINDOWS_TARGET }}
           override: true
 
