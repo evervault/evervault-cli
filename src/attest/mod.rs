@@ -1,8 +1,11 @@
 pub mod error;
 
-use attestation_doc_validation::{validate_attestation_doc, AttestationError, PCRs};
-use aws_nitro_enclaves_nsm_api::api::AttestationDoc;
+use attestation_doc_validation::error::AttestationError;
+use attestation_doc_validation::validate_attestation_doc_against_cert;
+use attestation_doc_validation::{attestation_doc::PCRs, validate_expected_pcrs};
+use base64::decode;
 use error::AttestCommandError;
+use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_rustls::rustls::{
@@ -16,28 +19,9 @@ use x509_parser::{certificate::X509Certificate, prelude::FromDer};
 **/
 
 struct SubjectAltNameAttestationValidator {
-    context_sender: mpsc::Sender<Result<AttestationDoc, AttestationError>>,
+    context_sender: mpsc::Sender<Result<(), AttestationError>>,
     expected_pcrs: PCRs,
-}
-
-fn extract_signed_cose_sign_1_from_certificate(
-    certificate: X509Certificate,
-) -> Result<Vec<u8>, AttestCommandError> {
-    let subject_alt_names = certificate
-        .subject_alternative_name()?
-        .ok_or(AttestCommandError::NoSubjectAltNames)?;
-    let parsed_attestation_bytes = subject_alt_names
-        .value
-        .general_names
-        .iter()
-        .flat_map(|alt_name| match alt_name {
-            x509_parser::extensions::GeneralName::DNSName(name) => Some(name),
-            _ => None,
-        })
-        .flat_map(|x| x.split('.').next())
-        .reduce(|a, b| if a.len() > b.len() { a } else { b })
-        .ok_or(AttestCommandError::ParseError)?;
-    Ok(hex::decode(parsed_attestation_bytes)?)
+    attestation_doc: Vec<u8>,
 }
 
 macro_rules! to_rustls_general_error {
@@ -58,11 +42,11 @@ impl ServerCertVerifier for SubjectAltNameAttestationValidator {
     ) -> std::result::Result<ServerCertVerified, tokio_rustls::rustls::Error> {
         let (_, certificate_parsed) = X509Certificate::from_der(certificate.as_ref())
             .map_err(|e| to_rustls_general_error!(e))?;
-        let cose_sign_1_bytes = extract_signed_cose_sign_1_from_certificate(certificate_parsed)
-            .map_err(|e| to_rustls_general_error!(e))?;
+        let attestation_doc =
+            validate_attestation_doc_against_cert(&certificate_parsed, &self.attestation_doc)
+                .map_err(|e| to_rustls_general_error!(e))?;
         let attestation_validation_result =
-            validate_attestation_doc(&cose_sign_1_bytes, &self.expected_pcrs);
-
+            validate_expected_pcrs(&attestation_doc, &self.expected_pcrs);
         let verification_result = match &attestation_validation_result {
             Ok(_attestation_doc) => Ok(ServerCertVerified::assertion()),
             Err(e) => Err(to_rustls_general_error!(e)),
@@ -90,10 +74,12 @@ pub async fn attest_connection_to_cage(
         .with_safe_defaults()
         .with_root_certificates(RootCertStore::empty())
         .with_no_client_auth();
+    let attestation_doc = get_attestation_doc(domain).await?;
     let (tx, _rx) = mpsc::channel(1);
     let validator = Arc::new(SubjectAltNameAttestationValidator {
         context_sender: tx,
         expected_pcrs,
+        attestation_doc,
     });
     client_config
         .dangerous()
@@ -105,6 +91,29 @@ pub async fn attest_connection_to_cage(
     let (_io, session) = connection.get_mut();
     session.send_close_notify();
     Ok(())
+}
+
+#[derive(Deserialize, Debug)]
+struct AttestationDocResponse {
+    attestation_doc: String,
+}
+
+async fn get_attestation_doc(domain: &str) -> Result<Vec<u8>, AttestCommandError> {
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get(format!("https://{}/.well-known/attestation", domain))
+        .send()
+        .await?;
+
+    if response.status().is_success() {
+        let body: AttestationDocResponse = response.json().await?;
+        Ok(decode(body.attestation_doc)?)
+    } else {
+        Err(AttestCommandError::AttestationDocRetrievalError(
+            response.status().to_string(),
+        ))
+    }
 }
 
 #[cfg(test)]
