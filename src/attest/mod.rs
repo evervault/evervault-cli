@@ -129,7 +129,7 @@ mod attest_tests {
             pcr_8: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000".to_string(),
         };
         attest_connection_to_cage(
-            "synthetic-cage.app_f5f084041a7e.cages.evervault.com",
+            "synthetic-cage.app-f5f084041a7e.cage.evervault.com",
             expected_pcrs,
         )
         .await
@@ -145,7 +145,7 @@ mod attest_tests {
             pcr_8: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000".to_string(),
         };
         let err = attest_connection_to_cage(
-            "synthetic-cage.app_f5f084041a7e.cages.evervault.com",
+            "synthetic-cage.app-f5f084041a7e.cage.evervault.com",
             expected_pcrs,
         )
         .await
