@@ -271,7 +271,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     }
 
     if let Some(healthcheck) = build_config.healthcheck.as_deref() {
-      dataplane_info["healthcheck"] = json!(healthcheck);
+        dataplane_info["healthcheck"] = json!(healthcheck);
     }
 
     let dataplane_env = format!(
