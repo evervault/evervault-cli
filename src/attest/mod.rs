@@ -153,6 +153,6 @@ mod attest_tests {
 
         assert!(err
             .to_string()
-            .contains("The PCRs found were different to those that were expected."));
+            .contains("The PCRs found were different to the expected values."));
     }
 }
