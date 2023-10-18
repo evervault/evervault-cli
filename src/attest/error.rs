@@ -6,7 +6,7 @@ pub enum AttestCommandError {
     HexError(#[from] hex::FromHexError),
     #[error("The received certificate had no Subject Alt Name extension")]
     NoSubjectAltNames,
-    #[error("Unable to parse attestation doc bytes from Subject Alt Name extension")]
+    #[error("Unable to parse  doc bytes from Subject Alt Name extension")]
     ParseError,
     #[error(transparent)]
     IoError(#[from] std::io::Error),
