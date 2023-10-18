@@ -462,7 +462,7 @@ mod test {
                 ports: Some(vec!["433".to_string()]),
             },
             scaling: ScalingSettings {
-                desired_instances: 2
+                desired_instances: 2,
             },
             attestation: None,
             signing: ValidatedSigningInfo {

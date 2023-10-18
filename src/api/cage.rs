@@ -284,7 +284,7 @@ impl CreateCageDeploymentIntentRequest {
                 git_timestamp,
             },
             healthcheck,
-            desired_instances
+            desired_instances,
         }
     }
 }

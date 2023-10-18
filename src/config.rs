@@ -67,12 +67,8 @@ impl Default for ScalingSettings {
 }
 
 impl ScalingSettings {
-    pub fn new(
-        desired_instances: i32,
-    ) -> ScalingSettings {
-        ScalingSettings {
-            desired_instances,
-        }
+    pub fn new(desired_instances: i32) -> ScalingSettings {
+        ScalingSettings { desired_instances }
     }
 
     pub fn get_desired_instances(self) -> i32 {
@@ -481,11 +477,8 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             (true, false) => Err(CageConfigError::LoggingEnabledWithoutTLSTermination()), // (logging enabled, tls_termination disabled) = config error (Tls termination needed for logging)
             (true, true) => Ok(true), // (logging enabled, tls_termination enabled) = logging enabled
         }?;
-        
-        let scaling_settings = config
-            .scaling
-            .clone()
-            .unwrap_or_default();
+
+        let scaling_settings = config.scaling.clone().unwrap_or_default();
 
         Ok(ValidatedCageBuildConfig {
             cage_uuid,

@@ -2,7 +2,7 @@ use crate::api;
 use crate::api::cage::CreateCageRequest;
 use crate::api::{cage::Cage, AuthMode};
 use crate::common::CliError;
-use crate::config::{default_dockerfile, CageConfig, EgressSettings, SigningInfo, ScalingSettings};
+use crate::config::{default_dockerfile, CageConfig, EgressSettings, ScalingSettings, SigningInfo};
 use crate::get_api_key;
 use clap::{ArgGroup, Parser};
 
