@@ -85,8 +85,8 @@ pub struct InitArgs {
     pub healthcheck: Option<String>,
 
     /// The desired number of instances for your cage to use. Default is 2.
-    #[clap(long = "desired_instances")]
-    pub desired_instances: Option<i32>,
+    #[clap(long = "desired_replicas")]
+    pub desired_replicas: Option<i32>,
 }
 
 impl std::convert::From<InitArgs> for CageConfig {
@@ -112,7 +112,7 @@ impl std::convert::From<InitArgs> for CageConfig {
                 val.egress,
             ),
             scaling: Some(ScalingSettings {
-                desired_instances: val.desired_instances.unwrap_or(2),
+                desired_replicas: val.desired_replicas.unwrap_or(2),
             }),
             dockerfile: val.dockerfile.unwrap_or_else(default_dockerfile), // need to manually set default dockerfile
             signing: signing_info,
@@ -214,7 +214,7 @@ mod init_tests {
             cage_name: "hello".to_string(),
             debug: false,
             egress: true,
-            desired_instances: Some(2),
+            desired_replicas: Some(2),
             dockerfile: Some("Dockerfile".into()),
             disable_tls_termination: false,
             cert_path: Some("./cert.pem".to_string()),
@@ -250,7 +250,7 @@ destinations = ["evervault.com"]
 ports = ["443"]
 
 [scaling]
-desired_instances = 2
+desired_replicas = 2
 
 [signing]
 certPath = "./cert.pem"

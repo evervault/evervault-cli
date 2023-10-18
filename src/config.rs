@@ -55,24 +55,24 @@ impl EgressSettings {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ScalingSettings {
-    pub desired_instances: i32,
+    pub desired_replicas: i32,
 }
 
 impl Default for ScalingSettings {
     fn default() -> Self {
         ScalingSettings {
-            desired_instances: 2,
+            desired_replicas: 2,
         }
     }
 }
 
 impl ScalingSettings {
-    pub fn new(desired_instances: i32) -> ScalingSettings {
-        ScalingSettings { desired_instances }
+    pub fn new(desired_replicas: i32) -> ScalingSettings {
+        ScalingSettings { desired_replicas }
     }
 
-    pub fn get_desired_instances(self) -> i32 {
-        self.desired_instances
+    pub fn get_desired_replicas(self) -> i32 {
+        self.desired_replicas
     }
 }
 
@@ -588,7 +588,7 @@ mod test {
                 ports: Some(vec!["443".to_string()]),
             },
             scaling: Some(super::ScalingSettings {
-                desired_instances: 2,
+                desired_replicas: 2,
             }),
             signing: None,
             attestation: None,
