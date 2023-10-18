@@ -2,7 +2,7 @@ use crate::api;
 use crate::api::cage::CreateCageRequest;
 use crate::api::{cage::Cage, AuthMode};
 use crate::common::CliError;
-use crate::config::{default_dockerfile, CageConfig, EgressSettings, SigningInfo};
+use crate::config::{default_dockerfile, CageConfig, EgressSettings, SigningInfo, ScalingSettings};
 use crate::get_api_key;
 use clap::{ArgGroup, Parser};
 
@@ -83,6 +83,10 @@ pub struct InitArgs {
     /// The healthcheck endpoint exposed by your service
     #[clap(long = "healthcheck")]
     pub healthcheck: Option<String>,
+
+    /// The desired number of instances for your cage to use. Default is 2.
+    #[clap(long = "desired_instances")]
+    pub desired_instances: Option<i32>,
 }
 
 impl std::convert::From<InitArgs> for CageConfig {
@@ -107,6 +111,9 @@ impl std::convert::From<InitArgs> for CageConfig {
                 convert_comma_list(val.egress_destinations),
                 val.egress,
             ),
+            scaling: Some(ScalingSettings {
+                desired_instances: val.desired_instances.unwrap_or(2),
+            }),
             dockerfile: val.dockerfile.unwrap_or_else(default_dockerfile), // need to manually set default dockerfile
             signing: signing_info,
             attestation: None,
@@ -207,6 +214,7 @@ mod init_tests {
             cage_name: "hello".to_string(),
             debug: false,
             egress: true,
+            desired_instances: Some(2),
             dockerfile: Some("Dockerfile".into()),
             disable_tls_termination: false,
             cert_path: Some("./cert.pem".to_string()),
@@ -240,6 +248,9 @@ trusted_headers = ["X-Evervault-*"]
 enabled = true
 destinations = ["evervault.com"]
 ports = ["443"]
+
+[scaling]
+desired_instances = 2
 
 [signing]
 certPath = "./cert.pem"
