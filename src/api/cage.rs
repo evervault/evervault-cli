@@ -252,6 +252,7 @@ pub struct CreateCageDeploymentIntentRequest {
     not_before: String,
     not_after: String,
     metadata: VersionMetadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
     healthcheck: Option<String>,
 }
 
