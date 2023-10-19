@@ -98,7 +98,7 @@ jobs:
       - name: Build CLI MacOs Target
         run: |
           cargo install cross
-          cross build --release --target ${{ env.MACOS_TARGET }}
+          cross build --release --target ${{ env.MACOS_TARGET }} -Z registry-auth
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
@@ -149,7 +149,7 @@ jobs:
             shared-key: "windows-cross-builds"
 
       - name: Fetch dependencies
-        run: cargo fetch
+        run: cargo fetch -Z registry-auth
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
@@ -157,7 +157,7 @@ jobs:
       - name: Build CLI for Windows
         run: |
           cargo install cross
-          cross build --release --target ${{ env.WINDOWS_TARGET }}
+          cross build --release --target ${{ env.WINDOWS_TARGET }} -Z registry-auth
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}

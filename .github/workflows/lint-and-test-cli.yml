@@ -20,7 +20,7 @@ jobs:
           override: true
           components: rustfmt, clippy
       - name: Compile project
-        run: cargo build --all-features -p ev-cage
+        run: cargo build --all-features -p ev-cage -Z registry-auth
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
