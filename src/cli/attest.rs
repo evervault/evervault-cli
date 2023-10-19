@@ -1,7 +1,8 @@
 use crate::attest::attest_connection_to_cage;
 use crate::config::CageConfig;
 use crate::describe::describe_eif;
-use attestation_doc_validation::PCRs;
+use attestation_doc_validation::attestation_doc::PCRs;
+use attestation_doc_validation::PCRProvider;
 use clap::Parser;
 
 /// Validate the attestation doc provided by a Cage

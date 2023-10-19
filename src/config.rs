@@ -410,10 +410,11 @@ impl CageConfig {
             return Err(CageConfigError::MissingField("cage_uuid".to_string()));
         }
         Ok(format!(
-            "{}.{}.cages.evervault.com",
+            "{}.{}.cage.evervault.com",
             self.name(),
             self.app_uuid
                 .as_ref()
+                .map(|uuid| uuid.replace("_", "-"))
                 .ok_or_else(|| CageConfigError::MissingField("app_uuid".to_string()))?
         ))
     }

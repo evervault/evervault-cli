@@ -3,11 +3,11 @@ target
 */target
 *.pem
 !/test-cert/cert.pem
-.cargo
 *-build.json
 nitro-cli-image.Dockerfile
 enclave.Dockerfile
 *.eif
+.metals/
 
 ### macOS ###
 # General
