@@ -86,7 +86,7 @@ pub struct InitArgs {
 
     /// The desired number of instances for your cage to use. Default is 2.
     #[clap(long = "desired_replicas")]
-    pub desired_replicas: Option<i32>,
+    pub desired_replicas: Option<u32>,
 }
 
 impl std::convert::From<InitArgs> for CageConfig {

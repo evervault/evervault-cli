@@ -55,7 +55,7 @@ impl EgressSettings {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ScalingSettings {
-    pub desired_replicas: i32,
+    pub desired_replicas: u32,
 }
 
 impl Default for ScalingSettings {
@@ -67,11 +67,11 @@ impl Default for ScalingSettings {
 }
 
 impl ScalingSettings {
-    pub fn new(desired_replicas: i32) -> ScalingSettings {
+    pub fn new(desired_replicas: u32) -> ScalingSettings {
         ScalingSettings { desired_replicas }
     }
 
-    pub fn get_desired_replicas(self) -> i32 {
+    pub fn get_desired_replicas(self) -> u32 {
         self.desired_replicas
     }
 }

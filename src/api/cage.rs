@@ -253,7 +253,7 @@ pub struct CreateCageDeploymentIntentRequest {
     not_after: String,
     metadata: VersionMetadata,
     healthcheck: Option<String>,
-    desired_replicas: i32,
+    desired_replicas: u32,
 }
 
 impl CreateCageDeploymentIntentRequest {
@@ -266,7 +266,7 @@ impl CreateCageDeploymentIntentRequest {
         git_timestamp: String,
         git_hash: String,
         healthcheck: Option<String>,
-        desired_replicas: i32,
+        desired_replicas: u32,
     ) -> Self {
         Self {
             pcrs: pcrs.clone(),
