@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       full_version: ${{ steps.get-full-version.outputs.full_version }}
+      major_version: ${{ steps.get-major-version.outputs.result }}
     steps:
       - id: get-full-version
         run: |
@@ -275,23 +276,20 @@ jobs:
 
       - name: Upload Windows CLI to S3
         run: |
-          aws s3 cp ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.full_version }}/${{ env.WINDOWS_TARGET }}/ev-cage.tar.gz
+          aws s3 cp ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.major_version }}/${{ needs.get-version.outputs.full_version }}/${{ env.WINDOWS_TARGET }}/ev-cage.tar.gz
 
       - name: Upload MacOS CLI to S3
         run: |
-          aws s3 cp ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.full_version }}/${{ env.MACOS_TARGET }}/ev-cage.tar.gz
+          aws s3 cp ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.full_version }}/${{ needs.get-version.outputs.full_version }}/${{ env.MACOS_TARGET }}/ev-cage.tar.gz
 
       - name: Upload Ubuntu CLI to S3
         run: |
-          aws s3 cp ./linux/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.full_version }}/${{ env.LINUX_TARGET }}/ev-cage.tar.gz
+          aws s3 cp ./linux/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.full_version }}/${{ needs.get-version.outputs.full_version }}/${{ env.LINUX_TARGET }}/ev-cage.tar.gz
 
       - uses: actions/checkout@v2
       - name: Update install script in S3
         run: |
           sh ./scripts/generate-installer.sh ${{ needs.get-version.outputs.full_version }}
-          aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/${{needs.get-version.outputs.full_version}}/install
-          aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/install
-          aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/${{needs.get-version.outputs.full_version}}/version
-          aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/version
-          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/cli/install"
-          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/cli/version"
+          aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.major_version }}/${{needs.get-version.outputs.full_version}}/install
+          aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.major_version }}/version
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/cli/*"
