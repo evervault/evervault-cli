@@ -53,6 +53,29 @@ impl EgressSettings {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ScalingSettings {
+    pub desired_replicas: u32,
+}
+
+impl Default for ScalingSettings {
+    fn default() -> Self {
+        ScalingSettings {
+            desired_replicas: 2,
+        }
+    }
+}
+
+impl ScalingSettings {
+    pub fn new(desired_replicas: u32) -> ScalingSettings {
+        ScalingSettings { desired_replicas }
+    }
+
+    pub fn get_desired_replicas(self) -> u32 {
+        self.desired_replicas
+    }
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SigningInfo {
     #[serde(rename = "certPath")]
@@ -242,6 +265,7 @@ pub struct CageConfig {
     pub healthcheck: Option<String>,
     // Table configs
     pub egress: EgressSettings,
+    pub scaling: Option<ScalingSettings>,
     pub signing: Option<SigningInfo>,
     pub attestation: Option<EIFMeasurements>,
     pub runtime: Option<RuntimeVersions>,
@@ -271,6 +295,7 @@ pub struct ValidatedCageBuildConfig {
     pub debug: bool,
     pub dockerfile: String,
     pub egress: EgressSettings,
+    pub scaling: ScalingSettings,
     pub signing: ValidatedSigningInfo,
     pub attestation: Option<EIFMeasurements>,
     pub disable_tls_termination: bool,
@@ -454,6 +479,8 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             (true, true) => Ok(true), // (logging enabled, tls_termination enabled) = logging enabled
         }?;
 
+        let scaling_settings = config.scaling.clone().unwrap_or_default();
+
         Ok(ValidatedCageBuildConfig {
             cage_uuid,
             app_uuid,
@@ -463,6 +490,7 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             dockerfile: config.dockerfile.clone(),
             egress: config.egress.clone(),
             signing: signing_info.try_into()?,
+            scaling: scaling_settings,
             attestation: config.attestation.clone(),
             disable_tls_termination: config.disable_tls_termination,
             api_key_auth: config.api_key_auth,
@@ -560,6 +588,9 @@ mod test {
                 destinations: None,
                 ports: Some(vec!["443".to_string()]),
             },
+            scaling: Some(super::ScalingSettings {
+                desired_replicas: 2,
+            }),
             signing: None,
             attestation: None,
             api_key_auth: true,
