@@ -7,9 +7,9 @@ set -e
 # {
 # 			"latest": "2.0.4",
 # 			"versions": {
-# 				"0": { "latest": "0.0.4", "all": ["0.0.1", "0.0.2", "0.0.3", "0.0.4"], "deprecationDate": "1697719181"},
-# 				"1": { "latest": "1.0.4", "all": ["1.0.1", "1.0.2", "1.0.3", "1.0.4"] },
-# 				"2": { "latest": "2.0.4", "all": ["2.0.1", "2.0.2", "2.0.3", "2.0.4"] }
+# 				"0": { "latest": "0.0.4", "deprecationDate": "1697719181"},
+# 				"1": { "latest": "1.0.4" },
+# 				"2": { "latest": "2.0.4" }
 # 			}
 # 		}
 # The top level latest version is used to determine the latest version of the CLI overall
@@ -38,7 +38,6 @@ if [ $? -eq 0 ]; then
     echo "Major version is less than current highest, not updating top level latest version"
   fi
 
-  version_json=$(echo "$version_json" | jq --arg major_version "$major_version" --arg new_version "$release_version" '.versions[$major_version].all += [$new_version]')
   version_json=$(echo "$version_json" | jq --arg major_version "$major_version" --arg new_version "$release_version" '.versions[$major_version].latest = $new_version')
   echo "Updated versions: $version_json"
   echo "$version_json" > ./scripts/versions
