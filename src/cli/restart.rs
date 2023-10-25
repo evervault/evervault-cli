@@ -1,3 +1,4 @@
+use crate::version::check_version;
 use crate::{
     api::{cage::CagesClient, AuthMode},
     common::CliError,
@@ -26,6 +27,11 @@ pub struct RestartArgs {
 }
 
 pub async fn run(restart_args: RestartArgs) -> i32 {
+    if let Err(e) = check_version().await {
+        log::error!("{}", e);
+        return exitcode::SOFTWARE;
+    };
+
     let api_key = get_api_key!();
 
     let cage_api = CagesClient::new(AuthMode::ApiKey(api_key.to_string()));

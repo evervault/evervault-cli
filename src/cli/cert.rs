@@ -2,6 +2,7 @@ use crate::cert::{self, DistinguishedName};
 use crate::common::CliError;
 use crate::config::CageConfig;
 use crate::get_api_key;
+use crate::version::check_version;
 use atty::Stream;
 use clap::{Parser, Subcommand};
 use exitcode::DATAERR;
@@ -64,6 +65,11 @@ pub struct LockCertArgs {
 }
 
 pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
+    if let Err(e) = check_version().await {
+        log::error!("{}", e);
+        return exitcode::SOFTWARE;
+    };
+
     match cert_args.action {
         CertCommands::New(new_args) => {
             let distinguished_name =

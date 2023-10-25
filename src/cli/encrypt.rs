@@ -1,3 +1,4 @@
+use crate::version::check_version;
 use crate::{
     config::CageConfig,
     encrypt::{self, EncryptError},
@@ -35,6 +36,11 @@ pub struct EncryptArgs {
 }
 
 pub async fn run(encrypt_args: EncryptArgs) -> exitcode::ExitCode {
+    if let Err(e) = check_version().await {
+        log::error!("{}", e);
+        return exitcode::SOFTWARE;
+    };
+
     let (team_uuid, app_uuid) = match get_cage_details(encrypt_args.clone()) {
         Ok((team_uuid, app_uuid)) => (team_uuid, app_uuid),
         Err(e) => {

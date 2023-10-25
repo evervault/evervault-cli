@@ -3,6 +3,7 @@ use crate::build::build_enclave_image_file;
 use crate::common::{prepare_build_args, CliError};
 use crate::config::{read_and_validate_config, BuildTimeConfig, RuntimeVersions};
 use crate::docker::command::get_source_date_epoch;
+use crate::version::check_version;
 use clap::Parser;
 
 /// Build a Cage from a Dockerfile
@@ -73,6 +74,11 @@ impl BuildTimeConfig for BuildArgs {
 }
 
 pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
+    if let Err(e) = check_version().await {
+        log::error!("{}", e);
+        return exitcode::SOFTWARE;
+    };
+
     let (mut cage_config, validated_config) =
         match read_and_validate_config(&build_args.config, &build_args) {
             Ok(config) => config,

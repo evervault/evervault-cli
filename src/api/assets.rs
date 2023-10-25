@@ -1,10 +1,24 @@
 use super::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "kebab-case")]
 struct RuntimeVersion {
     data_plane: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CLIVersion {
+    pub latest: String,
+    pub versions: HashMap<String, MajorVersion>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MajorVersion {
+    pub latest: String,
+    #[serde(rename = "deprecationDate")]
+    pub deprecation_date: Option<String>,
 }
 
 pub struct AssetsClient {
@@ -81,4 +95,14 @@ impl AssetsClient {
             .await
             .map(|version| version.trim().to_string())
     }
+
+    pub async fn get_cli_versions(&self) -> ApiResult<CLIVersion> {
+        let data_plane_version = format!("{}/cli/versions", self.base_url());
+        self.get(&data_plane_version)
+            .send()
+            .await
+            .handle_json_response::<CLIVersion>()
+            .await
+    }
+    
 }

@@ -4,6 +4,7 @@ use crate::api::{cage::Cage, AuthMode};
 use crate::common::CliError;
 use crate::config::{default_dockerfile, CageConfig, EgressSettings, SigningInfo};
 use crate::get_api_key;
+use crate::version::check_version;
 use clap::{ArgGroup, Parser};
 
 /// Initialize a Cage.toml in the current directory
@@ -126,6 +127,11 @@ fn convert_comma_list(maybe_str: Option<String>) -> Option<Vec<String>> {
 }
 
 pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
+    if let Err(e) = check_version().await {
+        log::error!("{}", e);
+        return exitcode::SOFTWARE;
+    };
+
     let api_key = get_api_key!();
     let cages_client = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.clone()));
 

@@ -1,3 +1,4 @@
+use crate::version::check_version;
 use clap::{Parser, Subcommand};
 
 use crate::{
@@ -82,6 +83,11 @@ pub struct GetEnvArgs {
 }
 
 pub async fn run(env_args: EnvArgs) -> exitcode::ExitCode {
+    if let Err(e) = check_version().await {
+        log::error!("{}", e);
+        return exitcode::SOFTWARE;
+    };
+
     let api_key = get_api_key!();
     let cages_client = CagesClient::new(AuthMode::ApiKey(api_key));
 

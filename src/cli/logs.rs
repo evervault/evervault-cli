@@ -3,6 +3,7 @@ use crate::api::AuthMode;
 use crate::common::CliError;
 use crate::config::CageConfig;
 use crate::get_api_key;
+use crate::version::check_version;
 
 use chrono::TimeZone;
 use clap::Parser;
@@ -22,6 +23,11 @@ pub struct LogArgs {
 }
 
 pub async fn run(log_args: LogArgs) -> i32 {
+    if let Err(e) = check_version().await {
+        log::error!("{}", e);
+        return exitcode::SOFTWARE;
+    };
+
     let api_key = get_api_key!();
     let cages_client = api::cage::CagesClient::new(AuthMode::ApiKey(api_key));
 

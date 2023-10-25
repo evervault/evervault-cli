@@ -1,6 +1,7 @@
 use crate::common::CliError;
 use crate::delete::delete_cage;
 use crate::get_api_key;
+use crate::version::check_version;
 use clap::Parser;
 
 /// Delete a Cage from a toml file.
@@ -28,6 +29,10 @@ pub struct DeleteArgs {
 }
 
 pub async fn run(delete_args: DeleteArgs) -> exitcode::ExitCode {
+    if let Err(e) = check_version().await {
+        log::error!("{}", e);
+        return exitcode::SOFTWARE;
+    };
     let should_del = match dialoguer::Confirm::new()
         .with_prompt("Are you sure you want to delete this Cage?")
         .default(false)
