@@ -42,5 +42,5 @@ if [ $? -eq 0 ]; then
   echo "Updated versions: $version_json"
   echo "$version_json" > ./scripts/versions
 else
-  echo "Couldn't get versions from S3 $response"
+  echo "Couldn't get versions from S3 $version_json"
 fi
