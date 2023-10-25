@@ -282,9 +282,12 @@ jobs:
       - name: Update install script in S3
         run: |
           sh ./scripts/generate-installer.sh ${{ needs.get-version.outputs.version }}
+          sh ./scripts/update-versions.sh ${{ needs.get-version.outputs.version }}
           aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/${{needs.get-version.outputs.version}}/install
           aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/install
           aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/${{needs.get-version.outputs.version}}/version
           aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/version
+          aws s3 cp scripts/versions s3://cage-build-assets-${{ env.STAGE }}/cli/versions
           aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/cli/install"
           aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/cli/version"
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/cli/versions"
