@@ -1,3 +1,4 @@
+use crate::version::check_version;
 use crate::{api, common::CliError};
 use clap::Parser;
 use dialoguer::Confirm;
@@ -11,6 +12,11 @@ pub struct UpdateArgs {
 }
 
 pub async fn run(args: UpdateArgs) -> exitcode::ExitCode {
+    if let Err(e) = check_version().await {
+        log::error!("{}", e);
+        return exitcode::SOFTWARE;
+    }
+
     let assets_client = api::assets::AssetsClient::new();
     let new_version = match assets_client.get_latest_cli_version().await {
         Ok(version) => version,

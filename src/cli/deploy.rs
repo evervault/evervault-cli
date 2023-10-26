@@ -3,6 +3,7 @@ use crate::build::build_enclave_image_file;
 use crate::common::prepare_build_args;
 use crate::docker::command::get_source_date_epoch;
 use crate::get_api_key;
+use crate::version::check_version;
 use crate::{
     common::{CliError, OutputPath},
     config::{read_and_validate_config, BuildTimeConfig, ValidatedCageBuildConfig},
@@ -77,6 +78,10 @@ impl BuildTimeConfig for DeployArgs {
 }
 
 pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
+    if let Err(e) = check_version().await {
+        log::error!("{}", e);
+        return exitcode::SOFTWARE;
+    };
     let api_key = get_api_key!();
     let (mut cage_config, validated_config) =
         match read_and_validate_config(&deploy_args.config, &deploy_args) {

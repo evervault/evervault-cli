@@ -16,6 +16,7 @@ pub mod encrypt;
 pub mod env;
 pub mod progress;
 pub mod restart;
+mod version;
 
 #[cfg(test)]
 pub mod test_utils;
