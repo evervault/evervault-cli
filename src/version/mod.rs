@@ -1,9 +1,9 @@
+use crate::api::assets::AssetsClient;
+use crate::api::client::ApiError;
 use chrono::Utc;
 use semver::Version;
 use std::env;
 use thiserror::Error;
-use crate::api::assets::AssetsClient;
-use crate::api::client::ApiError;
 
 #[derive(Debug, Error)]
 pub enum VersionError {
@@ -24,7 +24,9 @@ fn get_latest_major_version() -> Result<u8, VersionError> {
 }
 
 pub async fn check_version() -> Result<(), VersionError> {
-    if std::env::var("EV_DOMAIN").unwrap_or_else(|_| String::from("evervault.com")) == "evervault.io" {
+    if std::env::var("EV_DOMAIN").unwrap_or_else(|_| String::from("evervault.com"))
+        == "evervault.io"
+    {
         return Ok(());
     }
     match alert_on_deprecation().await? {
@@ -39,10 +41,11 @@ async fn alert_on_deprecation() -> Result<Option<i64>, VersionError> {
     let installed_major_version = get_latest_major_version()?;
     let installed_semver = Version::parse(env!("CARGO_PKG_VERSION"))?;
     let current_version = match version_info
-    .versions
-    .get(&installed_major_version.to_string()) {
+        .versions
+        .get(&installed_major_version.to_string())
+    {
         Some(version) => version,
-        None => return Err(VersionError::VersionCheckError)
+        None => return Err(VersionError::VersionCheckError),
     };
     let latest_semver = Version::parse(current_version.latest.as_str())?;
     if let Some(deprecation_date) = &current_version.deprecation_date {

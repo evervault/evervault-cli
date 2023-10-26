@@ -104,5 +104,4 @@ impl AssetsClient {
             .handle_json_response::<CLIVersion>()
             .await
     }
-    
 }
