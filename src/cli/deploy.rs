@@ -228,20 +228,14 @@ async fn get_data_plane_and_installer_version(
     match validated_config.runtime.clone() {
         Some(config) => Ok((config.data_plane_version.clone(), config.installer_version)),
         None => {
-            let data_plane_version = match cage_build_assets_client
-                .get_latest_data_plane_version()
-                .await
-            {
+            let data_plane_version = match cage_build_assets_client.get_data_plane_version().await {
                 Ok(version) => version,
                 Err(e) => {
                     log::error!("Failed to retrieve the latest data plane version - {e:?}");
                     return Err(e.exitcode());
                 }
             };
-            let installer_version = match cage_build_assets_client
-                .get_latest_installer_version()
-                .await
-            {
+            let installer_version = match cage_build_assets_client.get_installer_version().await {
                 Ok(version) => version,
                 Err(e) => {
                     log::error!("Failed to retrieve the latest installer version - {e:?}");

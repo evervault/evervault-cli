@@ -162,8 +162,8 @@ pub enum ApiErrorKind {
 }
 
 pub struct ApiError {
-    kind: ApiErrorKind,
-    details: Option<ApiErrorDetails>,
+    pub kind: ApiErrorKind,
+    pub details: Option<ApiErrorDetails>,
 }
 
 pub type ApiResult<T> = core::result::Result<T, ApiError>;
