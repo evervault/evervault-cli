@@ -439,6 +439,7 @@ mod test {
     use super::{process_dockerfile, BuildError};
     use crate::cert::CertValidityPeriod;
     use crate::config::EgressSettings;
+    use crate::config::ScalingSettings;
     use crate::config::ValidatedCageBuildConfig;
     use crate::config::ValidatedSigningInfo;
     use crate::docker;
@@ -459,6 +460,9 @@ mod test {
                 enabled: false,
                 destinations: None,
                 ports: Some(vec!["433".to_string()]),
+            },
+            scaling: ScalingSettings {
+                desired_replicas: 2,
             },
             attestation: None,
             signing: ValidatedSigningInfo {

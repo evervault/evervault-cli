@@ -1,6 +1,7 @@
 use crate::attest::attest_connection_to_cage;
 use crate::config::CageConfig;
 use crate::describe::describe_eif;
+use crate::version::check_version;
 use attestation_doc_validation::attestation_doc::PCRs;
 use attestation_doc_validation::PCRProvider;
 use clap::Parser;
@@ -30,6 +31,11 @@ macro_rules! unwrap_or_exit_with_error {
 }
 
 pub async fn run(attest_args: AttestArgs) -> i32 {
+    if let Err(e) = check_version().await {
+        log::error!("{}", e);
+        return exitcode::SOFTWARE;
+    };
+
     let config = unwrap_or_exit_with_error!(CageConfig::try_from_filepath(&attest_args.config));
     let domain = unwrap_or_exit_with_error!(config.get_cage_domain());
 

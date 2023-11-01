@@ -1,6 +1,7 @@
 use crate::api::AuthMode;
 use crate::common::CliError;
 use crate::config::{read_and_validate_config, BuildTimeConfig};
+use crate::version::check_version;
 use crate::{api, get_api_key};
 use clap::Parser;
 
@@ -38,6 +39,11 @@ pub struct DeploymentArgs {
 impl BuildTimeConfig for DeploymentArgs {}
 
 pub async fn run(list_action: List) -> exitcode::ExitCode {
+    if let Err(e) = check_version().await {
+        log::error!("{}", e);
+        return exitcode::SOFTWARE;
+    };
+
     let api_key = get_api_key!();
     let auth = AuthMode::ApiKey(api_key);
 
