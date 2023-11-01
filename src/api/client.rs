@@ -74,9 +74,12 @@ pub trait ApiClient {
     fn user_agent(&self) -> String {
         format!("evervault-cage-cli/{}", env!("CARGO_PKG_VERSION"))
     }
-    
+
     fn accept(&self) -> String {
-        format!("application/json;version={}", env!("CARGO_PKG_VERSION_MAJOR"))
+        format!(
+            "application/json;version={}",
+            env!("CARGO_PKG_VERSION_MAJOR")
+        )
     }
 
     fn is_authorised(&self) -> bool {
@@ -105,8 +108,8 @@ pub trait ApiClient {
 
     fn prepare(&self, mut request_builder: RequestBuilder) -> RequestBuilder {
         request_builder = request_builder
-          .header(reqwest::header::USER_AGENT, self.user_agent())
-          .header(reqwest::header::ACCEPT, self.accept());
+            .header(reqwest::header::USER_AGENT, self.user_agent())
+            .header(reqwest::header::ACCEPT, self.accept());
         match &self.auth() {
             AuthMode::NoAuth => request_builder,
             AuthMode::ApiKey(api_key) => request_builder.header("api-key", api_key),
