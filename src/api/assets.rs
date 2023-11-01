@@ -85,12 +85,14 @@ impl AssetsClient {
     }
 
     pub async fn get_data_plane_version(&self) -> ApiResult<String> {
-        self.get_runtime_versions().await
+        self.get_runtime_versions()
+            .await
             .map(|version| version.latest)
     }
 
     pub async fn get_installer_version(&self) -> ApiResult<String> {
-        self.get_runtime_versions().await
+        self.get_runtime_versions()
+            .await
             .map(|version| version.installer)
     }
 
