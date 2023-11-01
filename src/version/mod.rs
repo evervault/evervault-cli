@@ -19,7 +19,7 @@ pub enum VersionError {
     VersionCheckError,
 }
 
-fn get_latest_major_version() -> Result<u8, VersionError> {
+pub fn get_latest_major_version() -> Result<u8, VersionError> {
     Ok(env!("CARGO_PKG_VERSION_MAJOR").parse::<u8>()?)
 }
 

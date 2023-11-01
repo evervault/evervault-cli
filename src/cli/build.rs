@@ -94,10 +94,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         .map(|args| args.iter().map(AsRef::as_ref).collect());
 
     let cage_build_assets_client = AssetsClient::new();
-    let data_plane_version = match cage_build_assets_client
-        .get_latest_data_plane_version()
-        .await
-    {
+    let data_plane_version = match cage_build_assets_client.get_data_plane_version().await {
         Ok(version) => version,
         Err(e) => {
             log::error!("Failed to retrieve the latest data plane version - {e:?}");
@@ -105,10 +102,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         }
     };
 
-    let installer_version = match cage_build_assets_client
-        .get_latest_installer_version()
-        .await
-    {
+    let installer_version = match cage_build_assets_client.get_installer_version().await {
         Ok(version) => version,
         Err(e) => {
             log::error!("Failed to retrieve the latest installer version - {e:?}");
