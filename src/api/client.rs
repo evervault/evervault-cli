@@ -75,32 +75,41 @@ pub trait ApiClient {
         format!("evervault-cage-cli/{}", env!("CARGO_PKG_VERSION"))
     }
 
+    fn accept(&self) -> String {
+        format!(
+            "application/json;version={}",
+            env!("CARGO_PKG_VERSION_MAJOR")
+        )
+    }
+
     fn is_authorised(&self) -> bool {
         !matches!(self.auth(), AuthMode::NoAuth)
     }
 
-    fn get(&self, url: &String) -> RequestBuilder {
+    fn get(&self, url: &str) -> RequestBuilder {
         self.prepare(self.client().get(url))
     }
 
-    fn post(&self, url: &String) -> RequestBuilder {
+    fn post(&self, url: &str) -> RequestBuilder {
         self.prepare(self.client().post(url))
     }
 
-    fn put(&self, url: &String) -> RequestBuilder {
+    fn put(&self, url: &str) -> RequestBuilder {
         self.prepare(self.client().put(url))
     }
 
-    fn delete(&self, url: &String) -> RequestBuilder {
+    fn delete(&self, url: &str) -> RequestBuilder {
         self.prepare(self.client().delete(url))
     }
 
-    fn patch(&self, url: &String) -> RequestBuilder {
+    fn patch(&self, url: &str) -> RequestBuilder {
         self.prepare(self.client().patch(url))
     }
 
     fn prepare(&self, mut request_builder: RequestBuilder) -> RequestBuilder {
-        request_builder = request_builder.header("user-agent", self.user_agent());
+        request_builder = request_builder
+            .header(reqwest::header::USER_AGENT, self.user_agent())
+            .header(reqwest::header::ACCEPT, self.accept());
         match &self.auth() {
             AuthMode::NoAuth => request_builder,
             AuthMode::ApiKey(api_key) => request_builder.header("api-key", api_key),
