@@ -41,9 +41,9 @@ pub struct ScaleArgs {
     #[clap(long = "cage-uuid")]
     pub cage_uuid: Option<String>,
 
-    /// Number of instances to run for this Cage. If unset, the command will read the current scaling config from the Evervault API.
-    #[clap(long = "desired-instances")]
-    pub desired_instances: Option<u32>,
+    /// Number of replicas to run for this Cage. If unset, the command will read the current scaling config from the Evervault API.
+    #[clap(long = "desired-replicas")]
+    pub desired_replicas: Option<u32>,
 
     /// Sync the local Cage.toml with the latest scaling config for a Cage if they differ.
     #[clap(long = "sync")]
@@ -80,24 +80,24 @@ pub async fn run(args: ScaleArgs) -> i32 {
         }
     };
 
-    let scaling_config_result = match args.desired_instances {
-        Some(new_desired_instances) => {
-            log::info!("Updating desired replicas to {new_desired_instances}");
+    let scaling_config_result = match args.desired_replicas {
+        Some(new_desired_replicas) => {
+            log::info!("Updating desired replicas to {new_desired_replicas}");
             cage_api
-                .update_scaling_config(&cage_uuid, new_desired_instances.into())
+                .update_scaling_config(&cage_uuid, new_desired_replicas.into())
                 .await
         }
         None => cage_api.get_scaling_config(&cage_uuid).await,
     };
 
     let scaling_config = match scaling_config_result {
-        Ok(result) if args.desired_instances.is_some() => {
+        Ok(result) if args.desired_replicas.is_some() => {
             log::info!("Cage scaling config updated successfully");
             result
         }
         Ok(result) => result,
         Err(e) => {
-            let action = if args.desired_instances.is_some() {
+            let action = if args.desired_replicas.is_some() {
                 "update"
             } else {
                 "read"
@@ -112,7 +112,7 @@ pub async fn run(args: ScaleArgs) -> i32 {
             .scaling
             .as_ref()
             .is_some_and(|scaling| scaling.desired_replicas != scaling_config.desired_replicas());
-        if (args.sync && args.desired_instances.is_some()) && has_scaling_drift {
+        if (args.sync && args.desired_replicas.is_some()) && has_scaling_drift {
             config.set_scaling_config(ScalingSettings {
                 desired_replicas: scaling_config.desired_replicas(),
             });
