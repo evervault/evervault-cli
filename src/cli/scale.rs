@@ -112,7 +112,7 @@ pub async fn run(args: ScaleArgs) -> i32 {
             .scaling
             .as_ref()
             .is_some_and(|scaling| scaling.desired_replicas != scaling_config.desired_replicas());
-        if args.sync && has_scaling_drift {
+        if (args.sync && args.desired_instances.is_some()) && has_scaling_drift {
             config.set_scaling_config(ScalingSettings {
                 desired_replicas: scaling_config.desired_replicas(),
             });
@@ -121,17 +121,17 @@ pub async fn run(args: ScaleArgs) -> i32 {
     }
 
     if atty::is(atty::Stream::Stdout) {
-        log::info!(
+        println!(
             "{}",
             serde_json::to_string_pretty(&scaling_config)
                 .expect("Failed to serialize scaling config")
         );
     } else {
-        log::info!(
+        println!(
             "{}",
             serde_json::to_string(&scaling_config).expect("Failed to serialize scaling config")
         );
     }
 
-    return exitcode::OK;
+    exitcode::OK
 }

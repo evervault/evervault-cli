@@ -801,12 +801,14 @@ impl CageScalingConfig {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ScalingLimits {
     max_instances: u32,
     available_instances: u32,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ScalingConfig {
     desired_replicas: u32,
 }
