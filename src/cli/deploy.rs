@@ -147,12 +147,8 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
             .expect("Failed to serialize Cage attestation measures.")
     );
 
-    crate::common::update_cage_config_with_eif_measurements(
-        &mut cage_config,
-        &deploy_args.config,
-        &eif_measurements,
-        None,
-    );
+    cage_config.set_attestation(&eif_measurements);
+    crate::common::save_cage_config(&cage_config, &deploy_args.config);
 
     if let Err(e) = deploy_eif(
         &validated_config,

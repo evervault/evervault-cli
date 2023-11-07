@@ -227,6 +227,29 @@ impl CagesClient {
             .handle_json_response()
             .await
     }
+
+    pub async fn get_scaling_config(&self, cage_uuid: &str) -> ApiResult<CageScalingConfig> {
+        let cage_scaling_url = format!("{}/{}/scale", self.base_url(), cage_uuid);
+        self.get(&cage_scaling_url)
+            .send()
+            .await
+            .handle_json_response()
+            .await
+    }
+
+    pub async fn update_scaling_config(
+        &self,
+        cage_uuid: &str,
+        update_scaling_config_request: UpdateCageScalingConfigRequest,
+    ) -> ApiResult<CageScalingConfig> {
+        let cage_scaling_url = format!("{}/{}/scale", self.base_url(), cage_uuid);
+        self.put(&cage_scaling_url)
+            .json(&update_scaling_config_request)
+            .send()
+            .await
+            .handle_json_response()
+            .await
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -756,6 +779,47 @@ impl LogEvent {
 }
 
 pub type DeleteCageResponse = Cage;
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CageScalingConfig {
+    limits: ScalingLimits,
+    config: ScalingConfig,
+}
+
+impl CageScalingConfig {
+    pub fn max_instances(&self) -> u32 {
+        self.limits.max_instances
+    }
+
+    pub fn available_instances(&self) -> u32 {
+        self.limits.available_instances
+    }
+
+    pub fn desired_replicas(&self) -> u32 {
+        self.config.desired_replicas
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ScalingLimits {
+    max_instances: u32,
+    available_instances: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ScalingConfig {
+    desired_replicas: u32,
+}
+
+impl std::convert::From<u32> for ScalingConfig {
+    fn from(value: u32) -> Self {
+        Self {
+            desired_replicas: value,
+        }
+    }
+}
+
+pub type UpdateCageScalingConfigRequest = ScalingConfig;
 
 #[cfg(test)]
 mod test {

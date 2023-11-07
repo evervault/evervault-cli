@@ -420,6 +420,10 @@ impl CageConfig {
         self.runtime = Some(runtime.clone());
     }
 
+    pub fn set_scaling_config(&mut self, scaling_info: ScalingSettings) {
+        self.scaling = Some(scaling_info);
+    }
+
     pub fn try_from_filepath(path: &str) -> Result<Self, CageConfigError> {
         let config_path = std::path::Path::new(path);
         if !config_path.exists() {
