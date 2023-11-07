@@ -1,3 +1,4 @@
+use crate::api::client::ApiErrorKind;
 use crate::api::{self, assets::AssetsClient, AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::common::prepare_build_args;
@@ -101,6 +102,29 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
             return e.exitcode();
         }
     };
+
+    let cage_scaling_config = match cage_api
+        .get_scaling_config(validated_config.cage_uuid())
+        .await
+    {
+        Ok(scaling_config) => Some(scaling_config),
+        Err(e) if matches!(e.kind, ApiErrorKind::NotFound) => None,
+        Err(e) => {
+            log::error!("Failed to load Cage scaling config - {e}");
+            return e.exitcode();
+        }
+    };
+
+    let local_replicas = validated_config.scaling.desired_replicas;
+
+    // Warn if local scaling config differs from remote
+    let has_scaling_config_drift = cage_scaling_config.as_ref().is_some_and(|config| {
+        config.desired_replicas() != local_replicas
+    });
+    if has_scaling_config_drift {
+        let remote_replicas = cage_scaling_config.as_ref().unwrap().desired_replicas();
+        log::warn!("Remote scaling config differs from local config. This deployment will apply the local config.\n\nCurrent remote replica count: {remote_replicas}\nLocal replica count: {local_replicas}\n");
+    }
 
     let timestamp = get_source_date_epoch();
 
