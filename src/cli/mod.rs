@@ -13,6 +13,7 @@ pub mod init;
 pub mod list;
 pub mod logs;
 pub mod restart;
+pub mod scale;
 pub mod update;
 
 #[derive(Debug, Subcommand)]
@@ -32,4 +33,5 @@ pub enum Command {
     Env(env::EnvArgs),
     Encrypt(encrypt::EncryptArgs),
     Restart(restart::RestartArgs),
+    Scale(scale::ScaleArgs),
 }

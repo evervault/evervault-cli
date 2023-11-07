@@ -136,12 +136,9 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         }
     };
 
-    crate::common::update_cage_config_with_eif_measurements(
-        &mut cage_config,
-        &build_args.config,
-        built_enclave.measurements(),
-        Some(runtime_info),
-    );
+    cage_config.set_attestation(built_enclave.measurements());
+    cage_config.set_runtime_info(runtime_info);
+    crate::common::save_cage_config(&cage_config, &build_args.config);
 
     if cage_config.debug {
         crate::common::log_debug_mode_attestation_warning();

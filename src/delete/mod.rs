@@ -1,21 +1,9 @@
 use crate::api;
 use crate::api::cage::CagesClient;
 use crate::api::AuthMode;
-use crate::config::{CageConfig, CageConfigError};
 use crate::progress::{get_tracker, poll_fn_and_report_status, ProgressLogger, StatusReport};
 mod error;
 use error::DeleteError;
-
-fn resolve_cage_uuid(
-    given_uuid: Option<&str>,
-    config_path: &str,
-) -> Result<Option<String>, CageConfigError> {
-    if let Some(given_uuid) = given_uuid {
-        return Ok(Some(given_uuid.to_string()));
-    }
-    let config = CageConfig::try_from_filepath(config_path)?;
-    Ok(config.uuid)
-}
 
 pub async fn delete_cage(
     config: &str,
@@ -23,7 +11,7 @@ pub async fn delete_cage(
     api_key: &str,
     background: bool,
 ) -> Result<(), DeleteError> {
-    let maybe_cage_uuid = resolve_cage_uuid(cage_uuid, config)?;
+    let maybe_cage_uuid = crate::common::resolve_cage_uuid(cage_uuid, config)?;
     let cage_uuid = match maybe_cage_uuid {
         Some(given_cage_uuid) => given_cage_uuid,
         _ => return Err(DeleteError::MissingUuid),

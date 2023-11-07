@@ -1,7 +1,6 @@
 use crate::{
     api::cage::{CageDeployment, CagesClient},
     common::CliError,
-    config::{CageConfig, CageConfigError},
 };
 use thiserror::Error;
 
@@ -28,24 +27,13 @@ impl CliError for RestartError {
     }
 }
 
-fn resolve_cage_uuid(
-    given_uuid: Option<&str>,
-    config_path: &str,
-) -> Result<Option<String>, CageConfigError> {
-    if let Some(given_uuid) = given_uuid {
-        return Ok(Some(given_uuid.to_string()));
-    }
-    let config = CageConfig::try_from_filepath(config_path)?;
-    Ok(config.uuid)
-}
-
 pub async fn restart_cage(
     config: &str,
     cage_uuid: Option<&str>,
     cage_api: &CagesClient,
     _background: bool,
 ) -> Result<CageDeployment, RestartError> {
-    let maybe_cage_uuid = resolve_cage_uuid(cage_uuid, config)?;
+    let maybe_cage_uuid = crate::common::resolve_cage_uuid(cage_uuid, config)?;
     let cage_uuid = match maybe_cage_uuid {
         Some(given_cage_uuid) => given_cage_uuid,
         _ => return Err(RestartError::MissingUuid),
