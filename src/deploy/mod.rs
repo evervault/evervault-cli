@@ -52,7 +52,7 @@ pub async fn deploy_eif(
         validated_config
             .scaling
             .as_ref()
-            .and_then(|config| config.desired_replicas),
+            .map(|config| config.desired_replicas),
     );
 
     let deployment_intent = cage_api

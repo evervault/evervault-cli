@@ -118,13 +118,12 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     let local_replicas = validated_config
         .scaling
         .as_ref()
-        .and_then(|local_scaling_config| local_scaling_config.desired_replicas);
+        .map(|local_scaling_config| local_scaling_config.desired_replicas);
 
     // Warn if local scaling config differs from remote
-    let has_scaling_config_drift = cage_scaling_config
-        .as_ref()
-        .and_then(|config| local_replicas.map(|replicas| config.desired_replicas() != replicas))
-        .unwrap_or(true);
+    let has_scaling_config_drift = cage_scaling_config.as_ref().is_some_and(|config| {
+        local_replicas.is_some_and(|replicas| config.desired_replicas() != replicas)
+    });
 
     if has_scaling_config_drift && cage_scaling_config.is_some() {
         let remote_replicas = cage_scaling_config.as_ref().unwrap().desired_replicas();

@@ -114,9 +114,7 @@ impl std::convert::From<InitArgs> for CageConfig {
             ),
             scaling: val
                 .desired_replicas
-                .map(|desired_replicas| ScalingSettings {
-                    desired_replicas: Some(desired_replicas),
-                }),
+                .map(|desired_replicas| ScalingSettings { desired_replicas }),
             dockerfile: val.dockerfile.unwrap_or_else(default_dockerfile), // need to manually set default dockerfile
             signing: signing_info,
             attestation: None,
