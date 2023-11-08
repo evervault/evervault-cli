@@ -111,10 +111,17 @@ pub async fn run(args: ScaleArgs) -> i32 {
         let has_scaling_drift = config
             .scaling
             .as_ref()
-            .is_some_and(|scaling| scaling.desired_replicas != scaling_config.desired_replicas());
+            .map(|config_scaling_settings| {
+                config_scaling_settings
+                    .desired_replicas
+                    .map(|desired_replicas| desired_replicas != scaling_config.desired_replicas())
+                    .unwrap_or(false) // desired_replicas is not set in the config
+            })
+            .unwrap_or(false); // scaling config not set in the config
+
         if (args.sync && args.desired_replicas.is_some()) && has_scaling_drift {
             config.set_scaling_config(ScalingSettings {
-                desired_replicas: scaling_config.desired_replicas(),
+                desired_replicas: Some(scaling_config.desired_replicas()),
             });
             crate::common::save_cage_config(&config, &args.config);
         }

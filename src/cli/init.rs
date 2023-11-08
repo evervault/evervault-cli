@@ -112,9 +112,11 @@ impl std::convert::From<InitArgs> for CageConfig {
                 convert_comma_list(val.egress_destinations),
                 val.egress,
             ),
-            scaling: Some(ScalingSettings {
-                desired_replicas: val.desired_replicas.unwrap_or(2),
-            }),
+            scaling: val
+                .desired_replicas
+                .map(|desired_replicas| ScalingSettings {
+                    desired_replicas: Some(desired_replicas),
+                }),
             dockerfile: val.dockerfile.unwrap_or_else(default_dockerfile), // need to manually set default dockerfile
             signing: signing_info,
             attestation: None,
