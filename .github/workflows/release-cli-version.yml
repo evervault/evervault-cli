@@ -42,6 +42,7 @@ jobs:
           - musl: false
             vcpkgrs_dynamic: 0
             musl_suffix: ""
+            qemu: false
           - target: x86_64-unknown-linux-musl
             release_dir: "linux-x86"
             artifact_name: "linux-x86"
