@@ -49,7 +49,10 @@ pub async fn deploy_eif(
         get_source_date_epoch(),
         get_git_hash(),
         validated_config.healthcheck().map(String::from),
-        validated_config.scaling.desired_replicas,
+        validated_config
+            .scaling
+            .as_ref()
+            .and_then(|config| config.desired_replicas),
     );
 
     let deployment_intent = cage_api
