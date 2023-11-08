@@ -111,8 +111,9 @@ pub async fn run(args: ScaleArgs) -> i32 {
         let has_scaling_drift = config
             .scaling
             .as_ref()
-            .is_some_and(|scaling| scaling.desired_replicas != scaling_config.desired_replicas());
-        if (args.sync && args.desired_replicas.is_some()) && has_scaling_drift {
+            .map(|scaling| scaling.desired_replicas != scaling_config.desired_replicas())
+            .unwrap_or(true);
+        if (args.sync || args.desired_replicas.is_some()) && has_scaling_drift {
             config.set_scaling_config(ScalingSettings {
                 desired_replicas: scaling_config.desired_replicas(),
             });
