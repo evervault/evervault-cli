@@ -119,7 +119,7 @@ pub async fn run(args: ScaleArgs) -> i32 {
             })
             .unwrap_or(false); // scaling config not set in the config
 
-        if (args.sync && args.desired_replicas.is_some()) && has_scaling_drift {
+        if (args.sync || args.desired_replicas.is_some()) && has_scaling_drift {
             config.set_scaling_config(ScalingSettings {
                 desired_replicas: Some(scaling_config.desired_replicas()),
             });
