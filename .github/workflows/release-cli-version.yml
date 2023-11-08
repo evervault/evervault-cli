@@ -55,6 +55,7 @@ jobs:
             musl: true
             musl_suffix: ":arm64"
             profile: "minimal"
+            qemu: true
           - target: x86_64-apple-darwin
             release_dir: "apple-x86"
             artifact_name: "apple-x86"
@@ -63,6 +64,7 @@ jobs:
             release_dir: "apple-arm64"
             artifact_name: "apple-arm64"
             platform: "macos-latest"
+            qemu: true
           - target: x86_64-pc-windows-msvc
             release_dir: "windows-x86"
             artifact_name: "windows-x86"
@@ -73,6 +75,7 @@ jobs:
             artifact_name: "windows-arm64"
             platform: "windows-latest"
             vcpkgrs_dynamic: 1
+            qemu: true
     uses: ./.github/workflows/compile-cli-for-target.yml
     with:
       target: ${{ matrix.target }}
@@ -83,6 +86,7 @@ jobs:
       musl: ${{ matrix.musl }}
       musl_suffix: ${{ matrix.musl_suffix }}
       vcpkgrs_dynamic: ${{ matrix.vcpkgrs_dynamic }}
+      qemu: ${{ matrix.qemu }}
     secrets: inherit
 
   # release-cli-version:

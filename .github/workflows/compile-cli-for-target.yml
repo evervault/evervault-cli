@@ -34,6 +34,10 @@ on:
         required: false
         type: string
         default: 'default'
+      qemu:
+        required: false
+        type: boolean
+        default: false
     secrets:
       RUST_CRYPTO_REGISTRY:
         required: true
@@ -49,8 +53,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Setup cross compilation
-        if: ${{ inputs.musl && inputs.musl_suffix != '' && inputs.platform == 'ubuntu-latest' }}
+      - name: Setup Qemu
+        if: ${{ inputs.qemu }}
         # Running /etc/lsb-release exports the DISTRIB_CODENAME variable which contains the OS codename used in ubuntu repositories
         # We then configure the existing apt sources to be scoped to amd64, and add the arm64 architecture sources before install musl-tools
         uses: docker/setup-qemu-action@v3
