@@ -118,9 +118,9 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     let local_replicas = validated_config.scaling.desired_replicas;
 
     // Warn if local scaling config differs from remote
-    let has_scaling_config_drift = cage_scaling_config.as_ref().is_some_and(|config| {
-        config.desired_replicas() != local_replicas
-    });
+    let has_scaling_config_drift = cage_scaling_config
+        .as_ref()
+        .is_some_and(|config| config.desired_replicas() != local_replicas);
     if has_scaling_config_drift {
         let remote_replicas = cage_scaling_config.as_ref().unwrap().desired_replicas();
         log::warn!("Remote scaling config differs from local config. This deployment will apply the local config.\n\nCurrent remote replica count: {remote_replicas}\nLocal replica count: {local_replicas}\n");
