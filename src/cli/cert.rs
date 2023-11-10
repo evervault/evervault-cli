@@ -131,9 +131,7 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
                 match cert::upload_new_cert_ref(&cert_path, &api_key, upload_args.name).await {
                     Ok(pcr8) => pcr8,
                     Err(e) => {
-                        log::error!(
-                            "An error occurred while generating PCR8 for your cert - {e}"
-                        );
+                        log::error!("An error occurred while generating PCR8 for your cert - {e}");
                         return e.exitcode();
                     }
                 };
