@@ -79,7 +79,7 @@ impl BuildTimeConfig for DeployArgs {
 
 pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     if let Err(e) = check_version().await {
-        log::error!("{}", e);
+        log::error!("{e}");
         return exitcode::SOFTWARE;
     };
     let api_key = get_api_key!();
@@ -87,7 +87,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         match read_and_validate_config(&deploy_args.config, &deploy_args) {
             Ok(configs) => configs,
             Err(e) => {
-                log::error!("Failed to validate Cage config - {}", e);
+                log::error!("Failed to validate Cage config - {e}");
                 return e.exitcode();
             }
         };
@@ -113,7 +113,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         match get_data_plane_and_installer_version(&validated_config).await {
             Ok(versions) => versions,
             Err(e) => {
-                log::error!("Failed to get data plane and installer versions – {}", e);
+                log::error!("Failed to get data plane and installer versions – {e}");
                 return e;
             }
         };
@@ -164,7 +164,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     )
     .await
     {
-        log::error!("{}", e);
+        log::error!("{e}");
         return e.exitcode();
     };
 
@@ -196,7 +196,7 @@ async fn resolve_eif(
 ) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
     if let Some(path) = eif_path {
         get_eif(path, verbose).map_err(|e| {
-            log::error!("Failed to access the EIF at {}", path);
+            log::error!("{e}");
             e.exitcode()
         })
     } else {
@@ -214,7 +214,7 @@ async fn resolve_eif(
         )
         .await
         .map_err(|build_err| {
-            log::error!("Failed to build EIF - {}", build_err);
+            log::error!("Failed to build EIF - {build_err}");
             build_err.exitcode()
         })?;
         Ok((built_enclave.measurements().to_owned(), output_path))

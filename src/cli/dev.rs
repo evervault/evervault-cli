@@ -13,7 +13,7 @@ pub struct DevArgs {
 
 pub async fn run(dev_args: DevArgs) -> exitcode::ExitCode {
     if let Err(e) = check_version().await {
-        log::error!("{}", e);
+        log::error!("{e}");
         return exitcode::SOFTWARE;
     };
 

@@ -66,7 +66,7 @@ pub struct LockCertArgs {
 
 pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
     if let Err(e) = check_version().await {
-        log::error!("{}", e);
+        log::error!("{e}");
         return exitcode::SOFTWARE;
     };
 
@@ -76,7 +76,7 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
                 match try_resolve_distinguished_name(new_args.subject.as_deref()) {
                     Ok(distinguished_name) => distinguished_name,
                     Err(e) => {
-                        log::error!("{}", e);
+                        log::error!("{e}");
                         return e.exitcode();
                     }
                 };
@@ -85,7 +85,7 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
             {
                 Ok(paths) => paths,
                 Err(e) => {
-                    log::error!("An error occurred while generating your cert - {}", e);
+                    log::error!("An error occurred while generating your cert - {e}");
                     return e.exitcode();
                 }
             };
@@ -121,7 +121,7 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
                         }
                     },
                     Err(e) => {
-                        log::error!("An error occurred while reading cage.toml - {}", e);
+                        log::error!("An error occurred while reading cage.toml - {e}");
                         return e.exitcode();
                     }
                 },
@@ -132,8 +132,7 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
                     Ok(pcr8) => pcr8,
                     Err(e) => {
                         log::error!(
-                            "An error occurred while generating PCR8 for your cert - {}",
-                            e
+                            "An error occurred while generating PCR8 for your cert - {e}"
                         );
                         return e.exitcode();
                     }

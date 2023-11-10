@@ -84,7 +84,7 @@ pub struct GetEnvArgs {
 
 pub async fn run(env_args: EnvArgs) -> exitcode::ExitCode {
     if let Err(e) = check_version().await {
-        log::error!("{}", e);
+        log::error!("{e}");
         return exitcode::SOFTWARE;
     };
 
@@ -104,7 +104,7 @@ pub async fn run(env_args: EnvArgs) -> exitcode::ExitCode {
             }
         },
         Err(e) => {
-            log::error!("Error updating environment {}", e);
+            log::error!("Error updating environment {e}");
             exitcode::SOFTWARE
         }
     }
