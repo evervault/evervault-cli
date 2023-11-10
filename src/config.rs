@@ -439,7 +439,7 @@ impl CageConfig {
             self.name(),
             self.app_uuid
                 .as_ref()
-                .map(|uuid| uuid.replace("_", "-"))
+                .map(|uuid| uuid.replace('_', "-"))
                 .ok_or_else(|| CageConfigError::MissingField("app_uuid".to_string()))?
         ))
     }

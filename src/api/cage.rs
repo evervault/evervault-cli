@@ -266,8 +266,6 @@ impl CreateCageDeploymentIntentRequest {
         installer_version: String,
         git_timestamp: String,
         git_hash: String,
-        healthcheck: Option<String>,
-        desired_replicas: u32,
     ) -> Self {
         Self {
             pcrs: pcrs.clone(),
@@ -284,8 +282,8 @@ impl CreateCageDeploymentIntentRequest {
                 data_plane_version,
                 git_timestamp,
             },
-            healthcheck,
-            desired_replicas,
+            healthcheck: config.healthcheck().map(String::from),
+            desired_replicas: config.scaling.desired_replicas,
         }
     }
 }
