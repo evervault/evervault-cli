@@ -32,8 +32,7 @@ jobs:
         run: cargo fmt --check
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-      # Temporarily disable
-      # - name: Lint project
-      #   run: cargo clippy
-      #   env:
-      #     CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+      - name: Lint project
+        run: cargo clippy
+        env:
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}

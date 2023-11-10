@@ -610,7 +610,7 @@ impl DockerfileDecoder {
     ) -> Result<Option<Directive>, DecodeError> {
         loop {
             match self.read_u8(src) {
-                Some(next_byte) if next_byte == b'\n' => {
+                Some(b'\n') => {
                     let comment_bytes = Bytes::from(content.to_vec());
                     return Ok(Some(Directive::Comment(comment_bytes)));
                 }
@@ -631,7 +631,7 @@ impl DockerfileDecoder {
     ) -> Result<Option<DecoderState>, DecodeError> {
         loop {
             match self.read_u8(src) {
-                Some(byte) if byte == b' ' => {
+                Some(b' ') => {
                     return Ok(Some(DecoderState::DirectiveArguments {
                         directive: Directive::try_from(directive.as_ref())?,
                         arguments: None,
@@ -676,7 +676,7 @@ impl DockerfileDecoder {
                     argument_mut.put_u8(next_byte);
                 }
                 // new line signifies end of directive if unescaped
-                Some(next_byte) if next_byte == b'\n' => {
+                Some(b'\n') => {
                     // safety: first arm will be matched if next_byte is a newline and arguments is None
                     let content = arguments.as_ref().unwrap().to_vec();
                     directive.set_arguments(content)?;
