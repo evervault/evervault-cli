@@ -30,7 +30,7 @@ pub struct DeleteArgs {
 
 pub async fn run(delete_args: DeleteArgs) -> exitcode::ExitCode {
     if let Err(e) = check_version().await {
-        log::error!("{}", e);
+        log::error!("{e}");
         return exitcode::SOFTWARE;
     };
     let should_del = match dialoguer::Confirm::new()
@@ -67,7 +67,7 @@ pub async fn run(delete_args: DeleteArgs) -> exitcode::ExitCode {
             }
         }
         Err(e) => {
-            log::error!("{}", e);
+            log::error!("{e}");
             return e.exitcode();
         }
     };
