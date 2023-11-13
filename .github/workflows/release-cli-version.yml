@@ -69,7 +69,7 @@ jobs:
         run: |
           mkdir ${{ env.BIN_DIR }}
           mkdir ${{ env.RELEASE_DIR }}
-          cross build --release --target ${{ env.LINUX_TARGET }} -Z registry-auth
+          cross build --release --all-features --target ${{ env.LINUX_TARGET }} -Z registry-auth
           mv ./target/${{ env.LINUX_TARGET }}/release/ev-cage ./${{ env.BIN_DIR }}/ev-cage
           7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
         env:
@@ -107,7 +107,7 @@ jobs:
       - name: Build CLI MacOs Target
         run: |
           cargo install cross
-          cross build --release --target ${{ env.MACOS_TARGET }} -Z registry-auth
+          cross build --release --all-features --target ${{ env.MACOS_TARGET }} -Z registry-auth
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
@@ -166,7 +166,7 @@ jobs:
       - name: Build CLI for Windows
         run: |
           cargo install cross
-          cross build --release --target ${{ env.WINDOWS_TARGET }} -Z registry-auth
+          cross build --release --all-features --target ${{ env.WINDOWS_TARGET }} -Z registry-auth
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
