@@ -290,7 +290,7 @@ jobs:
       - name: Update install script in S3
         run: |
           sh ./scripts/generate-installer.sh ${{ needs.get-version.outputs.full_version }}
-          sh ./scripts/update-versions.sh ${{ needs.get-version.outputs.version }}
+          sh ./scripts/update-versions.sh ${{ needs.get-version.outputs.full_version }}
           aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/${{ needs.get-version.outputs.major_version }}/${{needs.get-version.outputs.full_version}}/install
           aws s3 cp scripts/install s3://cage-build-assets-${{ env.STAGE }}/cli/install
           aws s3 cp scripts/version s3://cage-build-assets-${{ env.STAGE }}/cli/${{needs.get-version.outputs.major_version}}/version
