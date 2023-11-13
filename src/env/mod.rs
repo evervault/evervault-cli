@@ -2,6 +2,7 @@ use crate::api::cage::{AddSecretRequest, CageEnv, CagesClient};
 use crate::cli::env::EnvCommands;
 use crate::config::{CageConfig, CageConfigError};
 use crate::encrypt::{self, encrypt};
+#[cfg(feature = "internal_dependency")]
 use rust_crypto::EvervaultCryptoError;
 use thiserror::Error;
 
