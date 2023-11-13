@@ -84,10 +84,10 @@ pub async fn run(args: ScaleArgs) -> i32 {
         Some(new_desired_replicas) => {
             log::info!("Updating desired replicas to {new_desired_replicas}");
             cage_api
-                .update_scaling_config(&cage_uuid, new_desired_replicas.into())
+                .update_scaling_config(cage_uuid, new_desired_replicas.into())
                 .await
         }
-        None => cage_api.get_scaling_config(&cage_uuid).await,
+        None => cage_api.get_scaling_config(cage_uuid).await,
     };
 
     let scaling_config = match scaling_config_result {

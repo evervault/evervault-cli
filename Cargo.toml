@@ -37,7 +37,7 @@ tokio-rustls = { version = "0.23", features = ["dangerous_configuration"] }
 x509-parser = "0.14.0"
 hex = "0.4.3"
 axum = "0.5.16"
-rust-crypto = { version = "0.1.21", registry="evervault-rust-libraries", features=["vendored-openssl"] }
+rust-crypto = { version = "0.1.21", registry="evervault-rust-libraries", features=["vendored-openssl"], optional = true }
 serde_cbor = "0.11"
 base64 = "0.13.0"
 aws-nitro-enclaves-image-format = "0.2.0"
@@ -54,3 +54,6 @@ serial_test = "2.0.0"
 [target.'cfg(unix)'.dependencies]
 aws-nitro-enclaves-nsm-api = { version = "0.2.1" }
 attestation-doc-validation = "0.7.3" 
+
+[features]
+internal_dependency = ["rust-crypto"]
