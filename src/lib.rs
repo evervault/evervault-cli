@@ -14,6 +14,7 @@ pub mod docker;
 pub mod enclave;
 pub mod encrypt;
 pub mod env;
+pub mod logs;
 pub mod progress;
 pub mod restart;
 mod version;
