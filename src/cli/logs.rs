@@ -20,11 +20,11 @@ pub struct LogArgs {
     #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
     pub config: String,
 
-    /// The start time in epoch seconds
+    /// The start time in epoch milliseconds
     #[clap(long = "start-time")]
     pub start_time: Option<String>,
 
-    /// The end time in epoch seconds
+    /// The end time in epoch milliseconds
     #[clap(long = "end-time")]
     pub end_time: Option<String>,
 }

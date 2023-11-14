@@ -44,7 +44,7 @@ pub async fn get_logs(
     };
 
     let log_start_time = match start_time {
-        Some(end) => end.parse::<u128>()?,
+        Some(start) => start.parse::<u128>()?,
         None => now
             .checked_sub(std::time::Duration::from_secs(60 * 30))
             .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
@@ -56,21 +56,16 @@ pub async fn get_logs(
         .get_cage_logs(cage_uuid.as_str(), log_start_time, log_end_time)
         .await?;
 
-    let start_time = cage_logs.start_time().parse::<i64>()?;
-    let logs_start = format_timestamp(start_time)?;
-    let end_time = cage_logs.end_time().parse::<i64>().unwrap();
-    let logs_end = format_timestamp(end_time)?;
-
     if cage_logs.log_events().is_empty() {
         return Err(LogsError::NoLogsFound(format!(
-            "No logs found between {logs_start} and {logs_end}"
+            "No logs found between {log_start_time} and {log_end_time}"
         )));
     }
 
     let mut output = minus::Pager::new();
 
     output.set_prompt(format!(
-        "Retrieved {} logs from {logs_start} to {logs_end}",
+        "Retrieved {} logs from {log_start_time} to {log_end_time}",
         cage_logs.log_events().len()
     ))?;
 
