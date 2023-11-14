@@ -53,7 +53,7 @@ serial_test = "2.0.0"
 
 [target.'cfg(unix)'.dependencies]
 aws-nitro-enclaves-nsm-api = { version = "0.2.1" }
-attestation-doc-validation = "0.7.3" 
+attestation-doc-validation = "0.7.3"
 
 [features]
 internal_dependency = ["rust-crypto"]
