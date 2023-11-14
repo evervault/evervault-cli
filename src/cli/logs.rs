@@ -24,7 +24,7 @@ pub struct LogArgs {
     #[clap(long = "start-time")]
     pub start_time: Option<String>,
 
-    /// The start time in epoch seconds
+    /// The end time in epoch seconds
     #[clap(long = "end-time")]
     pub end_time: Option<String>,
 }
@@ -68,6 +68,9 @@ pub async fn run(log_args: LogArgs) -> i32 {
     .await
     {
         Ok(_) => exitcode::OK,
-        Err(err) => err.exitcode(),
+        Err(err) => {
+            log::error!("An error occurred while fetching logs: {err}");
+            err.exitcode()
+        }
     }
 }

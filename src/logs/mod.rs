@@ -10,16 +10,16 @@ pub enum LogsError {
     SystemTimeError(#[from] std::time::SystemTimeError),
     #[error("Failed to compute start time")]
     TimeError,
-    #[error("Error retreiving logs - {0}")]
+    #[error("Error retrieving logs - {0}")]
     ApiError(#[from] crate::api::client::ApiError),
-    #[error("Error couldn't parse time as millisecond - {0}")]
+    #[error("Couldn't parse time as millisecond - {0}")]
     ParseIntError(#[from] std::num::ParseIntError),
     #[error("Failed to parse timestamps")]
     TimestampFormatError,
     #[error("{0}")]
     NoLogsFound(String),
     #[error("An error occurred while paginating your log data - {0}")]
-    MinusError(#[from] minus::MinusError)
+    MinusError(#[from] minus::MinusError),
 }
 
 impl CliError for LogsError {
@@ -51,8 +51,6 @@ pub async fn get_logs(
             .ok_or(LogsError::TimeError)?
             .as_millis(),
     };
-
-    println!("QUERYING WITH START TIME: {:?} {:?}", log_start_time, log_end_time);
 
     let cage_logs = cages_client
         .get_cage_logs(cage_uuid.as_str(), log_start_time, log_end_time)
