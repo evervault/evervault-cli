@@ -203,6 +203,7 @@ impl CagesClient {
             self.base_url(),
             cage_uuid
         );
+
         self.get(&get_logs_url)
             .send()
             .await

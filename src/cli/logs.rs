@@ -3,11 +3,10 @@ use crate::api::AuthMode;
 use crate::common::CliError;
 use crate::config::CageConfig;
 use crate::get_api_key;
+use crate::logs::get_logs;
 use crate::version::check_version;
 
-use chrono::TimeZone;
 use clap::Parser;
-use std::fmt::Write;
 
 /// Pull the logs for a Cage
 #[derive(Debug, Parser)]
@@ -20,9 +19,18 @@ pub struct LogArgs {
     /// Path to the toml file containing the Cage's config
     #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
     pub config: String,
+
+    /// The start time in epoch milliseconds
+    #[clap(long = "start-time")]
+    pub start_time: Option<String>,
+
+    /// The end time in epoch milliseconds
+    #[clap(long = "end-time")]
+    pub end_time: Option<String>,
 }
 
 pub async fn run(log_args: LogArgs) -> i32 {
+    log::info!("Note: each query will return a maximum of 500 logs, if logs are missing reduce the time range");
     if let Err(e) = check_version().await {
         log::error!("{}", e);
         return exitcode::SOFTWARE;
@@ -51,104 +59,18 @@ pub async fn run(log_args: LogArgs) -> i32 {
         }
     };
 
-    let now = std::time::SystemTime::now();
-    let end_time = match now.duration_since(std::time::UNIX_EPOCH).ok() {
-        Some(end_time) => end_time,
-        None => {
-            log::error!("Failed to compute current time");
-            return exitcode::OSERR;
-        }
-    };
-
-    let start_time = match now
-        .checked_sub(std::time::Duration::from_secs(60 * 30))
-        .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+    match get_logs(
+        log_args.start_time,
+        log_args.end_time,
+        cage_uuid,
+        cages_client,
+    )
+    .await
     {
-        Some(start_time) => start_time,
-        None => {
-            log::error!("Failed to compute start time.");
-            return exitcode::SOFTWARE;
+        Ok(_) => exitcode::OK,
+        Err(err) => {
+            log::error!("An error occurred while fetching logs: {err}");
+            err.exitcode()
         }
-    };
-
-    let cage_logs = match cages_client
-        .get_cage_logs(
-            cage_uuid.as_str(),
-            start_time.as_millis(),
-            end_time.as_millis(),
-        )
-        .await
-    {
-        Ok(logs) => logs,
-        Err(e) => {
-            log::error!("Failed to retrieve logs for Cage - {:?}", e);
-            return e.exitcode();
-        }
-    };
-
-    let start_time = cage_logs.start_time().parse::<i64>().unwrap();
-    let Some(logs_start) = format_timestamp(start_time) else {
-        log::error!("Failed to parse timestamps.");
-        return exitcode::SOFTWARE;
-    };
-    let end_time = cage_logs.end_time().parse::<i64>().unwrap();
-    let Some(logs_end) = format_timestamp(end_time) else {
-        log::error!("Failed to parse timestamps.");
-        return exitcode::SOFTWARE;
-    };
-
-    if cage_logs.log_events().is_empty() {
-        log::info!("No logs found between {logs_start} and {logs_end}",);
-        return exitcode::OK;
     }
-
-    let mut output = minus::Pager::new();
-
-    if output
-        .set_prompt(format!(
-            "Retrieved {} logs from {logs_start} to {logs_end}",
-            cage_logs.log_events().len()
-        ))
-        .is_err()
-    {
-        log::error!("An error occurred while displaying your Cage's logs.");
-        return exitcode::TEMPFAIL;
-    }
-
-    // TODO: add support for loading more logs at end of page
-    cage_logs
-        .log_events()
-        .iter()
-        .filter_map(|event| {
-            let mut instance_id = event.instance_id().to_string();
-            let instance_len = instance_id.len();
-            let _ = instance_id.drain(0..instance_len - 6);
-            format_timestamp(event.timestamp()).map(|timestamp| {
-                format!(
-                    "[ Instance-{} @ {} ] {}",
-                    instance_id,
-                    timestamp,
-                    event.message()
-                )
-            })
-        })
-        .for_each(|log_event| {
-            writeln!(output, "{}", log_event).unwrap();
-        });
-
-    if let Err(e) = minus::page_all(output) {
-        log::error!("An error occurred while paginating your log data - {:?}", e);
-        exitcode::SOFTWARE
-    } else {
-        exitcode::OK
-    }
-}
-
-fn format_timestamp(epoch: i64) -> Option<String> {
-    let epoch_secs = epoch / 1000;
-    let epoch_nsecs = epoch % 1000;
-    chrono::Utc
-        .timestamp_opt(epoch_secs, epoch_nsecs as u32)
-        .single()
-        .map(|timestamp| timestamp.to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
 }

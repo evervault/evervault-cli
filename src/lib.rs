@@ -17,6 +17,7 @@ pub mod enclave;
 pub mod encrypt;
 #[cfg(feature = "internal_dependency")]
 pub mod env;
+pub mod logs;
 pub mod progress;
 pub mod restart;
 mod version;
