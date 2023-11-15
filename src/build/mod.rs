@@ -379,12 +379,11 @@ pub fn build_user_service(
     last_user: Option<String>,
     user_env_vars: Vec<EnvVar>,
 ) -> Directive {
-    let su_cmd = if let Some(last_user) = last_user {
-        format!("su {last_user}")
+    let exec_cmd = if let Some(last_user) = last_user {
+        format!("su {last_user} -c 'exec {entrypoint}'")
     } else {
-        "".to_string()
+        format!("exec {entrypoint}")
     };
-    let exec_cmd = format!("exec {}", entrypoint);
 
     let env_cmd = if !user_env_vars.is_empty() {
         format!(
@@ -401,7 +400,6 @@ pub fn build_user_service(
 
     let cmds = vec![
         env_cmd.as_str(),
-        su_cmd.as_str(),
         "sleep 5",
         r#"echo \"Checking status of data-plane\""#,
         "SVDIR=/etc/service sv check data-plane || exit 1",
@@ -856,7 +854,7 @@ ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervau
 RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
 RUN echo {\"api_key_auth\":true,\"forward_proxy_protocol\":false,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
-RUN printf "#!/bin/sh\nsu someuser\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nsu someuser -c 'exec sh /hello-script'\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
 ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
 RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
