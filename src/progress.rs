@@ -142,7 +142,7 @@ pub async fn poll_fn_and_report_status<E, F, Fut>(
     poll_args: Vec<String>,
     poll_fn: F,
     progress_bar: impl ProgressLogger,
-) -> Result<(), E>
+) -> Result<bool, E>
 where
     E: CliError,
     F: Fn(CagesClient, Vec<String>) -> Fut,
@@ -168,11 +168,11 @@ where
             }
             Ok(StatusReport::Complete(msg)) => {
                 progress_bar.finish_with_message(&msg);
-                return Ok(());
+                return Ok(true);
             }
             Ok(StatusReport::Failed) => {
                 progress_bar.finish();
-                return Ok(());
+                return Ok(false);
             }
             Ok(StatusReport::NoOp) => {}
             Err(e) => {

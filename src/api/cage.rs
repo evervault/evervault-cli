@@ -706,10 +706,11 @@ impl GetCageDeploymentResponse {
     }
 
     //TODO: Handle multi region deployment failures
-    pub fn is_failed(&self) -> Option<bool> {
+    pub fn is_failed(&self) -> bool {
         self.tee_cage_regional_deployments
             .first()
             .map(|depl| depl.is_failed())
+            .unwrap_or_default()
     }
 
     pub fn get_failure_reason(&self) -> Option<String> {

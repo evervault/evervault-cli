@@ -75,20 +75,24 @@ pub async fn deploy_eif(
     let progress_bar_for_build =
         get_tracker("Building Cage Docker Image on Evervault Infra...", None);
 
-    watch_build(
+    let build_complete = watch_build(
         cage_api.clone(),
         deployment_intent.cage_uuid(),
         deployment_intent.deployment_uuid(),
         progress_bar_for_build,
     )
-    .await;
+    .await?;
+
+    if !build_complete {
+      return Err(DeployError::DeploymentError);
+    }
 
     let progress_bar_for_deploy = get_tracker(
         "Deploying Cage into a Trusted Execution Environment...",
         None,
     );
 
-    timed_operation(
+    let deployment_complete = timed_operation(
         "Cage Deployment",
         DEPLOY_WATCH_TIMEOUT_SECONDS,
         watch_deployment(
@@ -98,7 +102,13 @@ pub async fn deploy_eif(
             progress_bar_for_deploy,
         ),
     )
-    .await?
+    .await??;
+    
+    if !deployment_complete {
+      return Err(DeployError::DeploymentError);
+    }
+    
+    Ok(())
 }
 
 async fn watch_build(
@@ -106,35 +116,37 @@ async fn watch_build(
     cage_uuid: &str,
     deployment_uuid: &str,
     progress_bar: impl ProgressLogger,
-) {
+) -> Result<bool, DeployError> {
     async fn check_build_status(
         cage_api: CagesClient,
         args: Vec<String>,
     ) -> Result<StatusReport, DeployError> {
         let cage_uuid = args.get(0).unwrap();
         let deployment_uuid = args.get(1).unwrap();
-        match cage_api
+        let deployment_response = cage_api
             .get_cage_deployment_by_uuid(cage_uuid, deployment_uuid)
-            .await
-        {
-            Ok(deployment_response) if deployment_response.is_built() => Ok(
-                StatusReport::complete("Cage built on Evervault!".to_string()),
-            ),
-            Ok(_) => Ok(StatusReport::no_op()),
-            Err(e) => {
-                log::error!("Unable to retrieve build status. Error: {:?}", e);
-                Ok(StatusReport::Failed)
-            }
+            .await?;
+        if deployment_response.is_built() {
+          Ok(StatusReport::complete("Cage built on Evervault!".to_string()))
+        } else if deployment_response.is_failed() {
+          let failure_msg = deployment_response
+            .get_failure_reason()
+            .unwrap_or_else(|| "An unknown error occurred".into());
+          log::error!("Cage build failed - {failure_msg}");
+          Ok(StatusReport::Failed)
+        } else {
+          Ok(StatusReport::no_op())
         }
     }
+
     let get_deployment_args = vec![cage_uuid.to_string(), deployment_uuid.to_string()];
-    let _ = poll_fn_and_report_status(
+    poll_fn_and_report_status(
         cage_api,
         get_deployment_args,
         check_build_status,
         progress_bar,
     )
-    .await;
+    .await
 }
 
 pub async fn watch_deployment(
@@ -142,34 +154,31 @@ pub async fn watch_deployment(
     cage_uuid: &str,
     deployment_uuid: &str,
     progress_bar: impl ProgressLogger,
-) -> Result<(), DeployError> {
+) -> Result<bool, DeployError> {
     async fn check_deployment_status(
         cage_api: CagesClient,
         args: Vec<String>,
     ) -> Result<StatusReport, DeployError> {
         let cage_uuid = args.get(0).unwrap();
         let deployment_uuid = args.get(1).unwrap();
-        match cage_api
+        let deployment_response = cage_api
             .get_cage_deployment_by_uuid(cage_uuid, deployment_uuid)
-            .await
-        {
-            Ok(deployment_response) if deployment_response.is_finished() => {
-                Ok(StatusReport::complete("Cage deployed!".to_string()))
-            }
-            Ok(deployment_response) if deployment_response.is_failed().unwrap_or(false) => {
-                if let Some(reason) = deployment_response.get_failure_reason() {
-                    log::error!("{reason}");
-                }
-                Err(DeployError::DeploymentError)
-            }
-            Ok(deployment_response) => {
-                let status_report = match deployment_response.get_detailed_status() {
-                    Some(status) => StatusReport::update(status),
-                    None => StatusReport::NoOp,
-                };
-                Ok(status_report)
-            }
-            Err(_) => Ok(StatusReport::Failed),
+            .await?;
+      
+        if deployment_response.is_finished() {
+            Ok(StatusReport::complete("Cage deployed!".to_string()))
+        } else if deployment_response.is_failed() {
+          let failure_msg = deployment_response
+            .get_failure_reason()
+            .unwrap_or_else(|| "An unknown error occurred".into());
+          log::error!("Cage deployment failed - {failure_msg}");
+          Ok(StatusReport::Failed)
+        } else {
+          let status_report = match deployment_response.get_detailed_status() {
+              Some(status) => StatusReport::update(status),
+              None => StatusReport::NoOp,
+          };
+          Ok(status_report)
         }
     }
 
