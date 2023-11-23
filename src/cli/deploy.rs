@@ -1,5 +1,5 @@
 use crate::api::client::ApiErrorKind;
-use crate::api::{self, assets::AssetsClient, AuthMode};
+use crate::api::{self, assets::AssetsClient, cage::CageApi, AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::common::prepare_build_args;
 use crate::docker::command::get_source_date_epoch;

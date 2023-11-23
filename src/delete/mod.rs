@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use crate::api;
-use crate::api::cage::CagesClient;
+use crate::api::cage::CageApi;
 use crate::api::AuthMode;
 use crate::progress::{get_tracker, poll_fn_and_report_status, ProgressLogger, StatusReport};
 mod error;
@@ -29,35 +31,139 @@ pub async fn delete_cage(
     if !background {
         let progress_bar = get_tracker("Deleting Cage...", None);
 
-        watch_deletion(cage_api, deleted_cage.uuid(), progress_bar).await;
+        watch_deletion(cage_api, deleted_cage.uuid(), progress_bar).await?;
     }
     Ok(())
 }
 
-async fn watch_deletion(cage_api: CagesClient, cage_uuid: &str, progress_bar: impl ProgressLogger) {
-    async fn check_delete_status(
-        cage_api: CagesClient,
+async fn watch_deletion<T: CageApi>(
+    cage_api: T,
+    cage_uuid: &str,
+    progress_bar: impl ProgressLogger,
+) -> Result<(), DeleteError> {
+    async fn check_delete_status<T: CageApi>(
+        cage_api: Arc<T>,
         args: Vec<String>,
     ) -> Result<StatusReport, DeleteError> {
         let cage_uuid = args.get(0).unwrap();
-        match cage_api.get_cage(cage_uuid).await {
-            Ok(cage_response) if cage_response.is_deleted() => {
-                Ok(StatusReport::Complete("Cage deleted!".to_string()))
-            }
-            Ok(_) => Ok(StatusReport::NoOp),
+        let cage_response = match cage_api.get_cage(cage_uuid).await {
+            Ok(response) => response,
             Err(e) => {
+                println!("error in status check");
                 log::error!("Unable to retrieve deletion status. Error: {:?}", e);
-                Ok(StatusReport::Failed)
+                return Err(e.into());
             }
+        };
+        if cage_response.is_deleted() {
+            Ok(StatusReport::Complete("Cage deleted!".to_string()))
+        } else {
+            Ok(StatusReport::NoOp)
         }
     }
 
     let check_delete_args = vec![cage_uuid.to_string()];
-    let _ = poll_fn_and_report_status(
-        cage_api,
+    poll_fn_and_report_status(
+        Arc::new(cage_api),
         check_delete_args,
         check_delete_status,
         progress_bar,
     )
-    .await;
+    .await?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::api::cage::{Cage, CageState, DeleteCageResponse, GetCageResponse, MockCageApi};
+    use crate::api::client::ApiError;
+    use crate::progress::NonTty;
+
+    fn build_get_cage_response(state: CageState) -> GetCageResponse {
+        GetCageResponse {
+            cage: Cage {
+                uuid: "abc".into(),
+                name: "def".into(),
+                team_uuid: "team_123".into(),
+                app_uuid: "app_456".into(),
+                domain: "cage.com".into(),
+                state,
+                created_at: "".into(),
+                updated_at: "".into(),
+            },
+            deployments: vec![],
+        }
+    }
+
+    #[tokio::test]
+    async fn test_watch_deletion_with_healthy_responses() {
+        let mut mock_api = MockCageApi::new();
+
+        let mut responses = vec![
+            build_get_cage_response(CageState::Pending),
+            build_get_cage_response(CageState::Deleting),
+            build_get_cage_response(CageState::Deleted),
+        ]
+        .into_iter();
+
+        mock_api
+            .expect_get_cage()
+            .times(3)
+            .returning(move |_| Box::pin(std::future::ready(Ok(responses.next().unwrap()))));
+        let result = watch_deletion(mock_api, "abc".into(), NonTty).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_watch_deletion_with_errors() {
+        let mut mock_api = MockCageApi::new();
+
+        let mut responses = vec![
+            ApiError::new(api::client::ApiErrorKind::Internal),
+            ApiError::new(api::client::ApiErrorKind::Internal),
+            ApiError::new(api::client::ApiErrorKind::Internal),
+            ApiError::new(api::client::ApiErrorKind::Internal),
+            ApiError::new(api::client::ApiErrorKind::Internal),
+        ]
+        .into_iter();
+
+        mock_api
+            .expect_get_cage()
+            .times(5)
+            .returning(move |_| Box::pin(std::future::ready(Err(responses.next().unwrap()))));
+        let result = watch_deletion(mock_api, "abc".into(), NonTty).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_delete_cage_performs_polling_cage_status() {
+        let mut mock_api = MockCageApi::new();
+        mock_api.expect_delete_cage().returning(move |_| {
+            Box::pin(std::future::ready(Ok(DeleteCageResponse {
+                uuid: "abc".into(),
+                name: "def".into(),
+                team_uuid: "team".into(),
+                app_uuid: "app".into(),
+                domain: "cage.com".into(),
+                state: CageState::Deleting,
+                created_at: "".into(),
+                updated_at: "".into(),
+            })))
+        });
+
+        let mut responses = vec![
+            Ok(build_get_cage_response(CageState::Deleting)),
+            Ok(build_get_cage_response(CageState::Deleting)),
+            Err(ApiError::new(api::client::ApiErrorKind::Internal)),
+            Ok(build_get_cage_response(CageState::Deleted)),
+        ]
+        .into_iter();
+
+        mock_api
+            .expect_get_cage()
+            .times(4)
+            .returning(move |_| Box::pin(std::future::ready(responses.next().unwrap())));
+        let result = watch_deletion(mock_api, "abc".into(), NonTty).await;
+        assert!(result.is_ok());
+    }
 }

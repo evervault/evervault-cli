@@ -1,7 +1,10 @@
 use crate::config::{self, ScalingSettings};
 use crate::version::check_version;
 use crate::{
-    api::{cage::CagesClient, AuthMode},
+    api::{
+        cage::{CageApi, CagesClient},
+        AuthMode,
+    },
     common::CliError,
     config::CageConfig,
     get_api_key,
