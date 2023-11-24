@@ -1,6 +1,6 @@
 use crate::config::CageConfigError;
 use crate::{
-    api::{cage::CagesClient, AuthMode},
+    api::{cage::{CageApi, CagesClient}, AuthMode},
     cli::encrypt::CurveName,
 };
 use rust_crypto::{
