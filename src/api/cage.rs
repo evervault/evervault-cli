@@ -596,12 +596,12 @@ pub struct CageVersion {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, PartialOrd)]
 #[serde(rename_all = "camelCase")]
 pub struct CageSigningCert {
-    name: Option<String>,
-    uuid: String,
-    app_uuid: String,
-    cert_hash: String,
-    not_before: Option<String>,
-    not_after: Option<String>,
+    pub name: Option<String>,
+    pub uuid: String,
+    pub app_uuid: String,
+    pub cert_hash: String,
+    pub not_before: Option<String>,
+    pub not_after: Option<String>,
 }
 
 impl CageSigningCert {
@@ -660,17 +660,17 @@ pub enum DeployStatus {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CageRegionalDeployment {
-    uuid: String,
-    deployment_uuid: String,
-    deployment_order: u16,
-    region: String,
-    failure_reason: Option<String>,
-    deploy_status: DeployStatus,
+    pub uuid: String,
+    pub deployment_uuid: String,
+    pub deployment_order: u16,
+    pub region: String,
+    pub failure_reason: Option<String>,
+    pub deploy_status: DeployStatus,
     // started_at should be required, but is being returned as null sometimes
     // should revert this to just String after API fix
-    started_at: Option<String>,
-    completed_at: Option<String>,
-    detailed_status: Option<String>,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
+    pub detailed_status: Option<String>,
 }
 
 impl CageRegionalDeployment {
@@ -743,15 +743,15 @@ impl GetCageResponse {
 #[serde(rename_all = "camelCase")]
 pub struct GetCageDeploymentResponse {
     #[serde(flatten)]
-    deployment: CageDeployment,
-    tee_cage_version: CageVersion,
-    tee_cage_signing_cert: CageSigningCert,
-    tee_cage_regional_deployments: Vec<CageRegionalDeployment>,
+    pub deployment: CageDeployment,
+    pub tee_cage_version: CageVersion,
+    pub tee_cage_signing_cert: CageSigningCert,
+    pub tee_cage_regional_deployments: Vec<CageRegionalDeployment>,
 }
 
 impl GetCageDeploymentResponse {
     pub fn is_built(&self) -> bool {
-        self.tee_cage_version.build_status == BuildStatus::Ready
+        matches!(self.tee_cage_version.build_status, BuildStatus::Ready)
     }
 
     pub fn is_finished(&self) -> bool {
@@ -760,10 +760,13 @@ impl GetCageDeploymentResponse {
 
     //TODO: Handle multi region deployment failures
     pub fn is_failed(&self) -> bool {
-        self.tee_cage_regional_deployments
-            .first()
-            .map(|depl| depl.is_failed())
-            .unwrap_or_default()
+        let build_failed = matches!(self.tee_cage_version.build_status, BuildStatus::Failed);
+        build_failed
+            || self
+                .tee_cage_regional_deployments
+                .first()
+                .map(|depl| depl.is_failed())
+                .unwrap_or_default()
     }
 
     pub fn get_failure_reason(&self) -> Option<String> {

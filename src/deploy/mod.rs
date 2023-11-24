@@ -277,7 +277,9 @@ pub async fn timed_operation<T: std::future::Future>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::api::cage::MockCageApi;
     use crate::enclave::PCRs;
+    use crate::progress::NonTty;
     use crate::test_utils;
     use std::time::Duration;
 
@@ -347,5 +349,153 @@ mod tests {
         };
 
         assert_eq!(correct_result, true);
+    }
+
+    #[tokio::test]
+    async fn test_watch_build() {
+        let mut mock_api = MockCageApi::new();
+        let start_time = Some(format!("{:?}", std::time::SystemTime::now()));
+        let mut responses = vec![
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Building,
+                api::cage::DeployStatus::Pending,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Building,
+                api::cage::DeployStatus::Pending,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Pending,
+                start_time,
+                None,
+            ),
+        ]
+        .into_iter();
+
+        mock_api
+            .expect_get_cage_deployment_by_uuid()
+            .times(3)
+            .returning(move |_, _| Box::pin(std::future::ready(Ok(responses.next().unwrap()))));
+
+        let result = watch_build(mock_api, "".into(), "".into(), NonTty)
+            .await
+            .unwrap();
+        assert!(result);
+    }
+
+    #[tokio::test]
+    async fn test_watch_failed_build() {
+        let mut mock_api = MockCageApi::new();
+        let start_time = Some(format!("{:?}", std::time::SystemTime::now()));
+        let mut responses = vec![
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Building,
+                api::cage::DeployStatus::Pending,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Building,
+                api::cage::DeployStatus::Pending,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Failed,
+                api::cage::DeployStatus::Pending,
+                start_time,
+                None,
+            ),
+        ]
+        .into_iter();
+
+        mock_api
+            .expect_get_cage_deployment_by_uuid()
+            .times(3)
+            .returning(move |_, _| Box::pin(std::future::ready(Ok(responses.next().unwrap()))));
+
+        let result = watch_build(mock_api, "".into(), "".into(), NonTty)
+            .await
+            .unwrap();
+        assert_eq!(result, false);
+    }
+
+    #[tokio::test]
+    async fn test_watch_deploy() {
+        let mut mock_api = MockCageApi::new();
+        let start_time = Some(format!("{:?}", std::time::SystemTime::now()));
+        let mut responses = vec![
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Pending,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Deploying,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Ready,
+                start_time,
+                Some("".into()),
+            ),
+        ]
+        .into_iter();
+
+        mock_api
+            .expect_get_cage_deployment_by_uuid()
+            .times(3)
+            .returning(move |_, _| Box::pin(std::future::ready(Ok(responses.next().unwrap()))));
+
+        let result = watch_deployment(mock_api, "".into(), "".into(), NonTty)
+            .await
+            .unwrap();
+        assert!(result);
+    }
+
+    #[tokio::test]
+    async fn test_watch_failed_deploy() {
+        let mut mock_api = MockCageApi::new();
+        let start_time = Some(format!("{:?}", std::time::SystemTime::now()));
+        let mut responses = vec![
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Pending,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Deploying,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Failed,
+                start_time,
+                None,
+            ),
+        ]
+        .into_iter();
+
+        mock_api
+            .expect_get_cage_deployment_by_uuid()
+            .times(3)
+            .returning(move |_, _| Box::pin(std::future::ready(Ok(responses.next().unwrap()))));
+
+        let result = watch_deployment(mock_api, "".into(), "".into(), NonTty)
+            .await
+            .unwrap();
+        assert_eq!(result, false);
     }
 }

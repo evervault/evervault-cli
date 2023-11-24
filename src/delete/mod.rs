@@ -75,34 +75,19 @@ async fn watch_deletion<T: CageApi>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::api::cage::{Cage, CageState, DeleteCageResponse, GetCageResponse, MockCageApi};
+    use crate::api::cage::{CageState, DeleteCageResponse, MockCageApi};
     use crate::api::client::ApiError;
     use crate::progress::NonTty;
-
-    fn build_get_cage_response(state: CageState) -> GetCageResponse {
-        GetCageResponse {
-            cage: Cage {
-                uuid: "abc".into(),
-                name: "def".into(),
-                team_uuid: "team_123".into(),
-                app_uuid: "app_456".into(),
-                domain: "cage.com".into(),
-                state,
-                created_at: "".into(),
-                updated_at: "".into(),
-            },
-            deployments: vec![],
-        }
-    }
+    use crate::test_utils::build_get_cage_response;
 
     #[tokio::test]
     async fn test_watch_deletion_with_healthy_responses() {
         let mut mock_api = MockCageApi::new();
 
         let mut responses = vec![
-            build_get_cage_response(CageState::Pending),
-            build_get_cage_response(CageState::Deleting),
-            build_get_cage_response(CageState::Deleted),
+            build_get_cage_response(CageState::Pending, vec![]),
+            build_get_cage_response(CageState::Deleting, vec![]),
+            build_get_cage_response(CageState::Deleted, vec![]),
         ]
         .into_iter();
 
@@ -152,10 +137,10 @@ mod test {
         });
 
         let mut responses = vec![
-            Ok(build_get_cage_response(CageState::Deleting)),
-            Ok(build_get_cage_response(CageState::Deleting)),
+            Ok(build_get_cage_response(CageState::Deleting, vec![])),
+            Ok(build_get_cage_response(CageState::Deleting, vec![])),
             Err(ApiError::new(api::client::ApiErrorKind::Internal)),
-            Ok(build_get_cage_response(CageState::Deleted)),
+            Ok(build_get_cage_response(CageState::Deleted, vec![])),
         ]
         .into_iter();
 
