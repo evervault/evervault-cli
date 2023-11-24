@@ -1,4 +1,4 @@
-use crate::api::cage::{CageApi, AddSecretRequest, CageEnv, CagesClient};
+use crate::api::cage::{AddSecretRequest, CageApi, CageEnv, CagesClient};
 use crate::cli::env::EnvCommands;
 use crate::config::{CageConfig, CageConfigError};
 use crate::encrypt::{self, encrypt};
