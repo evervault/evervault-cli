@@ -135,8 +135,9 @@ async fn watch_build<T: CageApi>(
             let failure_msg = deployment_response
                 .get_failure_reason()
                 .unwrap_or_else(|| "An unknown error occurred".into());
-            log::error!("Cage build failed - {failure_msg}");
-            Ok(StatusReport::Failed)
+            Ok(StatusReport::Failed(format!(
+                "Cage build failed - {failure_msg}"
+            )))
         } else {
             Ok(StatusReport::no_op())
         }
@@ -174,8 +175,9 @@ pub async fn watch_deployment<T: CageApi>(
             let failure_msg = deployment_response
                 .get_failure_reason()
                 .unwrap_or_else(|| "An unknown error occurred".into());
-            log::error!("Cage deployment failed - {failure_msg}");
-            Ok(StatusReport::Failed)
+            Ok(StatusReport::Failed(format!(
+                "Cage deployment failed - {failure_msg}"
+            )))
         } else {
             let status_report = match deployment_response.get_detailed_status() {
                 Some(status) => StatusReport::update(status),

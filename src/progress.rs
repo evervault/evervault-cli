@@ -112,7 +112,7 @@ pub enum StatusReport {
     Update(String),
     Complete(String),
     NoOp,
-    Failed,
+    Failed(String),
 }
 
 impl StatusReport {
@@ -122,6 +122,10 @@ impl StatusReport {
 
     pub fn complete(msg: String) -> Self {
         Self::Complete(msg)
+    }
+
+    pub fn failed(msg: String) -> Self {
+        Self::Failed(msg)
     }
 
     pub fn no_op() -> Self {
@@ -170,8 +174,9 @@ where
                 progress_bar.finish_with_message(&msg);
                 return Ok(true);
             }
-            Ok(StatusReport::Failed) => {
+            Ok(StatusReport::Failed(cause)) => {
                 progress_bar.finish();
+                log::error!("{cause}");
                 return Ok(false);
             }
             Ok(StatusReport::NoOp) => {}
