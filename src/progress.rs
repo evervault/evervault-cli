@@ -1,10 +1,10 @@
 use atty::Stream;
 use indicatif::{ProgressBar, ProgressStyle};
 
-use crate::api::cage::CagesClient;
+use crate::api::cage::CageApi;
 use crate::common::CliError;
 
-const MAX_SUCCESSIVE_POLLING_ERRORS: i32 = 5; // #attempts allowed at 6s intervals
+const MAX_SUCCESSIVE_POLLING_ERRORS: i32 = 5; // # attempts allowed at 6s intervals
 
 fn get_progress_bar(start_msg: &str, upload_len: Option<u64>) -> ProgressBar {
     match upload_len {
@@ -36,7 +36,7 @@ struct Tty {
     progress_bar: ProgressBar,
 }
 #[derive(Clone)]
-struct NonTty {}
+pub struct NonTty;
 
 impl<'a, W: ProgressLogger + ?Sized + 'a> ProgressLogger for Box<W> {
     fn set_message(&self, message: &str) {
@@ -112,7 +112,7 @@ pub enum StatusReport {
     Update(String),
     Complete(String),
     NoOp,
-    Failed,
+    Failed(String),
 }
 
 impl StatusReport {
@@ -122,6 +122,10 @@ impl StatusReport {
 
     pub fn complete(msg: String) -> Self {
         Self::Complete(msg)
+    }
+
+    pub fn failed(msg: String) -> Self {
+        Self::Failed(msg)
     }
 
     pub fn no_op() -> Self {
@@ -137,15 +141,15 @@ impl StatusReport {
 }
 
 // It should be possible to resolve the lifetimes to allow this work over borrows for every value instead of cloning/heap allocating
-pub async fn poll_fn_and_report_status<E, F, Fut>(
-    api_client: CagesClient,
+pub async fn poll_fn_and_report_status<T: CageApi, E, F, Fut>(
+    api_client: std::sync::Arc<T>,
     poll_args: Vec<String>,
     poll_fn: F,
     progress_bar: impl ProgressLogger,
-) -> Result<(), E>
+) -> Result<bool, E>
 where
     E: CliError,
-    F: Fn(CagesClient, Vec<String>) -> Fut,
+    F: Fn(std::sync::Arc<T>, Vec<String>) -> Fut,
     Fut: std::future::Future<Output = Result<StatusReport, E>>,
 {
     let mut most_recent_update: Option<String> = None;
@@ -168,17 +172,18 @@ where
             }
             Ok(StatusReport::Complete(msg)) => {
                 progress_bar.finish_with_message(&msg);
-                return Ok(());
+                return Ok(true);
             }
-            Ok(StatusReport::Failed) => {
+            Ok(StatusReport::Failed(cause)) => {
                 progress_bar.finish();
-                return Ok(());
+                log::error!("{cause}");
+                return Ok(false);
             }
             Ok(StatusReport::NoOp) => {}
             Err(e) => {
                 poll_err_count += 1;
 
-                if poll_err_count > MAX_SUCCESSIVE_POLLING_ERRORS {
+                if poll_err_count >= MAX_SUCCESSIVE_POLLING_ERRORS {
                     progress_bar.finish();
                     return Err(e);
                 }

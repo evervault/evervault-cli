@@ -1,4 +1,4 @@
-use crate::api::AuthMode;
+use crate::api::{cage::CageApi, AuthMode};
 use crate::common::CliError;
 use crate::config::{read_and_validate_config, BuildTimeConfig};
 use crate::version::check_version;
