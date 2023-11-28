@@ -770,9 +770,11 @@ impl GetCageDeploymentResponse {
     }
 
     pub fn get_failure_reason(&self) -> Option<String> {
-        self.tee_cage_regional_deployments
-            .first()
-            .map(|depl| depl.get_failure_reason())
+        self.tee_cage_version.failure_reason.clone().or_else(|| {
+          self.tee_cage_regional_deployments
+              .first()
+              .map(|depl| depl.get_failure_reason())
+        })
     }
 
     pub fn get_detailed_status(&self) -> Option<String> {
