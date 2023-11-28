@@ -1,5 +1,5 @@
 use crate::{
-    api::cage::{CageDeployment, CagesClient},
+    api::cage::{CageApi, CageDeployment, CagesClient},
     common::CliError,
 };
 use thiserror::Error;

@@ -244,7 +244,7 @@ impl std::fmt::Debug for ApiError {
 
 impl std::error::Error for ApiError {}
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct ApiErrorDetails {
     pub status_code: Option<u16>,
