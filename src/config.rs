@@ -11,40 +11,24 @@ use thiserror::Error;
 pub struct EgressSettings {
     pub enabled: bool,
     pub destinations: Option<Vec<String>>,
-    pub ports: Option<Vec<String>>,
 }
 
 impl EgressSettings {
-    pub fn new(
-        ports: Option<Vec<String>>,
-        destinations: Option<Vec<String>>,
-        enabled: bool,
-    ) -> EgressSettings {
-        let enabled = enabled || destinations.is_some() || ports.is_some();
+    pub fn new(destinations: Option<Vec<String>>, enabled: bool) -> EgressSettings {
+        let enabled = enabled || destinations.is_some();
         let destinations = if enabled && destinations.is_none() {
             Some(vec!["*".to_string()])
         } else {
             destinations.clone()
         };
-        let ports = if enabled && ports.is_none() {
-            Some(vec!["443".to_string()])
-        } else {
-            ports.clone()
-        };
         EgressSettings {
             enabled,
             destinations,
-            ports,
         }
     }
 
     pub fn is_enabled(&self) -> bool {
         self.enabled
-    }
-    pub fn get_ports(self) -> String {
-        self.ports
-            .map(|ports| ports.join(","))
-            .unwrap_or("443".to_string())
     }
     pub fn get_destinations(self) -> String {
         self.destinations
@@ -590,7 +574,6 @@ mod test {
             egress: super::EgressSettings {
                 enabled: false,
                 destinations: None,
-                ports: Some(vec!["443".to_string()]),
             },
             scaling: Some(super::ScalingSettings {
                 desired_replicas: 2,
