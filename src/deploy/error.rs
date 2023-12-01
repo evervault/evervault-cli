@@ -4,7 +4,7 @@ use crate::common::{CliError, OutputPathError};
 
 #[derive(Debug, Error)]
 pub enum DeployError {
-    #[error("Could not describe eif {0}")]
+    #[error(transparent)]
     DescribeError(#[from] crate::describe::error::DescribeError),
     #[error("Could not build eif {0}")]
     BuildError(#[from] crate::build::error::BuildError),

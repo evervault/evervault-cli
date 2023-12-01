@@ -18,14 +18,14 @@ pub struct DescribeArgs {
 
 pub async fn run(describe_args: DescribeArgs) -> exitcode::ExitCode {
     if let Err(e) = check_version().await {
-        log::error!("{}", e);
+        log::error!("{e}");
         return exitcode::SOFTWARE;
     };
 
     let description = match describe_eif(&describe_args.eif_path, !describe_args.quiet) {
         Ok(measurements) => measurements,
         Err(e) => {
-            log::error!("{}", e);
+            log::error!("{e}");
             return e.exitcode();
         }
     };

@@ -75,7 +75,7 @@ impl BuildTimeConfig for BuildArgs {
 
 pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
     if let Err(e) = check_version().await {
-        log::error!("{}", e);
+        log::error!("{e}");
         return exitcode::SOFTWARE;
     };
 
@@ -83,7 +83,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         match read_and_validate_config(&build_args.config, &build_args) {
             Ok(config) => config,
             Err(e) => {
-                log::error!("Failed to read cage config from file system — {}", e);
+                log::error!("Failed to read cage config from file system — {e}");
                 return e.exitcode();
             }
         };

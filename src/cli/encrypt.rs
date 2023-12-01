@@ -37,14 +37,14 @@ pub struct EncryptArgs {
 
 pub async fn run(encrypt_args: EncryptArgs) -> exitcode::ExitCode {
     if let Err(e) = check_version().await {
-        log::error!("{}", e);
+        log::error!("{e}");
         return exitcode::SOFTWARE;
     };
 
     let (team_uuid, app_uuid) = match get_cage_details(encrypt_args.clone()) {
         Ok((team_uuid, app_uuid)) => (team_uuid, app_uuid),
         Err(e) => {
-            log::error!("Config error {}", e);
+            log::error!("Config error {e}");
             return exitcode::SOFTWARE;
         }
     };

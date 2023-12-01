@@ -1,6 +1,9 @@
 use crate::api;
 use crate::api::cage::CreateCageRequest;
-use crate::api::{cage::Cage, AuthMode};
+use crate::api::{
+    cage::{Cage, CageApi},
+    AuthMode,
+};
 use crate::common::CliError;
 use crate::config::{default_dockerfile, CageConfig, EgressSettings, ScalingSettings, SigningInfo};
 use crate::get_api_key;
@@ -135,7 +138,7 @@ fn convert_comma_list(maybe_str: Option<String>) -> Option<Vec<String>> {
 
 pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
     if let Err(e) = check_version().await {
-        log::error!("{}", e);
+        log::error!("{e}");
         return exitcode::SOFTWARE;
     };
 
@@ -147,7 +150,7 @@ pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
     let created_cage = match cages_client.create_cage(create_cage_request).await {
         Ok(cage_ref) => cage_ref,
         Err(e) => {
-            log::error!("Error creating Cage record — {:?}", e);
+            log::error!("Error creating Cage record — {e:?}");
             return e.exitcode();
         }
     };
@@ -171,7 +174,7 @@ async fn init_local_config(init_args: InitArgs, created_cage: Cage) -> exitcode:
                 initial_config.set_key(format!("{}", key_path.display()));
             }
             Err(e) => {
-                log::error!("Failed to generate cage signing credentials - {}", e);
+                log::error!("Failed to generate cage signing credentials - {e}");
                 return e.exitcode();
             }
         }

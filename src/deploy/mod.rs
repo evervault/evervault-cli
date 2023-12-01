@@ -1,11 +1,12 @@
 use crate::api;
-use crate::api::{cage::CagesClient, cage::CreateCageDeploymentIntentRequest};
+use crate::api::{cage::CageApi, cage::CreateCageDeploymentIntentRequest};
 use crate::common::{resolve_output_path, OutputPath};
 use crate::config::ValidatedCageBuildConfig;
 use crate::describe::describe_eif;
 use crate::enclave::{EIFMeasurements, ENCLAVE_FILENAME};
 use crate::progress::{get_tracker, poll_fn_and_report_status, ProgressLogger, StatusReport};
 use std::io::Write;
+use std::sync::Arc;
 mod error;
 use crate::docker::command::get_git_hash;
 use crate::docker::command::get_source_date_epoch;
@@ -21,9 +22,9 @@ use tokio_util::codec::{BytesCodec, FramedRead};
 const ENCLAVE_ZIP_FILENAME: &str = "enclave.zip";
 pub const DEPLOY_WATCH_TIMEOUT_SECONDS: u64 = 1200; //15 minutes
 
-pub async fn deploy_eif(
+pub async fn deploy_eif<T: CageApi + Clone>(
     validated_config: &ValidatedCageBuildConfig,
-    cage_api: CagesClient,
+    cage_api: T,
     output_path: OutputPath,
     eif_measurements: &EIFMeasurements,
     data_plane_version: String,
@@ -48,7 +49,6 @@ pub async fn deploy_eif(
         installer_version,
         get_source_date_epoch(),
         get_git_hash(),
-        validated_config.healthcheck().map(String::from),
         validated_config
             .scaling
             .as_ref()
@@ -80,20 +80,24 @@ pub async fn deploy_eif(
     let progress_bar_for_build =
         get_tracker("Building Cage Docker Image on Evervault Infra...", None);
 
-    watch_build(
+    let build_complete = watch_build(
         cage_api.clone(),
         deployment_intent.cage_uuid(),
         deployment_intent.deployment_uuid(),
         progress_bar_for_build,
     )
-    .await;
+    .await?;
+
+    if !build_complete {
+        return Err(DeployError::DeploymentError);
+    }
 
     let progress_bar_for_deploy = get_tracker(
         "Deploying Cage into a Trusted Execution Environment...",
         None,
     );
 
-    timed_operation(
+    let deployment_complete = timed_operation(
         "Cage Deployment",
         DEPLOY_WATCH_TIMEOUT_SECONDS,
         watch_deployment(
@@ -103,84 +107,93 @@ pub async fn deploy_eif(
             progress_bar_for_deploy,
         ),
     )
-    .await?
-}
+    .await??;
 
-async fn watch_build(
-    cage_api: CagesClient,
-    cage_uuid: &str,
-    deployment_uuid: &str,
-    progress_bar: impl ProgressLogger,
-) {
-    async fn check_build_status(
-        cage_api: CagesClient,
-        args: Vec<String>,
-    ) -> Result<StatusReport, DeployError> {
-        let cage_uuid = args.get(0).unwrap();
-        let deployment_uuid = args.get(1).unwrap();
-        match cage_api
-            .get_cage_deployment_by_uuid(cage_uuid, deployment_uuid)
-            .await
-        {
-            Ok(deployment_response) if deployment_response.is_built() => Ok(
-                StatusReport::complete("Cage built on Evervault!".to_string()),
-            ),
-            Ok(_) => Ok(StatusReport::no_op()),
-            Err(e) => {
-                log::error!("Unable to retrieve build status. Error: {:?}", e);
-                Ok(StatusReport::Failed)
-            }
-        }
+    if !deployment_complete {
+        return Err(DeployError::DeploymentError);
     }
-    let get_deployment_args = vec![cage_uuid.to_string(), deployment_uuid.to_string()];
-    let _ = poll_fn_and_report_status(
-        cage_api,
-        get_deployment_args,
-        check_build_status,
-        progress_bar,
-    )
-    .await;
+
+    Ok(())
 }
 
-pub async fn watch_deployment(
-    cage_api: CagesClient,
+async fn watch_build<T: CageApi>(
+    cage_api: T,
     cage_uuid: &str,
     deployment_uuid: &str,
     progress_bar: impl ProgressLogger,
-) -> Result<(), DeployError> {
-    async fn check_deployment_status(
-        cage_api: CagesClient,
+) -> Result<bool, DeployError> {
+    async fn check_build_status<T: CageApi>(
+        cage_api: Arc<T>,
         args: Vec<String>,
     ) -> Result<StatusReport, DeployError> {
         let cage_uuid = args.get(0).unwrap();
         let deployment_uuid = args.get(1).unwrap();
-        match cage_api
+        let deployment_response = cage_api
             .get_cage_deployment_by_uuid(cage_uuid, deployment_uuid)
-            .await
-        {
-            Ok(deployment_response) if deployment_response.is_finished() => {
-                Ok(StatusReport::complete("Cage deployed!".to_string()))
-            }
-            Ok(deployment_response) if deployment_response.is_failed().unwrap_or(false) => {
-                if let Some(reason) = deployment_response.get_failure_reason() {
-                    log::error!("{reason}");
-                }
-                Err(DeployError::DeploymentError)
-            }
-            Ok(deployment_response) => {
-                let status_report = match deployment_response.get_detailed_status() {
-                    Some(status) => StatusReport::update(status),
-                    None => StatusReport::NoOp,
-                };
-                Ok(status_report)
-            }
-            Err(_) => Ok(StatusReport::Failed),
+            .await?;
+        if deployment_response.is_built() {
+            Ok(StatusReport::complete(
+                "Cage built on Evervault!".to_string(),
+            ))
+        } else if deployment_response.is_failed() {
+            let failure_msg = deployment_response
+                .get_failure_reason()
+                .unwrap_or_else(|| "An unknown error occurred".into());
+            Ok(StatusReport::Failed(format!(
+                "Cage build failed - {failure_msg}"
+            )))
+        } else {
+            Ok(StatusReport::no_op())
         }
     }
 
     let get_deployment_args = vec![cage_uuid.to_string(), deployment_uuid.to_string()];
     poll_fn_and_report_status(
-        cage_api,
+        Arc::new(cage_api),
+        get_deployment_args,
+        check_build_status,
+        progress_bar,
+    )
+    .await
+}
+
+pub async fn watch_deployment<T: CageApi>(
+    cage_api: T,
+    cage_uuid: &str,
+    deployment_uuid: &str,
+    progress_bar: impl ProgressLogger,
+) -> Result<bool, DeployError> {
+    async fn check_deployment_status<T: CageApi>(
+        cage_api: Arc<T>,
+        args: Vec<String>,
+    ) -> Result<StatusReport, DeployError> {
+        let cage_uuid = args.get(0).unwrap();
+        let deployment_uuid = args.get(1).unwrap();
+        let deployment_response = cage_api
+            .get_cage_deployment_by_uuid(cage_uuid, deployment_uuid)
+            .await?;
+
+        if deployment_response.is_finished() {
+            Ok(StatusReport::complete("Cage deployed!".to_string()))
+        } else if deployment_response.is_failed() {
+            let failure_msg = deployment_response
+                .get_failure_reason()
+                .unwrap_or_else(|| "An unknown error occurred".into());
+            Ok(StatusReport::Failed(format!(
+                "Cage deployment failed - {failure_msg}"
+            )))
+        } else {
+            let status_report = match deployment_response.get_detailed_status() {
+                Some(status) => StatusReport::update(status),
+                None => StatusReport::NoOp,
+            };
+            Ok(status_report)
+        }
+    }
+
+    let get_deployment_args = vec![cage_uuid.to_string(), deployment_uuid.to_string()];
+    poll_fn_and_report_status(
+        Arc::new(cage_api),
         get_deployment_args,
         check_deployment_status,
         progress_bar,
@@ -270,7 +283,9 @@ pub async fn timed_operation<T: std::future::Future>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::api::cage::MockCageApi;
     use crate::enclave::PCRs;
+    use crate::progress::NonTty;
     use crate::test_utils;
     use std::time::Duration;
 
@@ -340,5 +355,153 @@ mod tests {
         };
 
         assert_eq!(correct_result, true);
+    }
+
+    #[tokio::test]
+    async fn test_watch_build() {
+        let mut mock_api = MockCageApi::new();
+        let start_time = Some(format!("{:?}", std::time::SystemTime::now()));
+        let mut responses = vec![
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Building,
+                api::cage::DeployStatus::Pending,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Building,
+                api::cage::DeployStatus::Pending,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Pending,
+                start_time,
+                None,
+            ),
+        ]
+        .into_iter();
+
+        mock_api
+            .expect_get_cage_deployment_by_uuid()
+            .times(3)
+            .returning(move |_, _| Box::pin(std::future::ready(Ok(responses.next().unwrap()))));
+
+        let result = watch_build(mock_api, "".into(), "".into(), NonTty)
+            .await
+            .unwrap();
+        assert!(result);
+    }
+
+    #[tokio::test]
+    async fn test_watch_failed_build() {
+        let mut mock_api = MockCageApi::new();
+        let start_time = Some(format!("{:?}", std::time::SystemTime::now()));
+        let mut responses = vec![
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Building,
+                api::cage::DeployStatus::Pending,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Building,
+                api::cage::DeployStatus::Pending,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Failed,
+                api::cage::DeployStatus::Pending,
+                start_time,
+                None,
+            ),
+        ]
+        .into_iter();
+
+        mock_api
+            .expect_get_cage_deployment_by_uuid()
+            .times(3)
+            .returning(move |_, _| Box::pin(std::future::ready(Ok(responses.next().unwrap()))));
+
+        let result = watch_build(mock_api, "".into(), "".into(), NonTty)
+            .await
+            .unwrap();
+        assert_eq!(result, false);
+    }
+
+    #[tokio::test]
+    async fn test_watch_deploy() {
+        let mut mock_api = MockCageApi::new();
+        let start_time = Some(format!("{:?}", std::time::SystemTime::now()));
+        let mut responses = vec![
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Pending,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Deploying,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Ready,
+                start_time,
+                Some("".into()),
+            ),
+        ]
+        .into_iter();
+
+        mock_api
+            .expect_get_cage_deployment_by_uuid()
+            .times(3)
+            .returning(move |_, _| Box::pin(std::future::ready(Ok(responses.next().unwrap()))));
+
+        let result = watch_deployment(mock_api, "".into(), "".into(), NonTty)
+            .await
+            .unwrap();
+        assert!(result);
+    }
+
+    #[tokio::test]
+    async fn test_watch_failed_deploy() {
+        let mut mock_api = MockCageApi::new();
+        let start_time = Some(format!("{:?}", std::time::SystemTime::now()));
+        let mut responses = vec![
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Pending,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Deploying,
+                start_time.clone(),
+                None,
+            ),
+            test_utils::build_get_cage_deployment(
+                api::cage::BuildStatus::Ready,
+                api::cage::DeployStatus::Failed,
+                start_time,
+                None,
+            ),
+        ]
+        .into_iter();
+
+        mock_api
+            .expect_get_cage_deployment_by_uuid()
+            .times(3)
+            .returning(move |_, _| Box::pin(std::future::ready(Ok(responses.next().unwrap()))));
+
+        let result = watch_deployment(mock_api, "".into(), "".into(), NonTty)
+            .await
+            .unwrap();
+        assert_eq!(result, false);
     }
 }

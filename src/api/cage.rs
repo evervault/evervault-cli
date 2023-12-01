@@ -5,6 +5,9 @@ use super::AuthMode;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+use mockall::automock;
+
 #[derive(Clone)]
 pub struct CagesClient {
     inner: GenericApiClient,
@@ -29,14 +32,68 @@ impl ApiClient for CagesClient {
     }
 }
 
+#[async_trait::async_trait]
+#[cfg_attr(test, automock)]
+pub trait CageApi {
+    async fn create_cage(&self, cage_create_payload: CreateCageRequest) -> ApiResult<Cage>;
+    async fn create_cage_deployment_intent(
+        &self,
+        cage_uuid: &str,
+        payload: CreateCageDeploymentIntentRequest,
+    ) -> ApiResult<CreateCageDeploymentIntentResponse>;
+    async fn create_cage_signing_cert_ref(
+        &self,
+        payload: CreateCageSigningCertRefRequest,
+    ) -> ApiResult<CreateCageSigningCertRefResponse>;
+    async fn get_cages(&self) -> ApiResult<GetCagesResponse>;
+    async fn get_cage(&self, cage_uuid: &str) -> ApiResult<GetCageResponse>;
+    async fn get_app_keys(&self, team_uuid: &str, app_uuid: &str) -> ApiResult<GetKeysResponse>;
+    async fn add_env_var(&self, cage_uuid: String, payload: AddSecretRequest) -> ApiResult<()>;
+    async fn delete_env_var(&self, cage_uuid: String, name: String) -> ApiResult<()>;
+    async fn get_cage_env(&self, cage_uuid: String) -> ApiResult<CageEnv>;
+    async fn get_cage_deployment_by_uuid(
+        &self,
+        cage_uuid: &str,
+        deployment_uuid: &str,
+    ) -> ApiResult<GetCageDeploymentResponse>;
+    async fn get_signing_certs(&self) -> ApiResult<GetSigningCertsResponse>;
+    async fn update_cage_locked_signing_certs(
+        &self,
+        cage_uuid: &str,
+        payload: UpdateLockedCageSigningCertRequest,
+    ) -> ApiResult<Vec<CageToSigningCert>>;
+    async fn get_cage_locked_signing_certs(
+        &self,
+        cage_uuid: &str,
+    ) -> ApiResult<Vec<CageSigningCert>>;
+    async fn get_cage_cert_by_uuid(&self, cert_uuid: &str) -> ApiResult<CageSigningCert>;
+    async fn get_cage_logs(
+        &self,
+        cage_uuid: &str,
+        start_time: u128,
+        end_time: u128,
+    ) -> ApiResult<CageLogs>;
+    async fn delete_cage(&self, cage_uuid: &str) -> ApiResult<DeleteCageResponse>;
+    async fn restart_cage(&self, cage_uuid: &str) -> ApiResult<CageDeployment>;
+    async fn get_scaling_config(&self, cage_uuid: &str) -> ApiResult<CageScalingConfig>;
+    async fn update_scaling_config(
+        &self,
+        cage_uuid: &str,
+        update_scaling_config_request: UpdateCageScalingConfigRequest,
+    ) -> ApiResult<CageScalingConfig>;
+}
+
 impl CagesClient {
     pub fn new(auth_mode: AuthMode) -> Self {
         Self {
             inner: GenericApiClient::from(auth_mode),
         }
     }
+}
 
-    pub async fn create_cage(&self, cage_create_payload: CreateCageRequest) -> ApiResult<Cage> {
+#[async_trait::async_trait]
+impl CageApi for CagesClient {
+    async fn create_cage(&self, cage_create_payload: CreateCageRequest) -> ApiResult<Cage> {
         let create_cage_url = format!("{}/", self.base_url());
         self.post(&create_cage_url)
             .json(&cage_create_payload)
@@ -46,7 +103,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn create_cage_deployment_intent(
+    async fn create_cage_deployment_intent(
         &self,
         cage_uuid: &str,
         payload: CreateCageDeploymentIntentRequest,
@@ -60,7 +117,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn create_cage_signing_cert_ref(
+    async fn create_cage_signing_cert_ref(
         &self,
         payload: CreateCageSigningCertRefRequest,
     ) -> ApiResult<CreateCageSigningCertRefResponse> {
@@ -73,7 +130,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn get_cages(&self) -> ApiResult<GetCagesResponse> {
+    async fn get_cages(&self) -> ApiResult<GetCagesResponse> {
         let get_cages_url = format!("{}/", self.base_url());
         self.get(&get_cages_url)
             .send()
@@ -82,7 +139,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn get_cage(&self, cage_uuid: &str) -> ApiResult<GetCageResponse> {
+    async fn get_cage(&self, cage_uuid: &str) -> ApiResult<GetCageResponse> {
         let get_cage_url = format!("{}/{}", self.base_url(), cage_uuid);
         self.get(&get_cage_url)
             .send()
@@ -91,11 +148,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn get_app_keys(
-        &self,
-        team_uuid: &str,
-        app_uuid: &str,
-    ) -> ApiResult<GetKeysResponse> {
+    async fn get_app_keys(&self, team_uuid: &str, app_uuid: &str) -> ApiResult<GetKeysResponse> {
         let get_cage_url = format!("{}/{}/apps/{}", self.keys_url(), team_uuid, app_uuid);
         self.get(&get_cage_url)
             .send()
@@ -104,7 +157,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn add_env_var(&self, cage_uuid: String, payload: AddSecretRequest) -> ApiResult<()> {
+    async fn add_env_var(&self, cage_uuid: String, payload: AddSecretRequest) -> ApiResult<()> {
         let add_env_url = format!("{}/{}/secrets", self.base_url(), cage_uuid);
         self.put(&add_env_url)
             .json(&payload)
@@ -113,7 +166,7 @@ impl CagesClient {
             .handle_no_op_response()
     }
 
-    pub async fn delete_env_var(&self, cage_uuid: String, name: String) -> ApiResult<()> {
+    async fn delete_env_var(&self, cage_uuid: String, name: String) -> ApiResult<()> {
         let delete_env_url = format!("{}/{}/secrets/{}", self.base_url(), cage_uuid, name);
         self.delete(&delete_env_url)
             .send()
@@ -121,7 +174,7 @@ impl CagesClient {
             .handle_no_op_response()
     }
 
-    pub async fn get_cage_env(&self, cage_uuid: String) -> ApiResult<CageEnv> {
+    async fn get_cage_env(&self, cage_uuid: String) -> ApiResult<CageEnv> {
         let get_env_url = format!("{}/{}/secrets", self.base_url(), cage_uuid);
         self.get(&get_env_url)
             .send()
@@ -130,7 +183,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn get_cage_deployment_by_uuid(
+    async fn get_cage_deployment_by_uuid(
         &self,
         cage_uuid: &str,
         deployment_uuid: &str,
@@ -148,7 +201,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn get_signing_certs(&self) -> ApiResult<GetSigningCertsResponse> {
+    async fn get_signing_certs(&self) -> ApiResult<GetSigningCertsResponse> {
         let get_certs_url = format!("{}/signing/certs", self.base_url(),);
         self.get(&get_certs_url)
             .send()
@@ -157,7 +210,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn update_cage_locked_signing_certs(
+    async fn update_cage_locked_signing_certs(
         &self,
         cage_uuid: &str,
         payload: UpdateLockedCageSigningCertRequest,
@@ -171,7 +224,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn get_cage_locked_signing_certs(
+    async fn get_cage_locked_signing_certs(
         &self,
         cage_uuid: &str,
     ) -> ApiResult<Vec<CageSigningCert>> {
@@ -183,7 +236,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn get_cage_cert_by_uuid(&self, cert_uuid: &str) -> ApiResult<CageSigningCert> {
+    async fn get_cage_cert_by_uuid(&self, cert_uuid: &str) -> ApiResult<CageSigningCert> {
         let get_cert_url = format!("{}/signing/certs/{}", self.base_url(), cert_uuid);
         self.get(&get_cert_url)
             .send()
@@ -192,7 +245,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn get_cage_logs(
+    async fn get_cage_logs(
         &self,
         cage_uuid: &str,
         start_time: u128,
@@ -203,6 +256,7 @@ impl CagesClient {
             self.base_url(),
             cage_uuid
         );
+
         self.get(&get_logs_url)
             .send()
             .await
@@ -210,7 +264,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn delete_cage(&self, cage_uuid: &str) -> ApiResult<DeleteCageResponse> {
+    async fn delete_cage(&self, cage_uuid: &str) -> ApiResult<DeleteCageResponse> {
         let delete_cage_url = format!("{}/{}", self.base_url(), cage_uuid);
         self.delete(&delete_cage_url)
             .send()
@@ -219,7 +273,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn restart_cage(&self, cage_uuid: &str) -> ApiResult<CageDeployment> {
+    async fn restart_cage(&self, cage_uuid: &str) -> ApiResult<CageDeployment> {
         let patch_cage_url = format!("{}/{}", self.base_url(), cage_uuid);
         self.patch(&patch_cage_url)
             .send()
@@ -228,7 +282,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn get_scaling_config(&self, cage_uuid: &str) -> ApiResult<CageScalingConfig> {
+    async fn get_scaling_config(&self, cage_uuid: &str) -> ApiResult<CageScalingConfig> {
         let cage_scaling_url = format!("{}/{}/scale", self.base_url(), cage_uuid);
         self.get(&cage_scaling_url)
             .send()
@@ -237,7 +291,7 @@ impl CagesClient {
             .await
     }
 
-    pub async fn update_scaling_config(
+    async fn update_scaling_config(
         &self,
         cage_uuid: &str,
         update_scaling_config_request: UpdateCageScalingConfigRequest,
@@ -289,7 +343,6 @@ impl CreateCageDeploymentIntentRequest {
         installer_version: String,
         git_timestamp: String,
         git_hash: String,
-        healthcheck: Option<String>,
         desired_replicas: Option<u32>,
     ) -> Self {
         Self {
@@ -307,7 +360,7 @@ impl CreateCageDeploymentIntentRequest {
                 data_plane_version,
                 git_timestamp,
             },
-            healthcheck,
+            healthcheck: config.healthcheck().map(String::from),
             desired_replicas,
         }
     }
@@ -495,13 +548,13 @@ impl Cage {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CageDeployment {
-    uuid: String,
-    cage_uuid: String,
-    version_uuid: String,
-    signing_cert_uuid: String,
-    debug_mode: bool,
-    started_at: Option<String>,
-    completed_at: Option<String>,
+    pub uuid: String,
+    pub cage_uuid: String,
+    pub version_uuid: String,
+    pub signing_cert_uuid: String,
+    pub debug_mode: bool,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
 }
 
 impl CageDeployment {
@@ -530,26 +583,26 @@ pub enum BuildStatus {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CageVersion {
-    uuid: String,
-    version: u16,
-    control_plane_img_url: Option<String>,
-    control_plane_version: Option<String>,
-    data_plane_version: Option<String>,
-    build_status: BuildStatus,
-    failure_reason: Option<String>,
-    started_at: Option<String>,
-    healthcheck: Option<String>,
+    pub uuid: String,
+    pub version: u16,
+    pub control_plane_img_url: Option<String>,
+    pub control_plane_version: Option<String>,
+    pub data_plane_version: Option<String>,
+    pub build_status: BuildStatus,
+    pub failure_reason: Option<String>,
+    pub started_at: Option<String>,
+    pub healthcheck: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, PartialOrd)]
 #[serde(rename_all = "camelCase")]
 pub struct CageSigningCert {
-    name: Option<String>,
-    uuid: String,
-    app_uuid: String,
-    cert_hash: String,
-    not_before: Option<String>,
-    not_after: Option<String>,
+    pub name: Option<String>,
+    pub uuid: String,
+    pub app_uuid: String,
+    pub cert_hash: String,
+    pub not_before: Option<String>,
+    pub not_after: Option<String>,
 }
 
 impl CageSigningCert {
@@ -608,17 +661,17 @@ pub enum DeployStatus {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CageRegionalDeployment {
-    uuid: String,
-    deployment_uuid: String,
-    deployment_order: u16,
-    region: String,
-    failure_reason: Option<String>,
-    deploy_status: DeployStatus,
+    pub uuid: String,
+    pub deployment_uuid: String,
+    pub deployment_order: u16,
+    pub region: String,
+    pub failure_reason: Option<String>,
+    pub deploy_status: DeployStatus,
     // started_at should be required, but is being returned as null sometimes
     // should revert this to just String after API fix
-    started_at: Option<String>,
-    completed_at: Option<String>,
-    detailed_status: Option<String>,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
+    pub detailed_status: Option<String>,
 }
 
 impl CageRegionalDeployment {
@@ -655,18 +708,18 @@ impl GetCagesResponse {
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentsForGetCage {
     #[serde(flatten)]
-    deployment: CageDeployment,
+    pub deployment: CageDeployment,
     #[serde(rename = "teeCageVersion")]
-    version: CageVersion,
+    pub version: CageVersion,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetCageResponse {
     #[serde(flatten)]
-    cage: Cage,
+    pub cage: Cage,
     #[serde(rename = "teeCageDeployments")]
-    deployments: Vec<DeploymentsForGetCage>,
+    pub deployments: Vec<DeploymentsForGetCage>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -691,15 +744,15 @@ impl GetCageResponse {
 #[serde(rename_all = "camelCase")]
 pub struct GetCageDeploymentResponse {
     #[serde(flatten)]
-    deployment: CageDeployment,
-    tee_cage_version: CageVersion,
-    tee_cage_signing_cert: CageSigningCert,
-    tee_cage_regional_deployments: Vec<CageRegionalDeployment>,
+    pub deployment: CageDeployment,
+    pub tee_cage_version: CageVersion,
+    pub tee_cage_signing_cert: CageSigningCert,
+    pub tee_cage_regional_deployments: Vec<CageRegionalDeployment>,
 }
 
 impl GetCageDeploymentResponse {
     pub fn is_built(&self) -> bool {
-        self.tee_cage_version.build_status == BuildStatus::Ready
+        matches!(self.tee_cage_version.build_status, BuildStatus::Ready)
     }
 
     pub fn is_finished(&self) -> bool {
@@ -707,16 +760,22 @@ impl GetCageDeploymentResponse {
     }
 
     //TODO: Handle multi region deployment failures
-    pub fn is_failed(&self) -> Option<bool> {
-        self.tee_cage_regional_deployments
-            .first()
-            .map(|depl| depl.is_failed())
+    pub fn is_failed(&self) -> bool {
+        let build_failed = matches!(self.tee_cage_version.build_status, BuildStatus::Failed);
+        build_failed
+            || self
+                .tee_cage_regional_deployments
+                .first()
+                .map(|depl| depl.is_failed())
+                .unwrap_or_default()
     }
 
     pub fn get_failure_reason(&self) -> Option<String> {
-        self.tee_cage_regional_deployments
-            .first()
-            .map(|depl| depl.get_failure_reason())
+        self.tee_cage_version.failure_reason.clone().or_else(|| {
+            self.tee_cage_regional_deployments
+                .first()
+                .map(|depl| depl.get_failure_reason())
+        })
     }
 
     pub fn get_detailed_status(&self) -> Option<String> {
@@ -882,7 +941,7 @@ mod test {
         assert!(deployment_with_empty_regional
             .get_failure_reason()
             .is_none());
-        assert!(deployment_with_empty_regional.is_failed().is_none());
+        assert_eq!(deployment_with_empty_regional.is_failed(), false);
     }
 
     #[test]
@@ -910,7 +969,7 @@ mod test {
             }],
         };
 
-        assert_eq!(deployment_with_regional.is_failed(), Some(true));
+        assert_eq!(deployment_with_regional.is_failed(), true);
         assert_eq!(
             deployment_with_regional.get_failure_reason(),
             Some(failure_reason)

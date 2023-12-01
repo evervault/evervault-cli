@@ -32,7 +32,7 @@ macro_rules! unwrap_or_exit_with_error {
 
 pub async fn run(attest_args: AttestArgs) -> i32 {
     if let Err(e) = check_version().await {
-        log::error!("{}", e);
+        log::error!("{e}");
         return exitcode::SOFTWARE;
     };
 
@@ -64,7 +64,7 @@ pub async fn run(attest_args: AttestArgs) -> i32 {
             exitcode::OK
         }
         Err(e) => {
-            log::error!("Failed to attest Cage - {}", e);
+            log::error!("Failed to attest Cage - {e}");
             exitcode::SOFTWARE
         }
     }

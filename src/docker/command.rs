@@ -183,7 +183,7 @@ pub fn run_image(
 
     run_image_args.push(image_name.as_ref());
 
-    let run_args = vec![run_image_args, command_line_args].concat();
+    let run_args = [run_image_args, command_line_args].concat();
 
     let command_output = Command::new("docker")
         .args(run_args)

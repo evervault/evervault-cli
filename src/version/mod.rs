@@ -14,9 +14,9 @@ pub enum VersionError {
     #[error("Couldn't parse env string as int - {0}")]
     ParseIntError(#[from] std::num::ParseIntError),
     #[error("This version is deprecated, please run ev-cage update to continue")]
-    DeprecationError,
+    DeprecatedVersion,
     #[error("Couldn't check version against latest")]
-    VersionCheckError,
+    FailedVersionCheck,
 }
 
 pub fn get_latest_major_version() -> Result<u8, VersionError> {
@@ -30,7 +30,7 @@ pub async fn check_version() -> Result<(), VersionError> {
         return Ok(());
     }
     match alert_on_deprecation().await? {
-        Some(_) => Err(VersionError::DeprecationError),
+        Some(_) => Err(VersionError::DeprecatedVersion),
         _ => Ok(()),
     }
 }
@@ -45,7 +45,7 @@ async fn alert_on_deprecation() -> Result<Option<i64>, VersionError> {
         .get(&installed_major_version.to_string())
     {
         Some(version) => version,
-        None => return Err(VersionError::VersionCheckError),
+        None => return Err(VersionError::FailedVersionCheck),
     };
     let latest_semver = Version::parse(current_version.latest.as_str())?;
     if let Some(deprecation_date) = &current_version.deprecation_date {
