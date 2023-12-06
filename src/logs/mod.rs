@@ -3,7 +3,7 @@ use std::fmt::Write;
 use thiserror::Error;
 
 use crate::{
-    api::cage::{CageApi, CagesClient},
+    api::enclave::{EnclaveApi, EnclaveClient},
     common::CliError,
 };
 
@@ -37,8 +37,8 @@ impl CliError for LogsError {
 pub async fn get_logs(
     start_time: Option<String>,
     end_time: Option<String>,
-    cage_uuid: String,
-    cages_client: CagesClient,
+    enclave_uuid: String,
+    enclave_client: EnclaveClient,
 ) -> Result<(), LogsError> {
     let now = std::time::SystemTime::now();
     let log_end_time = match end_time {
@@ -55,11 +55,11 @@ pub async fn get_logs(
             .as_millis(),
     };
 
-    let cage_logs = cages_client
-        .get_cage_logs(cage_uuid.as_str(), log_start_time, log_end_time)
+    let enclave_logs = enclave_client
+        .get_enclave_logs(enclave_uuid.as_str(), log_start_time, log_end_time)
         .await?;
 
-    if cage_logs.log_events().is_empty() {
+    if enclave_logs.log_events().is_empty() {
         return Err(LogsError::NoLogsFound(format!(
             "No logs found between {log_start_time} and {log_end_time}"
         )));
@@ -69,10 +69,10 @@ pub async fn get_logs(
 
     output.set_prompt(format!(
         "Retrieved {} logs from {log_start_time} to {log_end_time}",
-        cage_logs.log_events().len()
+        enclave_logs.log_events().len()
     ))?;
 
-    cage_logs
+    enclave_logs
         .log_events()
         .iter()
         .filter_map(|event| {

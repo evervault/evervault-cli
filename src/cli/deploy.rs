@@ -1,5 +1,5 @@
 use crate::api::client::ApiErrorKind;
-use crate::api::{self, assets::AssetsClient, cage::CageApi, AuthMode};
+use crate::api::{self, assets::AssetsClient, enclave::EnclaveApi, AuthMode};
 use crate::build::build_enclave_image_file;
 use crate::common::prepare_build_args;
 use crate::docker::command::get_source_date_epoch;
@@ -7,7 +7,7 @@ use crate::get_api_key;
 use crate::version::check_version;
 use crate::{
     common::{CliError, OutputPath},
-    config::{read_and_validate_config, BuildTimeConfig, ValidatedCageBuildConfig},
+    config::{read_and_validate_config, BuildTimeConfig, ValidatedEnclaveBuildConfig},
     deploy::{deploy_eif, get_eif},
     enclave::EIFMeasurements,
 };
@@ -15,19 +15,19 @@ use atty::Stream;
 use clap::Parser;
 use exitcode::ExitCode;
 
-/// Deploy a Cage from a toml file.
+/// Deploy an Enclave from a toml file.
 #[derive(Debug, Parser)]
 #[clap(name = "deploy", about)]
 pub struct DeployArgs {
-    /// Path to cage.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    /// Path to enclave.toml config file
+    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 
-    /// Path to Dockerfile for Cage. Will override any dockerfile specified in the .toml file.
+    /// Path to Dockerfile for Enclave. Will override any dockerfile specified in the .toml file.
     #[clap(short = 'f', long = "file")]
     pub dockerfile: Option<String>,
 
-    /// Path to EIF for Cage. Will not build if EIF is provided.
+    /// Path to EIF for Enclave. Will not build if EIF is provided.
     #[clap(long = "eif-path")]
     pub eif_path: Option<String>,
 
@@ -84,33 +84,39 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         return exitcode::SOFTWARE;
     };
     let api_key = get_api_key!();
-    let (mut cage_config, validated_config) =
+    let (mut enclave_config, validated_config) =
         match read_and_validate_config(&deploy_args.config, &deploy_args) {
             Ok(configs) => configs,
             Err(e) => {
-                log::error!("Failed to validate Cage config - {e}");
+                log::error!("Failed to validate Enclave config - {e}");
                 return e.exitcode();
             }
         };
 
-    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key));
+    let enclave_api = api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key));
 
-    let cage = match cage_api.get_cage(validated_config.cage_uuid()).await {
-        Ok(cage) => cage,
+    let enclave = match enclave_api
+        .get_enclave(validated_config.enclave_uuid())
+        .await
+    {
+        Ok(enclave) => enclave,
         Err(e) => {
-            log::error!("Failed to retrieve Cage details from Evervault API – {}", e);
+            log::error!(
+                "Failed to retrieve Enclave details from Evervault API – {}",
+                e
+            );
             return e.exitcode();
         }
     };
 
-    let cage_scaling_config = match cage_api
-        .get_scaling_config(validated_config.cage_uuid())
+    let enclave_scaling_config = match enclave_api
+        .get_scaling_config(validated_config.enclave_uuid())
         .await
     {
         Ok(scaling_config) => Some(scaling_config),
         Err(e) if matches!(e.kind, ApiErrorKind::NotFound) => None,
         Err(e) => {
-            log::error!("Failed to load Cage scaling config - {e}");
+            log::error!("Failed to load Enclave scaling config - {e}");
             return e.exitcode();
         }
     };
@@ -121,7 +127,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         .map(|local_scaling_config| local_scaling_config.desired_replicas);
 
     // Warn if local scaling config differs from remote
-    let has_scaling_config_drift = cage_scaling_config.as_ref().is_some_and(|config| {
+    let has_scaling_config_drift = enclave_scaling_config.as_ref().is_some_and(|config| {
         local_replicas.is_some_and(|replicas| config.desired_replicas() != replicas)
     });
 
@@ -130,7 +136,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     // cage scaling config is Some - local scaling config is Some - scaling config differs : has_scaling_config_drift: true
 
     if has_scaling_config_drift {
-        let remote_replicas = cage_scaling_config.as_ref().unwrap().desired_replicas();
+        let remote_replicas = enclave_scaling_config.as_ref().unwrap().desired_replicas();
         let local_replicas_count = local_replicas
             .map(|count| count.to_string())
             .expect("Infallible - checked above");
@@ -173,22 +179,22 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         Err(e) => return e,
     };
 
-    if cage_config.debug {
+    if enclave_config.debug {
         crate::common::log_debug_mode_attestation_warning();
     }
 
     log::info!(
-        "Deploying Cage with the following attestation measurements: {}",
+        "Deploying Enclave with the following attestation measurements: {}",
         serde_json::to_string_pretty(&eif_measurements)
-            .expect("Failed to serialize Cage attestation measures.")
+            .expect("Failed to serialize Enclave attestation measures.")
     );
 
-    cage_config.set_attestation(&eif_measurements);
-    crate::common::save_cage_config(&cage_config, &deploy_args.config);
+    enclave_config.set_attestation(&eif_measurements);
+    crate::common::save_enclave_config(&enclave_config, &deploy_args.config);
 
     if let Err(e) = deploy_eif(
         &validated_config,
-        cage_api,
+        enclave_api,
         output_path,
         &eif_measurements,
         data_plane_version,
@@ -201,11 +207,14 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     };
 
     if atty::is(Stream::Stdout) {
-        log::info!("Your Cage is now available at https://{}", cage.domain());
+        log::info!(
+            "Your Enclave is now available at https://{}",
+            enclave.domain()
+        );
     } else {
         let success_msg = serde_json::json!({
             "status": "success",
-            "cageDomain": cage.domain(),
+            "enclaveDomain": enclave.domain(),
             "measurements": &eif_measurements
         });
         println!("{}", serde_json::to_string(&success_msg).unwrap());
@@ -215,7 +224,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
 
 #[allow(clippy::too_many_arguments)]
 async fn resolve_eif(
-    validated_config: &ValidatedCageBuildConfig,
+    validated_config: &ValidatedEnclaveBuildConfig,
     context_path: &str,
     eif_path: Option<&str>,
     verbose: bool,
@@ -254,20 +263,22 @@ async fn resolve_eif(
 }
 
 async fn get_data_plane_and_installer_version(
-    validated_config: &ValidatedCageBuildConfig,
+    validated_config: &ValidatedEnclaveBuildConfig,
 ) -> Result<(String, String), ExitCode> {
-    let cage_build_assets_client = AssetsClient::new();
+    let enclave_build_assets_client = AssetsClient::new();
     match validated_config.runtime.clone() {
         Some(config) => Ok((config.data_plane_version.clone(), config.installer_version)),
         None => {
-            let data_plane_version = match cage_build_assets_client.get_data_plane_version().await {
-                Ok(version) => version,
-                Err(e) => {
-                    log::error!("Failed to retrieve the latest data plane version - {e:?}");
-                    return Err(e.exitcode());
-                }
-            };
-            let installer_version = match cage_build_assets_client.get_installer_version().await {
+            let data_plane_version =
+                match enclave_build_assets_client.get_data_plane_version().await {
+                    Ok(version) => version,
+                    Err(e) => {
+                        log::error!("Failed to retrieve the latest data plane version - {e:?}");
+                        return Err(e.exitcode());
+                    }
+                };
+            let installer_version = match enclave_build_assets_client.get_installer_version().await
+            {
                 Ok(version) => version,
                 Err(e) => {
                     log::error!("Failed to retrieve the latest installer version - {e:?}");

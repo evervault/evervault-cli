@@ -72,7 +72,7 @@ pub trait ApiClient {
     }
 
     fn user_agent(&self) -> String {
-        format!("evervault-cage-cli/{}", env!("CARGO_PKG_VERSION"))
+        format!("evervault-enclave-cli/{}", env!("CARGO_PKG_VERSION"))
     }
 
     fn accept(&self) -> String {
@@ -110,6 +110,7 @@ pub trait ApiClient {
         request_builder = request_builder
             .header(reqwest::header::USER_AGENT, self.user_agent())
             .header(reqwest::header::ACCEPT, self.accept());
+
         match &self.auth() {
             AuthMode::NoAuth => request_builder,
             AuthMode::ApiKey(api_key) => request_builder.header("api-key", api_key),
@@ -128,6 +129,7 @@ pub trait HandleResponse {
 #[async_trait]
 impl HandleResponse for ReqwestResult<Response> {
     async fn handle_json_response<T: DeserializeOwned>(self) -> ApiResult<T> {
+        println!("self: {:?}", self);
         match self {
             Ok(res) if res.status().is_success() => res
                 .json()
@@ -193,8 +195,8 @@ impl ApiErrorKind {
             Self::Conflict => "409: Conflict".to_owned(),
             Self::Internal => "500: Internal Server Error".to_owned(),
             Self::Unknown(e) => format!("An unexpected error occured: {:?}", e),
-            Self::ParsingError(_) => {
-                "An error occurred while parsing the server's response.to_owned()".to_owned()
+            Self::ParsingError(e) => {
+                format!("An error occurred while parsing the server's response: {e:?}")
             }
         }
     }

@@ -59,7 +59,7 @@ impl ServerCertVerifier for SubjectAltNameAttestationValidator {
     }
 }
 
-pub async fn attest_connection_to_cage(
+pub async fn attest_connection_to_enclave(
     domain: &str,
     expected_pcrs: PCRs,
 ) -> Result<(), AttestCommandError> {
@@ -121,14 +121,14 @@ mod attest_tests {
     use super::*;
 
     #[tokio::test]
-    async fn connection_to_synthetic_cage_in_debug_mode() {
+    async fn connection_to_synthetic_enclave_in_debug_mode() {
         let expected_pcrs = PCRs {
             pcr_0: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000".to_string(),
             pcr_1: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000".to_string(),
             pcr_2: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000".to_string(),
             pcr_8: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000".to_string(),
         };
-        attest_connection_to_cage(
+        attest_connection_to_enclave(
             "synthetic-cage.app-f5f084041a7e.cage.evervault.com",
             expected_pcrs,
         )
@@ -137,14 +137,14 @@ mod attest_tests {
     }
 
     #[tokio::test]
-    async fn connection_to_synthetic_cage_in_debug_mode_expecting_incorrect_pcrs() {
+    async fn connection_to_synthetic_enclave_in_debug_mode_expecting_incorrect_pcrs() {
         let expected_pcrs = PCRs {
             pcr_0: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000".to_string(),
             pcr_1: "00000000000different000000000000000000000000PCRs00000000000000000000000000000000000000000000000".to_string(),
             pcr_2: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000".to_string(),
             pcr_8: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000".to_string(),
         };
-        let err = attest_connection_to_cage(
+        let err = attest_connection_to_enclave(
             "synthetic-cage.app-f5f084041a7e.cage.evervault.com",
             expected_pcrs,
         )

@@ -8,8 +8,8 @@ pub enum DeployError {
     DescribeError(#[from] crate::describe::error::DescribeError),
     #[error("Could not build eif {0}")]
     BuildError(#[from] crate::build::error::BuildError),
-    #[error("An error occurred while reading the cage config — {0}")]
-    CageConfigError(#[from] crate::config::CageConfigError),
+    #[error("An error occurred while reading the enclave config — {0}")]
+    EnclaveConfigError(#[from] crate::config::EnclaveConfigError),
     #[error("Failed to access output directory — {0}")]
     FailedToAccessOutputDir(#[from] OutputPathError),
     #[error("An IO error occurred {0}")]
@@ -20,11 +20,11 @@ pub enum DeployError {
     RequestError(#[from] reqwest::Error),
     #[error("An error occured contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),
-    #[error("Cage failed to upload - {0}")]
+    #[error("Enclave failed to upload - {0}")]
     UploadError(String),
-    #[error("Could not read the size of the Cage EIF file {0}")]
+    #[error("Could not read the size of the Enclave EIF file {0}")]
     EifSizeReadError(std::io::Error),
-    #[error("Could not deploy cage to Evervault Infrastructure")]
+    #[error("Could not deploy enclave to Evervault Infrastructure")]
     DeploymentError,
     #[error("[{0}] Operation timed out after {1} seconds")]
     TimeoutError(String, u64),
@@ -35,7 +35,7 @@ impl CliError for DeployError {
         match self {
             Self::DescribeError(describe_err) => describe_err.exitcode(),
             Self::BuildError(build_err) => build_err.exitcode(),
-            Self::CageConfigError(config_err) => config_err.exitcode(),
+            Self::EnclaveConfigError(config_err) => config_err.exitcode(),
             Self::FailedToAccessOutputDir(output_err) => output_err.exitcode(),
             Self::IoError(_) | Self::ZipError(_) | Self::EifSizeReadError(_) => exitcode::IOERR,
             Self::RequestError(_)

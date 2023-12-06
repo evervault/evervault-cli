@@ -2,7 +2,7 @@ pub mod error;
 use error::BuildError;
 
 use crate::common::{resolve_output_path, OutputPath};
-use crate::config::ValidatedCageBuildConfig;
+use crate::config::ValidatedEnclaveBuildConfig;
 use crate::docker::error::DockerError;
 use crate::docker::parse::{Directive, DockerfileDecoder, EnvVar, Mode};
 use crate::docker::utils::verify_docker_is_running;
@@ -21,7 +21,7 @@ const DATA_PLANE_SERVICE_PATH: &str = "/etc/service/data-plane";
 
 #[allow(clippy::too_many_arguments)]
 pub async fn build_enclave_image_file(
-    cage_config: &ValidatedCageBuildConfig,
+    enclave_config: &ValidatedEnclaveBuildConfig,
     context_path: &str,
     output_dir: Option<&str>,
     verbose: bool,
@@ -45,7 +45,7 @@ pub async fn build_enclave_image_file(
     // function so it isn't deleted until all the builds are finished.
     let output_path = resolve_output_path(output_dir)?;
 
-    let signing_info = enclave::EnclaveSigningInfo::try_from(cage_config.signing_info())?;
+    let signing_info = enclave::EnclaveSigningInfo::try_from(enclave_config.signing_info())?;
 
     match from_existing {
         Some(path) => {
@@ -60,7 +60,7 @@ pub async fn build_enclave_image_file(
         }
         None => {
             build_from_scratch(
-                cage_config,
+                enclave_config,
                 context_path,
                 verbose,
                 docker_build_args,
@@ -87,7 +87,7 @@ pub async fn build_enclave_image_file(
 
 #[allow(clippy::too_many_arguments)]
 pub async fn build_from_scratch(
-    cage_config: &ValidatedCageBuildConfig,
+    enclave_config: &ValidatedEnclaveBuildConfig,
     context_path: &Path,
     verbose: bool,
     docker_build_args: Option<Vec<&str>>,
@@ -102,19 +102,19 @@ pub async fn build_from_scratch(
     }
 
     // read dockerfile
-    let dockerfile_path = Path::new(cage_config.dockerfile());
+    let dockerfile_path = Path::new(enclave_config.dockerfile());
     if !dockerfile_path.exists() {
         return Err(BuildError::DockerfileAccessError(
-            cage_config.dockerfile().to_string(),
+            enclave_config.dockerfile().to_string(),
         ));
     }
 
     let dockerfile = File::open(dockerfile_path)
         .await
-        .map_err(|_| BuildError::DockerfileAccessError(cage_config.dockerfile().to_string()))?;
+        .map_err(|_| BuildError::DockerfileAccessError(enclave_config.dockerfile().to_string()))?;
 
     let processed_dockerfile = process_dockerfile(
-        cage_config,
+        enclave_config,
         dockerfile,
         data_plane_version,
         installer_version,
@@ -126,7 +126,7 @@ pub async fn build_from_scratch(
     let user_dockerfile_path = output_path.join(EV_USER_DOCKERFILE_PATH);
 
     let mut ev_user_dockerfile = std::fs::File::create(&user_dockerfile_path)
-        .map_err(BuildError::FailedToWriteCageDockerfile)?;
+        .map_err(BuildError::FailedToWriteEnclaveDockerfile)?;
 
     processed_dockerfile.iter().for_each(|instruction| {
         writeln!(ev_user_dockerfile, "{}", instruction).unwrap();
@@ -151,7 +151,7 @@ pub async fn build_from_scratch(
 }
 
 async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
-    build_config: &ValidatedCageBuildConfig,
+    build_config: &ValidatedEnclaveBuildConfig,
     dockerfile_src: R,
     data_plane_version: String,
     installer_version: String,
@@ -208,7 +208,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let wait_for_env = if build_config.disable_tls_termination {
         "echo TLS termination is off, not waiting for environment to be ready"
     } else {
-        r#"while ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n"#
+        r#"while ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n"#
     };
     let user_service_builder =
         crate::docker::utils::create_combined_docker_entrypoint(last_entrypoint, last_cmd).map(
@@ -218,7 +218,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let ev_domain = std::env::var("EV_DOMAIN").unwrap_or_else(|_| String::from("evervault.com"));
 
     let data_plane_url = format!(
-        "https://cage-build-assets.{}/runtime/{}/data-plane/{}",
+        "https://enclave-build-assets.{}/runtime/{}/data-plane/{}",
         ev_domain,
         data_plane_version,
         build_config.get_dataplane_feature_label()
@@ -255,7 +255,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         format!("{}{}{}", loopback_config, egress_config, bootstrap_script);
 
     let installer_bundle_url = format!(
-        "https://cage-build-assets.{}/installer/{}.tar.gz",
+        "https://enclave-build-assets.{}/installer/{}.tar.gz",
         ev_domain, installer_version
     );
     let installer_bundle = "runtime-dependencies.tar.gz";
@@ -429,7 +429,7 @@ mod test {
     use crate::cert::CertValidityPeriod;
     use crate::config::EgressSettings;
     use crate::config::ScalingSettings;
-    use crate::config::ValidatedCageBuildConfig;
+    use crate::config::ValidatedEnclaveBuildConfig;
     use crate::config::ValidatedSigningInfo;
     use crate::docker;
     use crate::enclave;
@@ -437,10 +437,10 @@ mod test {
     use std::iter::zip;
     use tempfile::TempDir;
 
-    fn get_config(egress_enabled: bool) -> ValidatedCageBuildConfig {
-        ValidatedCageBuildConfig {
-            cage_name: "test".into(),
-            cage_uuid: "1234".into(),
+    fn get_config(egress_enabled: bool) -> ValidatedEnclaveBuildConfig {
+        ValidatedEnclaveBuildConfig {
+            enclave_name: "test".into(),
+            enclave_uuid: "1234".into(),
             team_uuid: "teamid".into(),
             debug: false,
             app_uuid: "3241".into(),
@@ -501,12 +501,12 @@ RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
 USER root
 RUN mkdir -p /opt/evervault
-ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+ADD https://enclave-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
 RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
 RUN echo {\"api_key_auth\":true,\"forward_proxy_protocol\":false,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
-RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
-ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
 RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
@@ -566,12 +566,12 @@ RUN touch /hello-script;\
 /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
 USER root
 RUN mkdir -p /opt/evervault
-ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+ADD https://enclave-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
 RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
 RUN echo {\"api_key_auth\":true,\"forward_proxy_protocol\":false,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
-RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
-ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
 RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
@@ -631,12 +631,12 @@ RUN touch /hello-script;\
 /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
 USER root
 RUN mkdir -p /opt/evervault
-ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+ADD https://enclave-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
 RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
 RUN echo {\"api_key_auth\":true,\"forward_proxy_protocol\":false,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
-RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
-ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
 RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
@@ -693,12 +693,12 @@ RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
 USER root
 RUN mkdir -p /opt/evervault
-ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+ADD https://enclave-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
 RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
 RUN echo {\"api_key_auth\":true,\"forward_proxy_protocol\":false,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
-RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
-ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
 RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
@@ -732,7 +732,7 @@ EXPOSE 3443
 ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut readable_contents = sample_dockerfile_contents.as_bytes();
 
-        let mut config: ValidatedCageBuildConfig = get_config(false);
+        let mut config: ValidatedEnclaveBuildConfig = get_config(false);
         config.healthcheck = Some("/health".into());
 
         let data_plane_version = "0.0.0".to_string();
@@ -753,12 +753,12 @@ RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
 USER root
 RUN mkdir -p /opt/evervault
-ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+ADD https://enclave-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
 RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
 RUN echo {\"api_key_auth\":true,\"forward_proxy_protocol\":false,\"healthcheck\":\"/health\",\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
-RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
-ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
 RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
@@ -814,12 +814,12 @@ RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
 USER root
 RUN mkdir -p /opt/evervault
-ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+ADD https://enclave-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
 RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
 RUN echo {\"api_key_auth\":true,\"forward_proxy_protocol\":false,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
-RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nsu someuser -c 'exec sh /hello-script'\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
-ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nsu someuser -c 'exec sh /hello-script'\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
 RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
@@ -875,12 +875,12 @@ RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
 USER root
 RUN mkdir -p /opt/evervault
-ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+ADD https://enclave-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
 RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
 RUN echo {\"api_key_auth\":true,\"egress\":{\"allow_list\":\"*\"},\"forward_proxy_protocol\":false,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
-RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nsu someuser -c 'exec sh /hello-script'\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
-ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-enabled/tls-termination-enabled /opt/evervault/data-plane
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nsu someuser -c 'exec sh /hello-script'\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-enabled/tls-termination-enabled /opt/evervault/data-plane
 RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
@@ -909,7 +909,7 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
         let sample_dockerfile_contents = r#"FROM alpine
 
 ENV Hello=World Ever=Vault
-ENV Cages Secure
+ENV Enclaves Secure
 ENV CRAB="Ferris"
 RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
@@ -934,18 +934,18 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
 
         let expected_output_contents = r##"FROM alpine
 ENV Hello=World Ever=Vault
-ENV Cages Secure
+ENV Enclaves Secure
 ENV CRAB="Ferris"
 RUN touch /hello-script;\
     /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
 USER root
 RUN mkdir -p /opt/evervault
-ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+ADD https://enclave-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
 RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
 RUN echo {\"api_key_auth\":true,\"forward_proxy_protocol\":false,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
-RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
-ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
 RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
@@ -974,8 +974,9 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
     async fn test_choose_output_dir() {
         let output_dir = TempDir::new().unwrap();
 
-        let _ = test_utils::build_test_cage(Some(output_dir.path().to_str().unwrap()), None, false)
-            .await;
+        let _ =
+            test_utils::build_test_enclave(Some(output_dir.path().to_str().unwrap()), None, false)
+                .await;
 
         let paths = std::fs::read_dir(output_dir.path().to_str().unwrap().to_string()).unwrap();
 

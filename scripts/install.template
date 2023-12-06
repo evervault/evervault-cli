@@ -1,9 +1,9 @@
 #!/bin/sh
 set -eu
 
-EV_DOWNLOAD_Darwin_universal="https://cage-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-apple-darwin/ev-cage.tar.gz"
-EV_DOWNLOAD_Windows_x86_64="https://cage-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-pc-windows-msvc/ev-cage.tar.gz"
-EV_DOWNLOAD_Linux_x86_64="https://cage-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-unknown-linux-musl/ev-cage.tar.gz"
+EV_DOWNLOAD_Darwin_universal="https://enclave-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-apple-darwin/ev-enclave.tar.gz"
+EV_DOWNLOAD_Windows_x86_64="https://enclave-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-pc-windows-msvc/ev-enclave.tar.gz"
+EV_DOWNLOAD_Linux_x86_64="https://enclave-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-unknown-linux-musl/ev-enclave.tar.gz"
 
 VERSION="{{version}}"
 PLATFORM=`uname -s`
@@ -38,9 +38,9 @@ if [ ! -d "$INSTALL_DIR" ]; then
 fi
 if [ -z ${INSTALL_PATH+x} ]; then
   if [ "$PLATFORM" = "Windows" ]; then
-    INSTALL_PATH="${INSTALL_DIR}/ev-cage.exe"
+    INSTALL_PATH="${INSTALL_DIR}/ev-enclave.exe"
   else
-    INSTALL_PATH="${INSTALL_DIR}/ev-cage"
+    INSTALL_PATH="${INSTALL_DIR}/ev-enclave"
   fi
 fi
 DOWNLOAD_URL_LOOKUP="EV_DOWNLOAD_${PLATFORM}_${ARCH}"
@@ -52,7 +52,7 @@ ensure_supported_platform() {
 }
 ensure_supported_platform
 
-echo "This script will automatically install the Evervault Cage CLI@${VERSION} for you."
+echo "This script will automatically install the Evervault Enclave CLI@${VERSION} for you."
 echo "Installation path: ${INSTALL_PATH}"
 if [ "x$(id -u)" = "x0" ]; then
   echo "Warning: this script is currently running as root. This is dangerous. "
@@ -60,8 +60,8 @@ if [ "x$(id -u)" = "x0" ]; then
 fi
 
 if [ -f "$INSTALL_PATH" ]; then
-  if [ -z ${CAGE_CLI_FORCE_INSTALL+x} ]; then
-    echo "Looks like you already have the Evervault Cage CLI installed. You can update by running ev-cage update"
+  if [ -z ${CLI_FORCE_INSTALL+x} ]; then
+    echo "Looks like you already have the Evervault Enclave CLI installed. You can update by running ev-enclave update"
     exit 0
   else
     echo "Proceeding with update..."
@@ -79,7 +79,7 @@ fi
 eval DOWNLOAD_URL=\$$DOWNLOAD_URL_LOOKUP
 
 if [ "$PERFORM_INSTALL" = true ]; then
-  TEMP_FILE=`mktemp "${TMPDIR:-/tmp}/ev-cage.XXXXXXXX"`
+  TEMP_FILE=`mktemp "${TMPDIR:-/tmp}/ev-enclave.XXXXXXXX"`
 fi
 
 cleanup() {
@@ -112,12 +112,12 @@ if [ "$PERFORM_INSTALL" = true ]; then
 fi
 
 extract_via_7zip() {
-   TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}/ev-cage.XXXXXX"`
+   TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}/ev-enclave.XXXXXX"`
    7z x "$TEMP_FILE" -so | 7z x -aoa -si -ttar -o"$TARGET_DIR"
 }
 
 extract_via_tar() {
-  TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}/ev-cage.XXXXXX"`
+  TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}/ev-enclave.XXXXXX"`
   tar xzf "$TEMP_FILE" -C "$TARGET_DIR"
 }
 
@@ -131,11 +131,11 @@ fi
 
 get_file_location() {
   if [ "$PLATFORM" = "Darwin" ]; then
-    EV_BINARY="${TARGET_DIR}/bin/ev-cage"
+    EV_BINARY="${TARGET_DIR}/bin/ev-enclave"
   elif [ "$PLATFORM" = "Windows" ]; then
-    EV_BINARY="${TARGET_DIR}/bin/ev-cage.exe"
+    EV_BINARY="${TARGET_DIR}/bin/ev-enclave.exe"
   else
-    EV_BINARY="${TARGET_DIR}/bin/ev-cage"
+    EV_BINARY="${TARGET_DIR}/bin/ev-enclave"
   fi
   chmod 0755 "$EV_BINARY"
 }

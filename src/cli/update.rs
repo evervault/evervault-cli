@@ -73,7 +73,7 @@ pub async fn run(args: UpdateArgs) -> exitcode::ExitCode {
 
     let result = std::process::Command::new("sh")
         .arg(tempfile.path())
-        .env("CAGE_CLI_FORCE_INSTALL", "true")
+        .env("CLI_FORCE_INSTALL", "true")
         .stdout(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::inherit())
         .status();
@@ -81,7 +81,7 @@ pub async fn run(args: UpdateArgs) -> exitcode::ExitCode {
     match result {
         Ok(output) => output.code().unwrap_or(exitcode::USAGE),
         Err(e) => {
-            log::error!("Failed to install latest version of Cages CLI - {}", e);
+            log::error!("Failed to install latest version of Enclaves CLI - {}", e);
             exitcode::SOFTWARE
         }
     }

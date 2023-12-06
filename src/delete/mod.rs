@@ -1,52 +1,52 @@
 use std::sync::Arc;
 
 use crate::api;
-use crate::api::cage::CageApi;
+use crate::api::enclave::EnclaveApi;
 use crate::api::AuthMode;
 use crate::progress::{get_tracker, poll_fn_and_report_status, ProgressLogger, StatusReport};
 mod error;
 use error::DeleteError;
 
-pub async fn delete_cage(
+pub async fn delete_enclave(
     config: &str,
-    cage_uuid: Option<&str>,
+    enclave_uuid: Option<&str>,
     api_key: &str,
     background: bool,
 ) -> Result<(), DeleteError> {
-    let maybe_cage_uuid = crate::common::resolve_cage_uuid(cage_uuid, config)?;
-    let cage_uuid = match maybe_cage_uuid {
-        Some(given_cage_uuid) => given_cage_uuid,
+    let maybe_enclave_uuid = crate::common::resolve_enclave_uuid(enclave_uuid, config)?;
+    let enclave_uuid = match maybe_enclave_uuid {
+        Some(given_enclave_uuid) => given_enclave_uuid,
         _ => return Err(DeleteError::MissingUuid),
     };
 
-    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
+    let enclave_api = api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
 
-    let deleted_cage = match cage_api.delete_cage(&cage_uuid).await {
-        Ok(cage_ref) => cage_ref,
+    let deleted_enclave = match enclave_api.delete_enclave(&enclave_uuid).await {
+        Ok(enclave_ref) => enclave_ref,
         Err(e) => {
             return Err(DeleteError::ApiError(e));
         }
     };
 
     if !background {
-        let progress_bar = get_tracker("Deleting Cage...", None);
+        let progress_bar = get_tracker("Deleting Enclave...", None);
 
-        watch_deletion(cage_api, deleted_cage.uuid(), progress_bar).await?;
+        watch_deletion(enclave_api, deleted_enclave.uuid(), progress_bar).await?;
     }
     Ok(())
 }
 
-async fn watch_deletion<T: CageApi>(
-    cage_api: T,
-    cage_uuid: &str,
+async fn watch_deletion<T: EnclaveApi>(
+    enclave_api: T,
+    enclave_uuid: &str,
     progress_bar: impl ProgressLogger,
 ) -> Result<(), DeleteError> {
-    async fn check_delete_status<T: CageApi>(
-        cage_api: Arc<T>,
+    async fn check_delete_status<T: EnclaveApi>(
+        enclave_api: Arc<T>,
         args: Vec<String>,
     ) -> Result<StatusReport, DeleteError> {
-        let cage_uuid = args.get(0).unwrap();
-        let cage_response = match cage_api.get_cage(cage_uuid).await {
+        let enclave_uuid = args.get(0).unwrap();
+        let enclave_response = match enclave_api.get_enclave(enclave_uuid).await {
             Ok(response) => response,
             Err(e) => {
                 println!("error in status check");
@@ -54,16 +54,16 @@ async fn watch_deletion<T: CageApi>(
                 return Err(e.into());
             }
         };
-        if cage_response.is_deleted() {
-            Ok(StatusReport::Complete("Cage deleted!".to_string()))
+        if enclave_response.is_deleted() {
+            Ok(StatusReport::Complete("Enclave deleted!".to_string()))
         } else {
             Ok(StatusReport::NoOp)
         }
     }
 
-    let check_delete_args = vec![cage_uuid.to_string()];
+    let check_delete_args = vec![enclave_uuid.to_string()];
     poll_fn_and_report_status(
-        Arc::new(cage_api),
+        Arc::new(enclave_api),
         check_delete_args,
         check_delete_status,
         progress_bar,
@@ -75,24 +75,24 @@ async fn watch_deletion<T: CageApi>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::api::cage::{CageState, DeleteCageResponse, MockCageApi};
     use crate::api::client::ApiError;
+    use crate::api::enclave::{DeleteEnclaveResponse, EnclaveState, MockEnclaveApi};
     use crate::progress::NonTty;
-    use crate::test_utils::build_get_cage_response;
+    use crate::test_utils::build_get_enclave_response;
 
     #[tokio::test]
     async fn test_watch_deletion_with_healthy_responses() {
-        let mut mock_api = MockCageApi::new();
+        let mut mock_api = MockEnclaveApi::new();
 
         let mut responses = vec![
-            build_get_cage_response(CageState::Pending, vec![]),
-            build_get_cage_response(CageState::Deleting, vec![]),
-            build_get_cage_response(CageState::Deleted, vec![]),
+            build_get_enclave_response(EnclaveState::Pending, vec![]),
+            build_get_enclave_response(EnclaveState::Deleting, vec![]),
+            build_get_enclave_response(EnclaveState::Deleted, vec![]),
         ]
         .into_iter();
 
         mock_api
-            .expect_get_cage()
+            .expect_get_enclave()
             .times(3)
             .returning(move |_| Box::pin(std::future::ready(Ok(responses.next().unwrap()))));
         let result = watch_deletion(mock_api, "abc".into(), NonTty).await;
@@ -101,7 +101,7 @@ mod test {
 
     #[tokio::test]
     async fn test_watch_deletion_with_errors() {
-        let mut mock_api = MockCageApi::new();
+        let mut mock_api = MockEnclaveApi::new();
 
         let mut responses = vec![
             ApiError::new(api::client::ApiErrorKind::Internal),
@@ -113,7 +113,7 @@ mod test {
         .into_iter();
 
         mock_api
-            .expect_get_cage()
+            .expect_get_enclave()
             .times(5)
             .returning(move |_| Box::pin(std::future::ready(Err(responses.next().unwrap()))));
         let result = watch_deletion(mock_api, "abc".into(), NonTty).await;
@@ -121,31 +121,31 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_delete_cage_performs_polling_cage_status() {
-        let mut mock_api = MockCageApi::new();
-        mock_api.expect_delete_cage().returning(move |_| {
-            Box::pin(std::future::ready(Ok(DeleteCageResponse {
+    async fn test_delete_enclave_performs_polling_enclave_status() {
+        let mut mock_api = MockEnclaveApi::new();
+        mock_api.expect_delete_enclave().returning(move |_| {
+            Box::pin(std::future::ready(Ok(DeleteEnclaveResponse {
                 uuid: "abc".into(),
                 name: "def".into(),
                 team_uuid: "team".into(),
                 app_uuid: "app".into(),
-                domain: "cage.com".into(),
-                state: CageState::Deleting,
+                domain: "enclave.com".into(),
+                state: EnclaveState::Deleting,
                 created_at: "".into(),
                 updated_at: "".into(),
             })))
         });
 
         let mut responses = vec![
-            Ok(build_get_cage_response(CageState::Deleting, vec![])),
-            Ok(build_get_cage_response(CageState::Deleting, vec![])),
+            Ok(build_get_enclave_response(EnclaveState::Deleting, vec![])),
+            Ok(build_get_enclave_response(EnclaveState::Deleting, vec![])),
             Err(ApiError::new(api::client::ApiErrorKind::Internal)),
-            Ok(build_get_cage_response(CageState::Deleted, vec![])),
+            Ok(build_get_enclave_response(EnclaveState::Deleted, vec![])),
         ]
         .into_iter();
 
         mock_api
-            .expect_get_cage()
+            .expect_get_enclave()
             .times(4)
             .returning(move |_| Box::pin(std::future::ready(responses.next().unwrap())));
         let result = watch_deletion(mock_api, "abc".into(), NonTty).await;

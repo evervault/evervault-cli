@@ -1,23 +1,23 @@
 use crate::api;
 use crate::api::AuthMode;
 use crate::common::CliError;
-use crate::config::CageConfig;
+use crate::config::EnclaveConfig;
 use crate::get_api_key;
 use crate::logs::get_logs;
 use crate::version::check_version;
 
 use clap::Parser;
 
-/// Pull the logs for a Cage
+/// Pull the logs for an Enclave
 #[derive(Debug, Parser)]
 #[clap(name = "logs", about)]
 pub struct LogArgs {
-    /// Uuid of the Cage show logs for. If not supplied, the CLI will look for a local cage.toml
-    #[clap(long = "cage-uuid")]
-    pub cage_uuid: Option<String>,
+    /// Uuid of the Enclave show logs for. If not supplied, the CLI will look for a local enclave.toml
+    #[clap(long = "enclave-uuid")]
+    pub enclave_uuid: Option<String>,
 
-    /// Path to the toml file containing the Cage's config
-    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    /// Path to the toml file containing the Enclave's config
+    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 
     /// The start time in epoch milliseconds
@@ -37,22 +37,22 @@ pub async fn run(log_args: LogArgs) -> i32 {
     };
 
     let api_key = get_api_key!();
-    let cages_client = api::cage::CagesClient::new(AuthMode::ApiKey(api_key));
+    let enclave_client = api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key));
 
-    let cage_uuid = match log_args.cage_uuid.clone() {
-        Some(cage_uuid) => cage_uuid,
+    let enclave_uuid = match log_args.enclave_uuid.clone() {
+        Some(enclave_uuid) => enclave_uuid,
         None => {
-            let cage_uuid = match CageConfig::try_from_filepath(&log_args.config) {
+            let enclave_uuid = match EnclaveConfig::try_from_filepath(&log_args.config) {
                 Ok(config) => config.uuid,
                 Err(e) => {
-                    log::error!("An error occurred while resolving your Cage toml.\n\nPlease make sure you have a cage.toml file in the current directory, or have supplied a path with the --config flag.");
+                    log::error!("An error occurred while resolving your Enclave toml.\n\nPlease make sure you have a enclave.toml file in the current directory, or have supplied a path with the --config flag.");
                     return e.exitcode();
                 }
             };
-            match cage_uuid {
+            match enclave_uuid {
                 Some(uuid) => uuid,
                 None => {
-                    log::error!("Cage uuid is missing from toml");
+                    log::error!("Enclave uuid is missing from toml");
                     return exitcode::DATAERR;
                 }
             }
@@ -62,8 +62,8 @@ pub async fn run(log_args: LogArgs) -> i32 {
     match get_logs(
         log_args.start_time,
         log_args.end_time,
-        cage_uuid,
-        cages_client,
+        enclave_uuid,
+        enclave_client,
     )
     .await
     {

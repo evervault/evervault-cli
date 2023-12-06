@@ -1,13 +1,13 @@
 use crate::cert::{self, DistinguishedName};
 use crate::common::CliError;
-use crate::config::CageConfig;
+use crate::config::EnclaveConfig;
 use crate::get_api_key;
 use crate::version::check_version;
 use atty::Stream;
 use clap::{Parser, Subcommand};
 use exitcode::DATAERR;
 
-/// Manage Cage signing certificates
+/// Manage Enclave signing certificates
 #[derive(Debug, Parser)]
 #[clap(name = "cert", about)]
 pub struct CertArgs {
@@ -17,13 +17,13 @@ pub struct CertArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum CertCommands {
-    /// Create a new Cage signing certificate
+    /// Create a new Enclave signing certificate
     #[clap()]
     New(NewCertArgs),
-    /// Upload a cage signing certificate's metadata to Evervault
+    /// Upload a enclave signing certificate's metadata to Evervault
     #[clap()]
     Upload(UploadCertArgs),
-    /// Lock a cage to specific signing certificate. Cage deployment will fail if the signing certificate is not the one specified.
+    /// Lock a enclave to specific signing certificate. Enclave deployment will fail if the signing certificate is not the one specified.
     #[clap()]
     Lock(LockCertArgs),
 }
@@ -35,7 +35,7 @@ pub struct NewCertArgs {
     #[clap(short = 'o', long = "output", default_value = ".")]
     pub output_dir: String,
 
-    /// Defining the certificate distinguished name e.g. "/CN=EV/C=IE/ST=LEI/L=DUB/O=Evervault/OU=Eng". If not given, a generic Cages subject will be used.
+    /// Defining the certificate distinguished name e.g. "/CN=EV/C=IE/ST=LEI/L=DUB/O=Evervault/OU=Eng". If not given, a generic Enclaves subject will be used.
     #[clap(long = "subj")]
     pub subject: Option<String>,
 }
@@ -51,16 +51,16 @@ pub struct UploadCertArgs {
     #[clap(long = "name")]
     pub name: String,
 
-    /// Path to cage.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    /// Path to enclave.toml config file
+    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 }
 
 #[derive(Parser, Debug)]
 #[clap(name = "lock", about)]
 pub struct LockCertArgs {
-    /// Path to cage.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    /// Path to enclave.toml config file
+    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 }
 
@@ -110,18 +110,18 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
 
             let cert_path = match upload_args.cert_path {
                 Some(cert_path) => cert_path,
-                None => match CageConfig::try_from_filepath(&upload_args.config) {
-                    Ok(cage_config) => match cage_config.signing {
+                None => match EnclaveConfig::try_from_filepath(&upload_args.config) {
+                    Ok(enclave_config) => match enclave_config.signing {
                         Some(signing_info) if signing_info.cert.is_some() => {
                             signing_info.cert.unwrap()
                         }
                         _ => {
-                            log::error!("No signing info found in cage.toml");
+                            log::error!("No signing info found in enclave.toml");
                             return DATAERR;
                         }
                     },
                     Err(e) => {
-                        log::error!("An error occurred while reading cage.toml - {e}");
+                        log::error!("An error occurred while reading enclave.toml - {e}");
                         return e.exitcode();
                     }
                 },
@@ -152,22 +152,24 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
         CertCommands::Lock(lock_cert_args) => {
             let api_key = get_api_key!();
 
-            let (cage_uuid, cage_name) = match CageConfig::try_from_filepath(&lock_cert_args.config)
-            {
-                Ok(cage_config) => match (cage_config.uuid, cage_config.name) {
-                    (Some(uuid), name) => (uuid, name),
-                    _ => {
-                        log::error!("No cage details found in cage.toml");
+            let (enclave_uuid, enclave_name) =
+                match EnclaveConfig::try_from_filepath(&lock_cert_args.config) {
+                    Ok(enclave_config) => match (enclave_config.uuid, enclave_config.name) {
+                        (Some(uuid), name) => (uuid, name),
+                        _ => {
+                            log::error!("No enclave details found in enclave.toml");
+                            return DATAERR;
+                        }
+                    },
+                    Err(_) => {
+                        log::error!("Failed to load enclave configuration");
                         return DATAERR;
                     }
-                },
-                Err(_) => {
-                    log::error!("Failed to load cage configuration");
-                    return DATAERR;
-                }
-            };
+                };
 
-            if let Err(e) = cert::lock_cage_to_certs(&api_key, &cage_uuid, &cage_name).await {
+            if let Err(e) =
+                cert::lock_enclave_to_certs(&api_key, &enclave_uuid, &enclave_name).await
+            {
                 return e.exitcode();
             }
         }

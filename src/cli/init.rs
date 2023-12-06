@@ -1,16 +1,18 @@
 use crate::api;
-use crate::api::cage::CreateCageRequest;
+use crate::api::enclave::CreateEnclaveRequest;
 use crate::api::{
-    cage::{Cage, CageApi},
+    enclave::{Enclave, EnclaveApi},
     AuthMode,
 };
 use crate::common::CliError;
-use crate::config::{default_dockerfile, CageConfig, EgressSettings, ScalingSettings, SigningInfo};
+use crate::config::{
+    default_dockerfile, EgressSettings, EnclaveConfig, ScalingSettings, SigningInfo,
+};
 use crate::get_api_key;
 use crate::version::check_version;
 use clap::{ArgGroup, Parser};
 
-/// Initialize a Cage.toml in the current directory
+/// Initialize an Enclave.toml in the current directory
 #[derive(Debug, Parser)]
 #[clap(name = "init", about)]
 #[clap(group(
@@ -24,31 +26,31 @@ use clap::{ArgGroup, Parser};
     .requires("cert-path")
 ))]
 pub struct InitArgs {
-    /// Directory to write the Cage toml to. Defaults to the current directory.
+    /// Directory to write the Enclave toml to. Defaults to the current directory.
     #[clap(short = 'o', long = "output", default_value = ".")]
     pub output_dir: String,
 
-    /// Name of Cage to deploy
+    /// Name of Enclave to deploy
     #[clap(long = "name")]
-    pub cage_name: String,
+    pub enclave_name: String,
 
-    /// Debug setting for the Cage
+    /// Debug setting for the Enclave
     #[clap(long = "debug")]
     pub debug: bool,
 
-    /// Flag to enable egress on your Cage
+    /// Flag to enable egress on your Enclave
     #[clap(long = "egress")]
     pub egress: bool,
 
-    /// Dockerfile to build the Cage
+    /// Dockerfile to build the Enclave
     #[clap(short = 'f', long = "file")]
     pub dockerfile: Option<String>,
 
-    /// Path to the signing cert to use for the Cage. If provided, the private-key must also be set.
+    /// Path to the signing cert to use for the Enclave. If provided, the private-key must also be set.
     #[clap(long = "signing-cert")]
     pub cert_path: Option<String>,
 
-    /// Path to the signing key to use for the Cage. If provided, the signing-cert must also be set.
+    /// Path to the signing key to use for the Enclave. If provided, the signing-cert must also be set.
     #[clap(long = "private-key")]
     pub key_path: Option<String>,
 
@@ -56,15 +58,15 @@ pub struct InitArgs {
     #[clap(long = "disable-tls-termination")]
     pub disable_tls_termination: bool,
 
-    /// Disable API key auth for your Cage
+    /// Disable API key auth for your Enclave
     #[clap(long = "disable-api-key-auth")]
     pub disable_api_key_auth: bool,
 
-    /// Disable transaction logging in your Cage
+    /// Disable transaction logging in your Enclave
     #[clap(long = "disable-trx-logging")]
     pub trx_logging_disabled: bool,
 
-    /// Flag to make your Cage delete after 6 hours
+    /// Flag to make your Enclave delete after 6 hours
     #[clap(long = "self-destruct")]
     pub is_time_bound: bool,
 
@@ -76,7 +78,7 @@ pub struct InitArgs {
     #[clap(long = "forward-proxy-protocol")]
     pub forward_proxy_protocol: bool,
 
-    /// Trusted headers sent into the Cage will be persisted without redaction in the Cage's transaction logs
+    /// Trusted headers sent into the Enclave will be persisted without redaction in the Enclave's transaction logs
     #[clap(long = "trusted_headers")]
     pub trusted_headers: Option<String>,
 
@@ -84,12 +86,12 @@ pub struct InitArgs {
     #[clap(long = "healthcheck")]
     pub healthcheck: Option<String>,
 
-    /// The desired number of instances for your cage to use. Default is 2.
+    /// The desired number of instances for your Enclave to use. Default is 2.
     #[clap(long = "desired_replicas")]
     pub desired_replicas: Option<u32>,
 }
 
-impl std::convert::From<InitArgs> for CageConfig {
+impl std::convert::From<InitArgs> for EnclaveConfig {
     fn from(val: InitArgs) -> Self {
         let signing_info = if val.cert_path.is_none() && val.key_path.is_none() {
             None
@@ -100,8 +102,8 @@ impl std::convert::From<InitArgs> for CageConfig {
             })
         };
 
-        CageConfig {
-            name: val.cage_name,
+        EnclaveConfig {
+            name: val.enclave_name,
             uuid: None,
             app_uuid: None,
             team_uuid: None,
@@ -136,38 +138,38 @@ pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
     };
 
     let api_key = get_api_key!();
-    let cages_client = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.clone()));
+    let enclave_client = api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key.clone()));
 
-    let create_cage_request =
-        CreateCageRequest::new(init_args.cage_name.clone(), init_args.is_time_bound);
-    let created_cage = match cages_client.create_cage(create_cage_request).await {
-        Ok(cage_ref) => cage_ref,
+    let create_enclave_request =
+        CreateEnclaveRequest::new(init_args.enclave_name.clone(), init_args.is_time_bound);
+    let created_enclave = match enclave_client.create_enclave(create_enclave_request).await {
+        Ok(enclave_ref) => enclave_ref,
         Err(e) => {
-            log::error!("Error creating Cage record — {e:?}");
+            log::error!("Error creating Enclave record — {e:?}");
             return e.exitcode();
         }
     };
 
-    init_local_config(init_args, created_cage).await
+    init_local_config(init_args, created_enclave).await
 }
 
-async fn init_local_config(init_args: InitArgs, created_cage: Cage) -> exitcode::ExitCode {
+async fn init_local_config(init_args: InitArgs, created_enclave: Enclave) -> exitcode::ExitCode {
     let output_dir = init_args.output_dir.clone();
     let output_path = std::path::Path::new(output_dir.as_str());
-    let config_path = output_path.join("cage.toml");
+    let config_path = output_path.join("enclave.toml");
 
-    let mut initial_config: CageConfig = init_args.into();
-    initial_config.annotate(created_cage);
+    let mut initial_config: EnclaveConfig = init_args.into();
+    initial_config.annotate(created_enclave);
 
     if initial_config.signing.is_none() {
-        log::info!("Generating signing credentials for cage");
+        log::info!("Generating signing credentials for enclave");
         match crate::cert::create_new_cert(output_path, crate::cert::DistinguishedName::default()) {
             Ok((cert_path, key_path)) => {
                 initial_config.set_cert(format!("{}", cert_path.display()));
                 initial_config.set_key(format!("{}", key_path.display()));
             }
             Err(e) => {
-                log::error!("Failed to generate cage signing credentials - {e}");
+                log::error!("Failed to generate enclave signing credentials - {e}");
                 return e.exitcode();
             }
         }
@@ -176,16 +178,16 @@ async fn init_local_config(init_args: InitArgs, created_cage: Cage) -> exitcode:
     let serialized_config = match toml::ser::to_vec(&initial_config) {
         Ok(bytes) => bytes,
         Err(e) => {
-            log::error!("Error serializing cage.toml — {:?}", e);
+            log::error!("Error serializing enclave.toml — {:?}", e);
             return exitcode::SOFTWARE;
         }
     };
 
     if let Err(e) = std::fs::write(config_path, serialized_config) {
-        log::error!("Error writing cage.toml — {:?}", e);
+        log::error!("Error writing enclave.toml — {:?}", e);
         exitcode::IOERR
     } else {
-        log::info!("Cage.toml initialized successfully. You can now deploy a Cage using the deploy command");
+        log::info!("Enclave.toml initialized successfully. You can now deploy an Enclave using the deploy command");
         exitcode::OK
     }
 }
@@ -193,7 +195,7 @@ async fn init_local_config(init_args: InitArgs, created_cage: Cage) -> exitcode:
 #[cfg(test)]
 mod init_tests {
     use super::*;
-    use crate::api::cage::CageState;
+    use crate::api::enclave::EnclaveState;
 
     use std::fs::read;
     use tempfile::TempDir;
@@ -201,19 +203,19 @@ mod init_tests {
     #[tokio::test]
     async fn init_local_config_test() {
         let output_dir = TempDir::new().unwrap();
-        let sample_cage = Cage {
+        let sample_enclave = Enclave {
             uuid: "1234".into(),
-            name: "hello-cage".into(),
+            name: "hello-enclave".into(),
             team_uuid: "1234".into(),
             app_uuid: "1234".into(),
             domain: "hello.com".into(),
-            state: CageState::Pending,
+            state: EnclaveState::Pending,
             created_at: "00:00:00".into(),
             updated_at: "00:00:00".into(),
         };
         let init_args = InitArgs {
             output_dir: output_dir.path().to_str().unwrap().to_string(),
-            cage_name: "hello".to_string(),
+            enclave_name: "hello".to_string(),
             debug: false,
             egress: true,
             desired_replicas: Some(2),
@@ -229,8 +231,8 @@ mod init_tests {
             trusted_headers: Some("X-Evervault-*".to_string()),
             healthcheck: None,
         };
-        init_local_config(init_args, sample_cage).await;
-        let config_path = output_dir.path().join("cage.toml");
+        init_local_config(init_args, sample_enclave).await;
+        let config_path = output_dir.path().join("enclave.toml");
         assert!(config_path.exists());
         let config_content = String::from_utf8(read(config_path).unwrap()).unwrap();
         let expected_config_content = r#"name = "hello"

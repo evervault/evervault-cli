@@ -1,6 +1,6 @@
 use crate::version::check_version;
 use crate::{
-    config::CageConfig,
+    config::EnclaveConfig,
     encrypt::{self, EncryptError},
 };
 use clap::Parser;
@@ -30,8 +30,8 @@ pub struct EncryptArgs {
     #[clap(long = "app_uuid")]
     pub app_uuid: Option<String>,
 
-    /// Path to cage.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    /// Path to enclave.toml config file
+    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 }
 
@@ -41,7 +41,7 @@ pub async fn run(encrypt_args: EncryptArgs) -> exitcode::ExitCode {
         return exitcode::SOFTWARE;
     };
 
-    let (team_uuid, app_uuid) = match get_cage_details(encrypt_args.clone()) {
+    let (team_uuid, app_uuid) = match get_enclave_details(encrypt_args.clone()) {
         Ok((team_uuid, app_uuid)) => (team_uuid, app_uuid),
         Err(e) => {
             log::error!("Config error {e}");
@@ -60,16 +60,16 @@ pub async fn run(encrypt_args: EncryptArgs) -> exitcode::ExitCode {
     }
 }
 
-fn get_cage_details(encrypt_args: EncryptArgs) -> Result<(String, String), EncryptError> {
+fn get_enclave_details(encrypt_args: EncryptArgs) -> Result<(String, String), EncryptError> {
     if encrypt_args.team_uuid.is_none() || encrypt_args.app_uuid.is_none() {
-        let cage_config = CageConfig::try_from_filepath(&encrypt_args.config)?;
+        let enclave_config = EnclaveConfig::try_from_filepath(&encrypt_args.config)?;
 
-        if cage_config.app_uuid.is_none() || cage_config.team_uuid.is_none() {
+        if enclave_config.app_uuid.is_none() || enclave_config.team_uuid.is_none() {
             Err(EncryptError::MissingUuid)
         } else {
             Ok((
-                cage_config.team_uuid.unwrap(),
-                cage_config.app_uuid.unwrap(),
+                enclave_config.team_uuid.unwrap(),
+                enclave_config.app_uuid.unwrap(),
             ))
         }
     } else {

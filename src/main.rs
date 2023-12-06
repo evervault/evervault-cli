@@ -3,20 +3,20 @@ use clap::{AppSettings, Parser};
 use env_logger::fmt::Formatter;
 use env_logger::{Builder, Env};
 #[cfg(not(target_os = "windows"))]
-use ev_cage::cli::attest;
-use ev_cage::cli::{
+use ev_enclave::cli::attest;
+use ev_enclave::cli::{
     build, cert, delete, deploy, describe, init, list, logs, restart, scale, update, Command,
 };
 
 #[cfg(feature = "internal_dependency")]
-use ev_cage::cli::{dev, encrypt, env};
+use ev_enclave::cli::{dev, encrypt, env};
 use human_panic::setup_panic;
 use log::Record;
 use std::io::Write;
 
 #[derive(Debug, Parser)]
 #[clap(
-    name = "Evervault Cage CLI",
+    name = "Evervault Enclave CLI",
     author = "engineering@evervault.com",
     version,
     setting = AppSettings::ArgRequiredElseHelp,
@@ -103,9 +103,9 @@ fn setup_logger(verbose_logging: bool) {
         .format_module_path(false)
         .format_target(false);
     if verbose_logging {
-        builder.filter(Some("ev-cage"), log::LevelFilter::Debug);
+        builder.filter(Some("ev-enclave"), log::LevelFilter::Debug);
     } else {
-        builder.filter(Some("ev-cage"), log::LevelFilter::Info);
+        builder.filter(Some("ev-enclave"), log::LevelFilter::Info);
     }
     builder.format(log_formatter).init();
 }

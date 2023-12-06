@@ -6,15 +6,15 @@ use crate::docker::command::get_source_date_epoch;
 use crate::version::check_version;
 use clap::Parser;
 
-/// Build a Cage from a Dockerfile
+/// Build an Enclave from a Dockerfile
 #[derive(Parser, Debug)]
 #[clap(name = "build", about)]
 pub struct BuildArgs {
-    /// Path to cage.toml config file. This can be generated using the init command
-    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    /// Path to enclave.toml config file. This can be generated using the init command
+    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 
-    /// Path to Dockerfile for Cage. Will override any dockerfile specified in the .toml file.
+    /// Path to Dockerfile for Enclave. Will override any dockerfile specified in the .toml file.
     #[clap(short = 'f', long = "file")]
     pub dockerfile: Option<String>,
 
@@ -79,11 +79,11 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         return exitcode::SOFTWARE;
     };
 
-    let (mut cage_config, validated_config) =
+    let (mut enclave_config, validated_config) =
         match read_and_validate_config(&build_args.config, &build_args) {
             Ok(config) => config,
             Err(e) => {
-                log::error!("Failed to read cage config from file system — {e}");
+                log::error!("Failed to read enclave config from file system — {e}");
                 return e.exitcode();
             }
         };
@@ -93,8 +93,8 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         .as_ref()
         .map(|args| args.iter().map(AsRef::as_ref).collect());
 
-    let cage_build_assets_client = AssetsClient::new();
-    let data_plane_version = match cage_build_assets_client.get_data_plane_version().await {
+    let enclave_build_assets_client = AssetsClient::new();
+    let data_plane_version = match enclave_build_assets_client.get_data_plane_version().await {
         Ok(version) => version,
         Err(e) => {
             log::error!("Failed to retrieve the latest data plane version - {e:?}");
@@ -102,7 +102,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         }
     };
 
-    let installer_version = match cage_build_assets_client.get_installer_version().await {
+    let installer_version = match enclave_build_assets_client.get_installer_version().await {
         Ok(version) => version,
         Err(e) => {
             log::error!("Failed to retrieve the latest installer version - {e:?}");
@@ -136,11 +136,11 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         }
     };
 
-    cage_config.set_attestation(built_enclave.measurements());
-    cage_config.set_runtime_info(runtime_info);
-    crate::common::save_cage_config(&cage_config, &build_args.config);
+    enclave_config.set_attestation(built_enclave.measurements());
+    enclave_config.set_runtime_info(runtime_info);
+    crate::common::save_enclave_config(&enclave_config, &build_args.config);
 
-    if cage_config.debug {
+    if enclave_config.debug {
         crate::common::log_debug_mode_attestation_warning();
     }
 
