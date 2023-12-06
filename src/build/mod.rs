@@ -453,9 +453,9 @@ mod test {
                 destinations: None,
                 ports: Some(vec!["433".to_string()]),
             },
-            scaling: ScalingSettings {
+            scaling: Some(ScalingSettings {
                 desired_replicas: 2,
-            },
+            }),
             attestation: None,
             signing: ValidatedSigningInfo {
                 cert: "".into(),
