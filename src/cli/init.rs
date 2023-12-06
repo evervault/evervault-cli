@@ -68,10 +68,6 @@ pub struct InitArgs {
     #[clap(long = "self-destruct")]
     pub is_time_bound: bool,
 
-    /// Comma separated list of ports to allow egress on (e.g. 443,465,998), default port is 443 if none are supplied
-    #[clap(long = "egress-ports")]
-    pub egress_ports: Option<String>,
-
     /// Comma separated list of destinations to allow traffic to from the enclave e.g api.evervault.com, default is allow all
     #[clap(long = "egress-destinations")]
     pub egress_destinations: Option<String>,
@@ -110,11 +106,8 @@ impl std::convert::From<InitArgs> for CageConfig {
             app_uuid: None,
             team_uuid: None,
             debug: val.debug,
-            egress: EgressSettings::new(
-                convert_comma_list(val.egress_ports),
-                convert_comma_list(val.egress_destinations),
-                val.egress,
-            ),
+
+            egress: EgressSettings::new(convert_comma_list(val.egress_destinations), val.egress),
             scaling: val
                 .desired_replicas
                 .map(|desired_replicas| ScalingSettings { desired_replicas }),
@@ -231,7 +224,6 @@ mod init_tests {
             is_time_bound: false,
             disable_api_key_auth: false,
             trx_logging_disabled: false,
-            egress_ports: Some("443".to_string()),
             egress_destinations: Some("evervault.com".to_string()),
             forward_proxy_protocol: false,
             trusted_headers: Some("X-Evervault-*".to_string()),
@@ -256,7 +248,6 @@ trusted_headers = ["X-Evervault-*"]
 [egress]
 enabled = true
 destinations = ["evervault.com"]
-ports = ["443"]
 
 [scaling]
 desired_replicas = 2

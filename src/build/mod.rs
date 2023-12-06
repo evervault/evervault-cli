@@ -215,10 +215,6 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             |entrypoint| build_user_service(entrypoint, wait_for_env, last_user, user_env_vars),
         )?;
 
-    if let Some(true) = exposed_port.map(|port| port == 443) {
-        return Err(DockerError::RestrictedPortExposed(exposed_port.unwrap()).into());
-    }
-
     let ev_domain = std::env::var("EV_DOMAIN").unwrap_or_else(|_| String::from("evervault.com"));
 
     let data_plane_url = format!(
@@ -234,25 +230,6 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         data_plane_run_script = format!("{data_plane_run_script} {port}");
     }
 
-    let bootstrap_script_content = r#"ifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service"#;
-
-    let installer_bundle_url = format!(
-        "https://cage-build-assets.{}/installer/{}.tar.gz",
-        ev_domain, installer_version
-    );
-    let installer_bundle = "runtime-dependencies.tar.gz";
-    let installer_destination = format!("{INSTALLER_DIRECTORY}/{installer_bundle}");
-
-    let egress = build_config.clone().egress;
-    let egress_settings = if egress.is_enabled() {
-        json!({
-            "ports": &egress.clone().get_ports(),
-            "allow_list": &egress.clone().get_destinations()
-        })
-    } else {
-        json!({})
-    };
-
     let mut dataplane_info = json!({
         "api_key_auth":  &build_config.api_key_auth(),
         "trx_logging_enabled": &build_config.trx_logging_enabled(),
@@ -260,9 +237,29 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         "trusted_headers": build_config.trusted_headers(),
     });
 
-    if egress.enabled {
-        dataplane_info["egress"] = egress_settings;
-    }
+    let egress = build_config.clone().egress;
+    let egress_config = if egress.is_enabled() {
+        dataplane_info["egress"] = json!({
+            "allow_list": &egress.clone().get_destinations()
+        });
+        r#"iptables -A OUTPUT -t nat -p tcp --dport 443 ! -d 127.0.0.1  -j DNAT --to-destination 127.0.0.1:4444\nip route add default via 127.0.0.1 dev lo\niptables -t nat -A POSTROUTING -o lo -s 0.0.0.0 -j SNAT --to-source 127.0.0.1\n"#
+    } else {
+        ""
+    };
+
+    let loopback_config = r#"ifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \n"#;
+
+    let bootstrap_script = r#"echo \"Booting enclave...\"\nexec runsvdir /etc/service"#;
+
+    let bootstrap_script_content =
+        format!("{}{}{}", loopback_config, egress_config, bootstrap_script);
+
+    let installer_bundle_url = format!(
+        "https://cage-build-assets.{}/installer/{}.tar.gz",
+        ev_domain, installer_version
+    );
+    let installer_bundle = "runtime-dependencies.tar.gz";
+    let installer_destination = format!("{INSTALLER_DIRECTORY}/{installer_bundle}");
 
     if let Some(healthcheck) = build_config.healthcheck.as_deref() {
         dataplane_info["healthcheck"] = json!(healthcheck);
@@ -303,7 +300,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         injected_directives,
         vec![Directive::new_run(
             crate::docker::utils::write_command_to_script(
-                bootstrap_script_content,
+                &bootstrap_script_content,
                 "/bootstrap",
                 &[],
             ),
@@ -428,7 +425,7 @@ pub fn build_user_service(
 
 #[cfg(test)]
 mod test {
-    use super::{process_dockerfile, BuildError};
+    use super::process_dockerfile;
     use crate::cert::CertValidityPeriod;
     use crate::config::EgressSettings;
     use crate::config::ScalingSettings;
@@ -440,7 +437,7 @@ mod test {
     use std::iter::zip;
     use tempfile::TempDir;
 
-    fn get_config() -> ValidatedCageBuildConfig {
+    fn get_config(egress_enabled: bool) -> ValidatedCageBuildConfig {
         ValidatedCageBuildConfig {
             cage_name: "test".into(),
             cage_uuid: "1234".into(),
@@ -449,9 +446,8 @@ mod test {
             app_uuid: "3241".into(),
             dockerfile: "".into(),
             egress: EgressSettings {
-                enabled: false,
+                enabled: egress_enabled,
                 destinations: None,
-                ports: Some(vec!["433".to_string()]),
             },
             scaling: Some(ScalingSettings {
                 desired_replicas: 2,
@@ -484,7 +480,7 @@ RUN touch /hello-script;\
 ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut readable_contents = sample_dockerfile_contents.as_bytes();
 
-        let config = get_config();
+        let config = get_config(false);
 
         let data_plane_version = "0.0.0".to_string();
         let installer_version = "abcdef".to_string();
@@ -547,7 +543,7 @@ RUN touch /hello-script;\
 ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut readable_contents = sample_dockerfile_contents.as_bytes();
 
-        let config = get_config();
+        let config = get_config(false);
 
         let data_plane_version = "0.0.0".to_string();
         let installer_version = "abcdef".to_string();
@@ -612,7 +608,7 @@ RUN touch /hello-script;\
 ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut readable_contents = sample_dockerfile_contents.as_bytes();
 
-        let config = get_config();
+        let config = get_config(false);
 
         let data_plane_version = "0.0.0".to_string();
         let installer_version = "abcdef".to_string();
@@ -676,7 +672,7 @@ RUN touch /hello-script;\
 ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut readable_contents = sample_dockerfile_contents.as_bytes();
 
-        let config = get_config();
+        let config = get_config(false);
 
         let data_plane_version = "0.0.0".to_string();
         let installer_version = "abcdef".to_string();
@@ -727,38 +723,6 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
     }
 
     #[tokio::test]
-    async fn test_process_dockerfile_with_restricted_reserved_port() {
-        let sample_dockerfile_contents = r#"FROM alpine
-
-RUN touch /hello-script;\
-    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
-EXPOSE 443
-ENTRYPOINT ["sh", "/hello-script"]"#;
-        let mut readable_contents = sample_dockerfile_contents.as_bytes();
-
-        let config = get_config();
-
-        let data_plane_version = "0.0.0".to_string();
-        let installer_version = "abcdef".to_string();
-        let processed_file = process_dockerfile(
-            &config,
-            &mut readable_contents,
-            data_plane_version,
-            installer_version,
-            false,
-        )
-        .await;
-        assert_eq!(processed_file.is_err(), true);
-
-        assert!(matches!(
-            processed_file,
-            Err(BuildError::DockerError(
-                crate::docker::error::DockerError::RestrictedPortExposed(443)
-            ))
-        ));
-    }
-
-    #[tokio::test]
     async fn test_process_dockerfile_with_valid_reserved_port() {
         let sample_dockerfile_contents = r#"FROM alpine
 
@@ -768,7 +732,7 @@ EXPOSE 3443
 ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut readable_contents = sample_dockerfile_contents.as_bytes();
 
-        let mut config: ValidatedCageBuildConfig = get_config();
+        let mut config: ValidatedCageBuildConfig = get_config(false);
         config.healthcheck = Some("/health".into());
 
         let data_plane_version = "0.0.0".to_string();
@@ -829,7 +793,7 @@ EXPOSE 3443
 ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut readable_contents = sample_dockerfile_contents.as_bytes();
 
-        let config = get_config();
+        let config = get_config(false);
 
         let data_plane_version = "0.0.0".to_string();
         let installer_version = "abcdef".to_string();
@@ -880,6 +844,67 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
     }
 
     #[tokio::test]
+    async fn test_process_dockerfile_with_egress_enabled() {
+        let sample_dockerfile_contents = r#"FROM alpine
+
+USER someuser
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+EXPOSE 3443
+ENTRYPOINT ["sh", "/hello-script"]"#;
+        let mut readable_contents = sample_dockerfile_contents.as_bytes();
+
+        let config = get_config(true);
+
+        let data_plane_version = "0.0.0".to_string();
+        let installer_version = "abcdef".to_string();
+        let processed_file = process_dockerfile(
+            &config,
+            &mut readable_contents,
+            data_plane_version,
+            installer_version,
+            false,
+        )
+        .await;
+        assert_eq!(processed_file.is_ok(), true);
+        let processed_file = processed_file.unwrap();
+
+        let expected_output_contents = r##"FROM alpine
+USER someuser
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+USER root
+RUN mkdir -p /opt/evervault
+ADD https://cage-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
+RUN echo {\"api_key_auth\":true,\"egress\":{\"allow_list\":\"*\"},\"forward_proxy_protocol\":false,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
+RUN mkdir -p /etc/service/user-entrypoint
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_CAGE_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nsu someuser -c 'exec sh /hello-script'\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://cage-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-enabled/tls-termination-enabled /opt/evervault/data-plane
+RUN chmod +x /opt/evervault/data-plane
+RUN mkdir -p /etc/service/data-plane
+RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \niptables -A OUTPUT -t nat -p tcp --dport 443 ! -d 127.0.0.1  -j DNAT --to-destination 127.0.0.1:4444\nip route add default via 127.0.0.1 dev lo\niptables -t nat -A POSTROUTING -o lo -s 0.0.0.0 -j SNAT --to-source 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+ENTRYPOINT ["/bootstrap", "1>&2"]
+"##;
+
+        let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
+            expected_output_contents.as_bytes(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(expected_directives.len(), processed_file.len());
+        for (expected_directive, processed_directive) in
+            zip(expected_directives.iter(), processed_file.iter())
+        {
+            let expected_directive = expected_directive.to_string();
+            let processed_directive = processed_directive.to_string();
+            assert_eq!(expected_directive, processed_directive);
+        }
+    }
+
+    #[tokio::test]
     async fn test_process_dockerfile_with_env_directive() {
         let sample_dockerfile_contents = r#"FROM alpine
 
@@ -892,7 +917,7 @@ EXPOSE 3443
 ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut readable_contents = sample_dockerfile_contents.as_bytes();
 
-        let config = get_config();
+        let config = get_config(false);
 
         let data_plane_version = "0.0.0".to_string();
         let installer_version = "abcdef".to_string();
