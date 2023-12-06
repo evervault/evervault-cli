@@ -279,7 +279,7 @@ pub struct ValidatedCageBuildConfig {
     pub debug: bool,
     pub dockerfile: String,
     pub egress: EgressSettings,
-    pub scaling: ScalingSettings,
+    pub scaling: Option<ScalingSettings>,
     pub signing: ValidatedSigningInfo,
     pub attestation: Option<EIFMeasurements>,
     pub disable_tls_termination: bool,
@@ -467,7 +467,7 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
             (true, true) => Ok(true), // (logging enabled, tls_termination enabled) = logging enabled
         }?;
 
-        let scaling_settings = config.scaling.clone().unwrap_or_default();
+        let scaling_settings = config.scaling.clone();
 
         Ok(ValidatedCageBuildConfig {
             cage_uuid,

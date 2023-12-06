@@ -449,9 +449,9 @@ mod test {
                 enabled: egress_enabled,
                 destinations: None,
             },
-            scaling: ScalingSettings {
+            scaling: Some(ScalingSettings {
                 desired_replicas: 2,
-            },
+            }),
             attestation: None,
             signing: ValidatedSigningInfo {
                 cert: "".into(),
