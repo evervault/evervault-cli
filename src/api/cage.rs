@@ -331,6 +331,7 @@ pub struct CreateCageDeploymentIntentRequest {
     metadata: VersionMetadata,
     #[serde(skip_serializing_if = "Option::is_none")]
     healthcheck: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     desired_replicas: Option<u32>,
 }
 
