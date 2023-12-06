@@ -1,11 +1,7 @@
 on:
   push:
-    paths:
-      - src/**
-      - tests/**
-      - .github/workflows/lint-and-test-cli.yml
-      - Cargo.toml
-name: Lint and Test CLI
+    branches:
+      - main
 
 jobs:
   clippy_check_cli:
@@ -37,3 +33,29 @@ jobs:
         run: cargo clippy
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+
+  get-version:
+    needs: [clippy_check_cli]
+    runs-on: ubuntu-latest
+    outputs:
+      full_version: ${{ steps.get-full-version.outputs.full_version }}
+    steps:
+      - id: get-full-version
+        run: |
+          echo "using sha tag ${GITHUB_SHA::6}"
+          echo ::set-output name=full_version::1.0.0-${GITHUB_SHA::6}
+          
+  build-and-deploy:
+    needs: [get-version]
+    uses: ./.github/workflows/build-and-publish.yml
+    with:
+      stage: 'staging'
+      major-version: '1'
+      full-version: "${{ needs.get-version.outputs.full_version }}"
+      ev-domain: 'evervault.io'
+    secrets:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}
+        aws-cloudfront-distribution-id: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }}
+        evervault-rust-lib-index: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+        evervault-rust-lib-token: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
