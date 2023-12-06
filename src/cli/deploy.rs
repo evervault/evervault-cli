@@ -125,11 +125,15 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         local_replicas.is_some_and(|replicas| config.desired_replicas() != replicas)
     });
 
-    if has_scaling_config_drift && cage_scaling_config.is_some() {
+    // cage scaling config is None - has_scaling_config_drift: false
+    // cage scaling config is Some - local scaling config is None : has_scaling_config_drift: false
+    // cage scaling config is Some - local scaling config is Some - scaling config differs : has_scaling_config_drift: true
+
+    if has_scaling_config_drift {
         let remote_replicas = cage_scaling_config.as_ref().unwrap().desired_replicas();
         let local_replicas_count = local_replicas
             .map(|count| count.to_string())
-            .unwrap_or(String::from("not_set"));
+            .expect("Infallible - checked above");
 
         log::warn!("Remote scaling config differs from local config. This deployment will apply the local config.\n\nCurrent remote replica count: {remote_replicas}\nLocal replica count: {local_replicas_count}\n");
     }
