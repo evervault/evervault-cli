@@ -2,7 +2,10 @@ use chrono::TimeZone;
 use std::fmt::Write;
 use thiserror::Error;
 
-use crate::{api::cage::CagesClient, common::CliError};
+use crate::{
+    api::cage::{CageApi, CagesClient},
+    common::CliError,
+};
 
 #[derive(Debug, Error)]
 pub enum LogsError {

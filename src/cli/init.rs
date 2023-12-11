@@ -1,6 +1,9 @@
 use crate::api;
 use crate::api::cage::CreateCageRequest;
-use crate::api::{cage::Cage, AuthMode};
+use crate::api::{
+    cage::{Cage, CageApi},
+    AuthMode,
+};
 use crate::common::CliError;
 use crate::config::{default_dockerfile, CageConfig, EgressSettings, ScalingSettings, SigningInfo};
 use crate::get_api_key;
