@@ -129,7 +129,6 @@ pub trait HandleResponse {
 #[async_trait]
 impl HandleResponse for ReqwestResult<Response> {
     async fn handle_json_response<T: DeserializeOwned>(self) -> ApiResult<T> {
-        println!("self: {:?}", self);
         match self {
             Ok(res) if res.status().is_success() => res
                 .json()

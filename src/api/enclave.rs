@@ -452,7 +452,7 @@ impl CreateEnclaveRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CreateEnclaveDeploymentIntentResponse {
     signed_url: String,
-    uuid: String,
+    enclave_uuid: String,
     deployment_uuid: String,
     version: u32,
 }
@@ -463,7 +463,7 @@ impl CreateEnclaveDeploymentIntentResponse {
     }
 
     pub fn enclave_uuid(&self) -> &str {
-        &self.uuid
+        &self.enclave_uuid
     }
 
     pub fn deployment_uuid(&self) -> &str {
@@ -754,14 +754,14 @@ impl GetEnclaveResponse {
 pub struct GetEnclaveDeploymentResponse {
     #[serde(flatten)]
     pub deployment: EnclaveDeployment,
-    pub tee_enclave_version: EnclaveVersion,
-    pub tee_enclave_signing_cert: EnclaveSigningCert,
-    pub tee_enclave_regional_deployments: Vec<EnclaveRegionalDeployment>,
+    pub enclave_version: EnclaveVersion,
+    pub enclave_signing_cert: EnclaveSigningCert,
+    pub enclave_regional_deployments: Vec<EnclaveRegionalDeployment>,
 }
 
 impl GetEnclaveDeploymentResponse {
     pub fn is_built(&self) -> bool {
-        matches!(self.tee_enclave_version.build_status, BuildStatus::Ready)
+        matches!(self.enclave_version.build_status, BuildStatus::Ready)
     }
 
     pub fn is_finished(&self) -> bool {
@@ -770,25 +770,25 @@ impl GetEnclaveDeploymentResponse {
 
     //TODO: Handle multi region deployment failures
     pub fn is_failed(&self) -> bool {
-        let build_failed = matches!(self.tee_enclave_version.build_status, BuildStatus::Failed);
+        let build_failed = matches!(self.enclave_version.build_status, BuildStatus::Failed);
         build_failed
             || self
-                .tee_enclave_regional_deployments
+                .enclave_regional_deployments
                 .first()
                 .map(|depl| depl.is_failed())
                 .unwrap_or_default()
     }
 
     pub fn get_failure_reason(&self) -> Option<String> {
-        self.tee_enclave_version.failure_reason.clone().or_else(|| {
-            self.tee_enclave_regional_deployments
+        self.enclave_version.failure_reason.clone().or_else(|| {
+            self.enclave_regional_deployments
                 .first()
                 .map(|depl| depl.get_failure_reason())
         })
     }
 
     pub fn get_detailed_status(&self) -> Option<String> {
-        self.tee_enclave_regional_deployments
+        self.enclave_regional_deployments
             .first()
             .map(|depl| depl.get_detailed_status())
     }
@@ -939,9 +939,9 @@ mod test {
         let cert = get_testing_cert();
         let deployment_with_empty_regional = GetEnclaveDeploymentResponse {
             deployment,
-            tee_enclave_version: version,
-            tee_enclave_signing_cert: cert,
-            tee_enclave_regional_deployments: vec![],
+            enclave_version: version,
+            enclave_signing_cert: cert,
+            enclave_regional_deployments: vec![],
         };
 
         assert!(deployment_with_empty_regional
@@ -963,9 +963,9 @@ mod test {
         let detailed_failure_reason = "Insufficient capacity".to_string();
         let deployment_with_regional = GetEnclaveDeploymentResponse {
             deployment,
-            tee_enclave_version: version,
-            tee_enclave_signing_cert: cert,
-            tee_enclave_regional_deployments: vec![EnclaveRegionalDeployment {
+            enclave_version: version,
+            enclave_signing_cert: cert,
+            enclave_regional_deployments: vec![EnclaveRegionalDeployment {
                 uuid: "abc".to_string(),
                 deployment_uuid: "def".to_string(),
                 deployment_order: 1,

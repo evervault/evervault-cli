@@ -81,7 +81,7 @@ pub fn build_get_enclave_deployment(
             started_at: started_at.clone(),
             completed_at: completed_at.clone(),
         },
-        tee_enclave_version: EnclaveVersion {
+        enclave_version: EnclaveVersion {
             uuid: "".into(),
             version: 0,
             control_plane_img_url: Some("".into()),
@@ -92,7 +92,7 @@ pub fn build_get_enclave_deployment(
             started_at: started_at.clone(),
             healthcheck: None,
         },
-        tee_enclave_signing_cert: EnclaveSigningCert {
+        enclave_signing_cert: EnclaveSigningCert {
             name: Some("".into()),
             uuid: "".into(),
             app_uuid: "".into(),
@@ -100,7 +100,7 @@ pub fn build_get_enclave_deployment(
             not_before: None,
             not_after: None,
         },
-        tee_enclave_regional_deployments: vec![EnclaveRegionalDeployment {
+        enclave_regional_deployments: vec![EnclaveRegionalDeployment {
             uuid: "".into(),
             deployment_uuid: "".into(),
             deployment_order: 0,
