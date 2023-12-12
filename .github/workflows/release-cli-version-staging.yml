@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - main
+      - release/v0
 
 jobs:
   clippy_check_cli:
@@ -38,20 +39,28 @@ jobs:
     needs: [clippy_check_cli]
     runs-on: ubuntu-latest
     outputs:
-      full_version: ${{ steps.get-full-version.outputs.full_version }}
+      major-version: ${{ steps.get-major.outputs.major-version }}
+      full-version: ${{ steps.get-full-version.outputs.full-version }}
     steps:
+      - id: get-major
+        run: |
+          MAJOR=$(cargo metadata --no-deps | jq -r '.packages[] | select(.name == "ev-cage") | .version[0:1]')
+          echo "major-version=$MAJOR" >> "$GITHUB_OUTPUT"
+
       - id: get-full-version
+        env:
+          MAJOR: ${{ steps.get-major.outputs.major-version }}
         run: |
           echo "using sha tag ${GITHUB_SHA::6}"
-          echo ::set-output name=full_version::1.0.0-${GITHUB_SHA::6}
+          echo "full-version=$MAJOR.0.0-${GITHUB_SHA::6}" >> "$GITHUB_OUTPUT"
           
   build-and-deploy:
     needs: [get-version]
     uses: ./.github/workflows/build-and-publish.yml
     with:
       stage: 'staging'
-      major-version: '1'
-      full-version: "${{ needs.get-version.outputs.full_version }}"
+      major-version: "${{ needs.get-version.outputs.major-version }}" 
+      full-version: "${{ needs.get-version.outputs.full-version }}"
       ev-domain: 'evervault.io'
     secrets:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}
