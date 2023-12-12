@@ -1,9 +1,9 @@
 #!/bin/sh
 set -eu
 
-EV_DOWNLOAD_Darwin_universal="https://cage-build-assets.evervault.com/cli/{{major}}/{{version}}/x86_64-apple-darwin/ev-cage.tar.gz"
-EV_DOWNLOAD_Windows_x86_64="https://cage-build-assets.evervault.com/cli/{{major}}/{{version}}/x86_64-pc-windows-msvc/ev-cage.tar.gz"
-EV_DOWNLOAD_Linux_x86_64="https://cage-build-assets.evervault.com/cli/{{major}}/{{version}}/x86_64-unknown-linux-musl/ev-cage.tar.gz"
+EV_DOWNLOAD_Darwin_universal="https://cage-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-apple-darwin/ev-cage.tar.gz"
+EV_DOWNLOAD_Windows_x86_64="https://cage-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-pc-windows-msvc/ev-cage.tar.gz"
+EV_DOWNLOAD_Linux_x86_64="https://cage-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-unknown-linux-musl/ev-cage.tar.gz"
 
 VERSION="{{version}}"
 PLATFORM=`uname -s`

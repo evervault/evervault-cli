@@ -6,6 +6,7 @@ on:
       - .github/workflows/lint-and-test-cli.yml
       - Cargo.toml
 name: Lint and Test CLI
+
 jobs:
   clippy_check_cli:
     runs-on: ubuntu-latest
