@@ -6,7 +6,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum RestartError {
-    #[error("An error occurred while reading the enclave config — {0}")]
+    #[error("An error occurred while reading the Enclave config — {0}")]
     EnclaveConfigError(#[from] crate::config::EnclaveConfigError),
     #[error("No Enclave Uuid given. You can provide one by using either the --enclave-uuid flag, or using the --config flag to point to an Enclave.toml")]
     MissingUuid,
@@ -39,7 +39,7 @@ pub async fn restart_enclave(
         _ => return Err(RestartError::MissingUuid),
     };
 
-    println!("Restarting enclave {}...", enclave_uuid);
+    println!("Restarting Enclave {}...", enclave_uuid);
 
     Ok(enclave_api.restart_enclave(&enclave_uuid).await?)
 }

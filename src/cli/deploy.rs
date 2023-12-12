@@ -35,11 +35,11 @@ pub struct DeployArgs {
     #[clap(default_value = ".")]
     pub context_path: String,
 
-    /// Certificate used to sign the enclave image file
+    /// Certificate used to sign the Enclave image file
     #[clap(long = "signing-cert")]
     pub certificate: Option<String>,
 
-    /// Private key used to sign the enclave image file
+    /// Private key used to sign the Enclave image file
     #[clap(long = "private-key")]
     pub private_key: Option<String>,
 
@@ -51,7 +51,7 @@ pub struct DeployArgs {
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 
-    /// Path to an enclave dockerfile to build from existing
+    /// Path to an Enclave dockerfile to build from existing
     #[clap(long = "from-existing")]
     pub from_existing: Option<String>,
 

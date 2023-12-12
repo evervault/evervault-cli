@@ -70,7 +70,7 @@ pub struct InitArgs {
     #[clap(long = "self-destruct")]
     pub is_time_bound: bool,
 
-    /// Comma separated list of destinations to allow traffic to from the enclave e.g api.evervault.com, default is allow all
+    /// Comma separated list of destinations to allow traffic to from the Enclave e.g api.evervault.com, default is allow all
     #[clap(long = "egress-destinations")]
     pub egress_destinations: Option<String>,
 
@@ -169,7 +169,7 @@ async fn init_local_config(init_args: InitArgs, created_enclave: Enclave) -> exi
                 initial_config.set_key(format!("{}", key_path.display()));
             }
             Err(e) => {
-                log::error!("Failed to generate enclave signing credentials - {e}");
+                log::error!("Failed to generate Enclave signing credentials - {e}");
                 return e.exitcode();
             }
         }

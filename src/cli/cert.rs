@@ -20,10 +20,10 @@ pub enum CertCommands {
     /// Create a new Enclave signing certificate
     #[clap()]
     New(NewCertArgs),
-    /// Upload a enclave signing certificate's metadata to Evervault
+    /// Upload a Enclave signing certificate's metadata to Evervault
     #[clap()]
     Upload(UploadCertArgs),
-    /// Lock a enclave to specific signing certificate. Enclave deployment will fail if the signing certificate is not the one specified.
+    /// Lock a Enclave to specific signing certificate. Enclave deployment will fail if the signing certificate is not the one specified.
     #[clap()]
     Lock(LockCertArgs),
 }
@@ -157,12 +157,12 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
                     Ok(enclave_config) => match (enclave_config.uuid, enclave_config.name) {
                         (Some(uuid), name) => (uuid, name),
                         _ => {
-                            log::error!("No enclave details found in enclave.toml");
+                            log::error!("No Enclave details found in enclave.toml");
                             return DATAERR;
                         }
                     },
                     Err(_) => {
-                        log::error!("Failed to load enclave configuration");
+                        log::error!("Failed to load Enclave configuration");
                         return DATAERR;
                     }
                 };

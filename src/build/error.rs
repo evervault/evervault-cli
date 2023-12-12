@@ -22,7 +22,7 @@ pub enum BuildError {
     FailedToWriteEnclaveDockerfile(std::io::Error),
     #[error("An error occurred while building your docker image — {0}")]
     DockerBuildError(String),
-    #[error("An error occurred while converting your image to an enclave — {0}")]
+    #[error("An error occurred while converting your image to an Enclave — {0}")]
     EnclaveConversionError(String),
     #[error(transparent)]
     EnclaveError(#[from] EnclaveError),

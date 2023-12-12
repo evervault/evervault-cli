@@ -3,7 +3,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum DeleteError {
-    #[error("An error occurred while reading the enclave config — {0}")]
+    #[error("An error occurred while reading the Enclave config — {0}")]
     EnclaveConfigError(#[from] crate::config::EnclaveConfigError),
     #[error("No Enclave Uuid given. You can provide one by using either the --enclave-uuid flag, or using the --config flag to point to an Enclave.toml")]
     MissingUuid,

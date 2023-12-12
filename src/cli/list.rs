@@ -28,7 +28,7 @@ pub enum ListCommands {
 
 #[derive(Debug, Parser)]
 pub struct DeploymentArgs {
-    /// The enclave uuid to get deployments for
+    /// The Enclave uuid to get deployments for
     #[clap(long = "enclave-uuid")]
     enclave_uuid: Option<String>,
 

@@ -8,7 +8,7 @@ pub enum DeployError {
     DescribeError(#[from] crate::describe::error::DescribeError),
     #[error("Could not build eif {0}")]
     BuildError(#[from] crate::build::error::BuildError),
-    #[error("An error occurred while reading the enclave config — {0}")]
+    #[error("An error occurred while reading the Enclave config — {0}")]
     EnclaveConfigError(#[from] crate::config::EnclaveConfigError),
     #[error("Failed to access output directory — {0}")]
     FailedToAccessOutputDir(#[from] OutputPathError),
@@ -24,7 +24,7 @@ pub enum DeployError {
     UploadError(String),
     #[error("Could not read the size of the Enclave EIF file {0}")]
     EifSizeReadError(std::io::Error),
-    #[error("Could not deploy enclave to Evervault Infrastructure")]
+    #[error("Could not deploy Enclave to Evervault Infrastructure")]
     DeploymentError,
     #[error("[{0}] Operation timed out after {1} seconds")]
     TimeoutError(String, u64),

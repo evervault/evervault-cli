@@ -14,7 +14,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum EncryptError {
-    #[error("Team uuid and app uuid must be provided as arg or in enclave toml")]
+    #[error("Team uuid and app uuid must be provided as arg or in Enclave toml")]
     MissingUuid,
     #[error("An error occurred contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),

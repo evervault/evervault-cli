@@ -105,7 +105,7 @@ pub async fn upload_new_cert_ref(
     let cert_ref = match enclave_api.create_enclave_signing_cert_ref(payload).await {
         Ok(cert_ref) => cert_ref,
         Err(e) => {
-            log::error!("Error upload enclave signing cert ref — {:?}", e);
+            log::error!("Error upload Enclave signing cert ref — {:?}", e);
             return Err(CertError::ApiError(e));
         }
     };
@@ -165,7 +165,7 @@ async fn get_certs_for_selection(
     let available_certs = match enclave_api.get_signing_certs().await {
         Ok(res) => res.certs,
         Err(e) => {
-            log::error!("Error getting enclave signing cert refs — {:?}", e);
+            log::error!("Error getting Enclave signing cert refs — {:?}", e);
             return Err(CertError::ApiError(e));
         }
     };
@@ -176,7 +176,7 @@ async fn get_certs_for_selection(
     {
         Ok(certs) => certs,
         Err(e) => {
-            log::error!("Error getting enclave signing cert — {:?}", e);
+            log::error!("Error getting Enclave signing cert — {:?}", e);
             return Err(CertError::ApiError(e));
         }
     };

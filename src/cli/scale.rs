@@ -72,7 +72,7 @@ pub async fn run(args: ScaleArgs) -> i32 {
                 .as_deref()
                 .ok_or(ScaleError::MissingUuid),
             Err(e) => {
-                log::error!("Failed to resolve enclave config - {e:?}");
+                log::error!("Failed to resolve Enclave config - {e:?}");
                 return e.exitcode();
             }
         },

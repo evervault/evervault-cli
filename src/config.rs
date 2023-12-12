@@ -201,7 +201,7 @@ pub enum EnclaveConfigError {
     MissingDockerfile,
     #[error("{0} was not set in the toml.")]
     MissingField(String),
-    #[error("TLS Termination must be enabled to enable enclave logging.")]
+    #[error("TLS Termination must be enabled to enable Enclave logging.")]
     LoggingEnabledWithoutTLSTermination(),
 }
 

@@ -22,11 +22,11 @@ pub struct BuildArgs {
     #[clap(default_value = ".")]
     pub context_path: String,
 
-    /// Certificate used to sign the enclave image file
+    /// Certificate used to sign the Enclave image file
     #[clap(long = "signing-cert")]
     pub certificate: Option<String>,
 
-    /// Private key used to sign the enclave image file
+    /// Private key used to sign the Enclave image file
     #[clap(long = "private-key")]
     pub private_key: Option<String>,
 
@@ -38,7 +38,7 @@ pub struct BuildArgs {
     #[clap(long, from_global)]
     pub json: bool,
 
-    /// Path to directory where the processed dockerfile and enclave will be saved
+    /// Path to directory where the processed dockerfile and Enclave will be saved
     #[clap(short = 'o', long = "output", default_value = ".")]
     pub output_dir: String,
 
@@ -46,7 +46,7 @@ pub struct BuildArgs {
     #[clap(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 
-    /// Path to an enclave dockerfile to build from existing
+    /// Path to an Enclave dockerfile to build from existing
     #[clap(long = "from-existing")]
     pub from_existing: Option<String>,
 
@@ -83,7 +83,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         match read_and_validate_config(&build_args.config, &build_args) {
             Ok(config) => config,
             Err(e) => {
-                log::error!("Failed to read enclave config from file system — {e}");
+                log::error!("Failed to read Enclave config from file system — {e}");
                 return e.exitcode();
             }
         };
@@ -131,7 +131,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
     {
         Ok((built_enclave, _)) => built_enclave,
         Err(e) => {
-            log::error!("An error occurred while building your enclave — {e}");
+            log::error!("An error occurred while building your Enclave — {e}");
             return e.exitcode();
         }
     };
@@ -144,7 +144,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         crate::common::log_debug_mode_attestation_warning();
     }
 
-    // Write enclave measures to stdout
+    // Write Enclave measures to stdout
     let success_msg = serde_json::json!({
         "status": "success",
         "message": "EIF built successfully",
