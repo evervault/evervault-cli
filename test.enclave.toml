@@ -1,4 +1,4 @@
-name = "test-cage"
+name = "test-enclave"
 uuid = "1234"
 app_uuid = "4321"
 team_uuid = "teamid"
@@ -19,7 +19,7 @@ keyPath = "./key.pem"
 
 [attestation]
 HashAlgorithm = "Sha384 { ... }"
-PCR0 = "4d99ce0096bffeea435c41016e9d64aa51caae95d7846fb7c8708f590d31be1fc704adc13bedabbcb2980d6612dde6e9"
+PCR0 = "1cd2135a6358458e390904fac3568eff4e6c7882c22e7925a830c8ba6b9b1ae117dd714cad64b1001475923a242fc887"
 PCR1 = "bcdf05fefccaa8e55bf2c8d6dee9e79bbff31e34bf28a99aa19e6b29c37ee80b214a414b7607236edf26fcb78654e63f"
 PCR2 = "42997b22af1f96a6b32372402af03a5d16e47316e7990314bdb01c0759fa11a7ae88e3ae2f3628b1c1ab734ea2f2ba34"
 PCR8 = "a94237284c822603176cfe5abbf62664a786b8eef7c5ead7ff725fc2750f06520ce775fec55405ac1837cf2c42e1443a"

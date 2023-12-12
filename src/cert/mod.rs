@@ -10,9 +10,9 @@ use std::path::{Path, PathBuf};
 use x509_parser::parse_x509_certificate;
 use x509_parser::prelude::{parse_x509_pem, X509Certificate};
 
-use crate::api::cage::{
-    CageApi, CageSigningCert, CreateCageSigningCertRefRequest, CreateCageSigningCertRefResponse,
-    UpdateLockedCageSigningCertRequest,
+use crate::api::enclave::{
+    CreateEnclaveSigningCertRefRequest, CreateEnclaveSigningCertRefResponse, EnclaveApi,
+    EnclaveSigningCert, UpdateLockedEnclaveSigningCertRequest,
 };
 use crate::api::{self, AuthMode};
 
@@ -87,25 +87,25 @@ pub async fn upload_new_cert_ref(
     cert_path: &str,
     api_key: &str,
     name: String,
-) -> Result<CreateCageSigningCertRefResponse, CertError> {
+) -> Result<CreateEnclaveSigningCertRefResponse, CertError> {
     let path = std::path::Path::new(cert_path);
 
     let pcr8 = get_cert_pcr(path)?;
     let validity_period = get_cert_validity_period(path)?;
 
-    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
+    let enclave_api = api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
 
-    let payload = CreateCageSigningCertRefRequest::new(
+    let payload = CreateEnclaveSigningCertRefRequest::new(
         pcr8.clone(),
         name,
         validity_period.not_before,
         validity_period.not_after,
     );
 
-    let cert_ref = match cage_api.create_cage_signing_cert_ref(payload).await {
+    let cert_ref = match enclave_api.create_enclave_signing_cert_ref(payload).await {
         Ok(cert_ref) => cert_ref,
         Err(e) => {
-            log::error!("Error upload cage signing cert ref — {:?}", e);
+            log::error!("Error upload Enclave signing cert ref — {:?}", e);
             return Err(CertError::ApiError(e));
         }
     };
@@ -113,7 +113,7 @@ pub async fn upload_new_cert_ref(
     Ok(cert_ref)
 }
 
-fn format_cert_for_multi_select(cert: &CageSigningCert) -> String {
+fn format_cert_for_multi_select(cert: &EnclaveSigningCert) -> String {
     let name = cert.name().unwrap_or_default();
     let cert_hash = cert.cert_hash();
     let not_after = cert
@@ -143,13 +143,13 @@ fn format_expiry_time(expiry_time: &str) -> Result<String, CertError> {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 struct CertWithFormattedString {
-    cert: CageSigningCert,
+    cert: EnclaveSigningCert,
     formatted: String,
     locked: bool,
 }
 
 impl CertWithFormattedString {
-    fn new(cert: &CageSigningCert, locked: bool) -> Self {
+    fn new(cert: &EnclaveSigningCert, locked: bool) -> Self {
         Self {
             formatted: format_cert_for_multi_select(cert),
             cert: cert.clone(),
@@ -159,21 +159,24 @@ impl CertWithFormattedString {
 }
 
 async fn get_certs_for_selection(
-    cage_api: api::cage::CagesClient,
-    cage_uuid: &str,
+    enclave_api: api::enclave::EnclaveClient,
+    enclave_uuid: &str,
 ) -> Result<Vec<CertWithFormattedString>, CertError> {
-    let available_certs = match cage_api.get_signing_certs().await {
+    let available_certs = match enclave_api.get_signing_certs().await {
         Ok(res) => res.certs,
         Err(e) => {
-            log::error!("Error getting cage signing cert refs — {:?}", e);
+            log::error!("Error getting Enclave signing cert refs — {:?}", e);
             return Err(CertError::ApiError(e));
         }
     };
 
-    let locked_certs = match cage_api.get_cage_locked_signing_certs(cage_uuid).await {
+    let locked_certs = match enclave_api
+        .get_enclave_locked_signing_certs(enclave_uuid)
+        .await
+    {
         Ok(certs) => certs,
         Err(e) => {
-            log::error!("Error getting cage signing cert — {:?}", e);
+            log::error!("Error getting Enclave signing cert — {:?}", e);
             return Err(CertError::ApiError(e));
         }
     };
@@ -210,24 +213,24 @@ fn sort_certs_by_expiry(
     Ok(certs)
 }
 
-pub async fn lock_cage_to_certs(
+pub async fn lock_enclave_to_certs(
     api_key: &str,
-    cage_uuid: &str,
-    cage_name: &str,
+    enclave_uuid: &str,
+    enclave_name: &str,
 ) -> Result<(), CertError> {
-    let cage_api = api::cage::CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
+    let enclave_api = api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
 
-    let certs_for_select = get_certs_for_selection(cage_api.clone(), cage_uuid).await?;
+    let certs_for_select = get_certs_for_selection(enclave_api.clone(), enclave_uuid).await?;
 
     if certs_for_select.is_empty() {
-        log::error!("No certs found for the current app. You must upload a cert using the `ev cert upload` command or deployment a Cage before you can create a cert lock.");
+        log::error!("No certs found for the current app. You must upload a cert using the `ev cert upload` command or deployment an Enclave before you can create a cert lock.");
         return Err(CertError::NoCertsFound);
     }
 
     let sorted_certs_for_select = sort_certs_by_expiry(certs_for_select)?;
 
     let chosen: Vec<usize> = MultiSelect::new()
-        .with_prompt("Select Certs To Lock Cage To. Press Space To Select, Enter To Confirm.\n Cert Name | PCR8 (Hash of cert) | Cert Expiry ")
+        .with_prompt("Select Certs To Lock Enclave To. Press Space To Select, Enter To Confirm.\n Cert Name | PCR8 (Hash of cert) | Cert Expiry ")
         .report(false)
         .max_length(6)
         .items_checked(
@@ -248,21 +251,21 @@ pub async fn lock_cage_to_certs(
         })
         .collect::<Vec<String>>();
 
-    let payload = UpdateLockedCageSigningCertRequest::new(chosen_cert_uuids.clone());
+    let payload = UpdateLockedEnclaveSigningCertRequest::new(chosen_cert_uuids.clone());
 
     let amount_chosen = chosen_cert_uuids.len();
     let msg = match amount_chosen {
         0 => format!(
-            "No certs selected. Cage {} will not be locked to any certs.",
-            cage_name
+            "No certs selected. Enclave {} will not be locked to any certs.",
+            enclave_name
         ),
         1 => format!(
-            "1 cert selected. Cage {} will be locked to this cert.",
-            cage_name
+            "1 cert selected. Enclave {} will be locked to this cert.",
+            enclave_name
         ),
         _ => format!(
-            "{} certs selected. Cage {} will be locked to these certs",
-            amount_chosen, cage_name
+            "{} certs selected. Enclave {} will be locked to these certs",
+            amount_chosen, enclave_name
         ),
     };
 
@@ -277,20 +280,23 @@ pub async fn lock_cage_to_certs(
         return Ok(());
     }
 
-    if let Err(e) = cage_api
-        .update_cage_locked_signing_certs(cage_uuid, payload)
+    if let Err(e) = enclave_api
+        .update_enclave_locked_signing_certs(enclave_uuid, payload)
         .await
     {
-        log::error!("Error locking Cage to certs - {e}");
+        log::error!("Error locking Enclave to certs - {e}");
         return Err(CertError::ApiError(e));
     };
 
     let final_msg = match amount_chosen {
-        0 => format!("Cage {} successfully unlocked from all certs!", cage_name),
-        1 => format!("Cage {} successfully locked to 1 cert!", cage_name),
+        0 => format!(
+            "Enclave {} successfully unlocked from all certs!",
+            enclave_name
+        ),
+        1 => format!("Enclave {} successfully locked to 1 cert!", enclave_name),
         _ => format!(
-            "Cage {} successfully locked to {} certs!",
-            cage_name, amount_chosen
+            "Enclave {} successfully locked to {} certs!",
+            enclave_name, amount_chosen
         ),
     };
 
@@ -403,10 +409,10 @@ impl<'a> std::default::Default for DistinguishedName<'a> {
     fn default() -> Self {
         Self {
             country: "IE",
-            common_name: "cages.evervault.com",
+            common_name: "enclaves.evervault.com",
             locality: "DUB",
             org: "ENG",
-            org_unit: "CAGES",
+            org_unit: "ENCLAVES",
             state: "LEI",
         }
     }
@@ -491,7 +497,7 @@ mod test {
 
     #[test]
     fn test_sort_certs_by_expiry() {
-        let cert1 = CageSigningCert::new(
+        let cert1 = EnclaveSigningCert::new(
             None,
             "uuid1".to_string(),
             "app_uuid1".to_string(),
@@ -499,7 +505,7 @@ mod test {
             None,
             Some("2023-04-17T12:00:00Z".to_string()),
         );
-        let cert2 = CageSigningCert::new(
+        let cert2 = EnclaveSigningCert::new(
             None,
             "uuid2".to_string(),
             "app_uuid2".to_string(),
@@ -507,7 +513,7 @@ mod test {
             None,
             Some("2023-04-18T12:00:00Z".to_string()),
         );
-        let cert3 = CageSigningCert::new(
+        let cert3 = EnclaveSigningCert::new(
             None,
             "uuid3".to_string(),
             "app_uuid3".to_string(),

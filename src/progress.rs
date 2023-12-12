@@ -1,7 +1,7 @@
 use atty::Stream;
 use indicatif::{ProgressBar, ProgressStyle};
 
-use crate::api::cage::CageApi;
+use crate::api::enclave::EnclaveApi;
 use crate::common::CliError;
 
 const MAX_SUCCESSIVE_POLLING_ERRORS: i32 = 5; // # attempts allowed at 6s intervals
@@ -11,7 +11,7 @@ fn get_progress_bar(start_msg: &str, upload_len: Option<u64>) -> ProgressBar {
         Some(len) => {
             let progress_bar = ProgressBar::new(len);
             progress_bar.set_style(ProgressStyle::default_bar()
-            .template("Uploading Cage to Evervault {bar:40.green/blue} {bytes} ({percent}%) [{elapsed_precise}]")
+            .template("Uploading Enclave to Evervault {bar:40.green/blue} {bytes} ({percent}%) [{elapsed_precise}]")
             .expect("Failed to create progress bar template from hardcoded template")
             .progress_chars("##-"));
             progress_bar
@@ -141,7 +141,7 @@ impl StatusReport {
 }
 
 // It should be possible to resolve the lifetimes to allow this work over borrows for every value instead of cloning/heap allocating
-pub async fn poll_fn_and_report_status<T: CageApi, E, F, Fut>(
+pub async fn poll_fn_and_report_status<T: EnclaveApi, E, F, Fut>(
     api_client: std::sync::Arc<T>,
     poll_args: Vec<String>,
     poll_fn: F,

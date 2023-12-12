@@ -13,7 +13,7 @@ pub enum VersionError {
     SemVerError(#[from] semver::Error),
     #[error("Couldn't parse env string as int - {0}")]
     ParseIntError(#[from] std::num::ParseIntError),
-    #[error("This version is deprecated, please run ev-cage update to continue")]
+    #[error("This version is deprecated, please run ev-enclave update to continue")]
     DeprecatedVersion,
     #[error("Couldn't check version against latest")]
     FailedVersionCheck,

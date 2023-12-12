@@ -1,14 +1,14 @@
 use crate::{
-    api::cage::{CageApi, CageDeployment, CagesClient},
+    api::enclave::{EnclaveApi, EnclaveClient, EnclaveDeployment},
     common::CliError,
 };
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum RestartError {
-    #[error("An error occurred while reading the cage config — {0}")]
-    CageConfigError(#[from] crate::config::CageConfigError),
-    #[error("No Cage Uuid given. You can provide one by using either the --cage-uuid flag, or using the --config flag to point to a Cage.toml")]
+    #[error("An error occurred while reading the Enclave config — {0}")]
+    EnclaveConfigError(#[from] crate::config::EnclaveConfigError),
+    #[error("No Enclave Uuid given. You can provide one by using either the --enclave-uuid flag, or using the --config flag to point to an Enclave.toml")]
     MissingUuid,
     #[error("An IO error occurred {0}")]
     IoError(#[from] std::io::Error),
@@ -19,7 +19,7 @@ pub enum RestartError {
 impl CliError for RestartError {
     fn exitcode(&self) -> exitcode::ExitCode {
         match self {
-            Self::CageConfigError(config_err) => config_err.exitcode(),
+            Self::EnclaveConfigError(config_err) => config_err.exitcode(),
             Self::IoError(_) => exitcode::IOERR,
             Self::ApiError(api_err) => api_err.exitcode(),
             Self::MissingUuid => exitcode::DATAERR,
@@ -27,19 +27,19 @@ impl CliError for RestartError {
     }
 }
 
-pub async fn restart_cage(
+pub async fn restart_enclave(
     config: &str,
-    cage_uuid: Option<&str>,
-    cage_api: &CagesClient,
+    enclave_uuid: Option<&str>,
+    enclave_api: &EnclaveClient,
     _background: bool,
-) -> Result<CageDeployment, RestartError> {
-    let maybe_cage_uuid = crate::common::resolve_cage_uuid(cage_uuid, config)?;
-    let cage_uuid = match maybe_cage_uuid {
-        Some(given_cage_uuid) => given_cage_uuid,
+) -> Result<EnclaveDeployment, RestartError> {
+    let maybe_enclave_uuid = crate::common::resolve_enclave_uuid(enclave_uuid, config)?;
+    let enclave_uuid = match maybe_enclave_uuid {
+        Some(given_enclave_uuid) => given_enclave_uuid,
         _ => return Err(RestartError::MissingUuid),
     };
 
-    println!("Restarting cage {}...", cage_uuid);
+    println!("Restarting Enclave {}...", enclave_uuid);
 
-    Ok(cage_api.restart_cage(&cage_uuid).await?)
+    Ok(enclave_api.restart_enclave(&enclave_uuid).await?)
 }

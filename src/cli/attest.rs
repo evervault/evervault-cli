@@ -1,19 +1,19 @@
-use crate::attest::attest_connection_to_cage;
-use crate::config::CageConfig;
+use crate::attest::attest_connection_to_enclave;
+use crate::config::EnclaveConfig;
 use crate::describe::describe_eif;
 use crate::version::check_version;
 use attestation_doc_validation::attestation_doc::PCRs;
 use attestation_doc_validation::PCRProvider;
 use clap::Parser;
 
-/// Validate the attestation doc provided by a Cage
+/// Validate the attestation doc provided by an Enclave
 #[derive(Debug, Parser)]
 #[clap(name = "attest", about)]
 pub struct AttestArgs {
-    /// Path to cage.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    /// Path to enclave.toml config file
+    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
-    /// Path to EIF file. When included, the attestation measures returned from the Cage will be compared to the measures of the EIF.
+    /// Path to EIF file. When included, the attestation measures returned from the Enclave will be compared to the measures of the EIF.
     #[clap(long = "eif-path")]
     pub eif_path: Option<String>,
 }
@@ -36,8 +36,8 @@ pub async fn run(attest_args: AttestArgs) -> i32 {
         return exitcode::SOFTWARE;
     };
 
-    let config = unwrap_or_exit_with_error!(CageConfig::try_from_filepath(&attest_args.config));
-    let domain = unwrap_or_exit_with_error!(config.get_cage_domain());
+    let config = unwrap_or_exit_with_error!(EnclaveConfig::try_from_filepath(&attest_args.config));
+    let domain = unwrap_or_exit_with_error!(config.get_enclave_domain());
 
     let expected_pcrs = if let Some(eif_path) = attest_args.eif_path {
         let description = unwrap_or_exit_with_error!(describe_eif(&eif_path, false));
@@ -58,13 +58,13 @@ pub async fn run(attest_args: AttestArgs) -> i32 {
             .clone(),
     };
 
-    match attest_connection_to_cage(&domain, expected_pcrs.clone()).await {
+    match attest_connection_to_enclave(&domain, expected_pcrs.clone()).await {
         Ok(_) => {
             log::info!("Attestation successful!\n\nhttps://{} returned a signed attestation doc which had PCRs:\n\n{}", domain, expected_pcrs.to_string());
             exitcode::OK
         }
         Err(e) => {
-            log::error!("Failed to attest Cage - {e}");
+            log::error!("Failed to attest Enclave - {e}");
             exitcode::SOFTWARE
         }
     }

@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use thiserror::Error;
 
-use crate::config::{CageConfig, CageConfigError};
+use crate::config::{EnclaveConfig, EnclaveConfigError};
 
 pub struct OutputPath {
     _tmp_dir: Option<tempfile::TempDir>,
@@ -71,19 +71,19 @@ pub fn resolve_output_path(
     }
 }
 
-pub fn save_cage_config(cage_config: &CageConfig, config_path: &str) {
-    if let Ok(serialized_config) = toml::ser::to_vec(&cage_config) {
+pub fn save_enclave_config(enclave_config: &EnclaveConfig, config_path: &str) {
+    if let Ok(serialized_config) = toml::ser::to_vec(&enclave_config) {
         match std::fs::write(config_path, serialized_config) {
-            Ok(_) => log::debug!("Cage config updated"),
-            Err(e) => log::error!("Failed to update cage config — {e:?}"),
+            Ok(_) => log::debug!("Enclave config updated"),
+            Err(e) => log::error!("Failed to update Enclave config — {e:?}"),
         };
     } else {
-        log::error!("Failed to serialize attestation measures in cage config");
+        log::error!("Failed to serialize attestation measures in Enclave config");
     }
 }
 
 pub fn log_debug_mode_attestation_warning() {
-    log::warn!("When running your Cage in debug mode, every value in the attestation document returned will be 0.");
+    log::warn!("When running your Enclave in debug mode, every value in the attestation document returned will be 0.");
     log::warn!("The measurements below will only be returned when running in non-debug mode.");
 }
 
@@ -122,14 +122,14 @@ pub fn prepare_build_args(build_args: &Vec<String>) -> Option<Vec<String>> {
     Some(formatted_args)
 }
 
-pub fn resolve_cage_uuid(
+pub fn resolve_enclave_uuid(
     given_uuid: Option<&str>,
     config_path: &str,
-) -> Result<Option<String>, CageConfigError> {
+) -> Result<Option<String>, EnclaveConfigError> {
     if let Some(given_uuid) = given_uuid {
         return Ok(Some(given_uuid.to_string()));
     }
-    let config = CageConfig::try_from_filepath(config_path)?;
+    let config = EnclaveConfig::try_from_filepath(config_path)?;
     Ok(config.uuid)
 }
 

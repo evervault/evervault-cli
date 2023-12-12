@@ -8,7 +8,7 @@ pub enum AttestCommandError {
     ReqwestError(#[from] reqwest::Error),
     #[error(transparent)]
     Base64DecodeError(#[from] base64::DecodeError),
-    #[error("Couldn't retrieve attestation document from Cage, status code: {0}")]
+    #[error("Couldn't retrieve attestation document from the Enclave, status code: {0}")]
     AttestationDocRetrievalError(String),
     #[error("The received certificate had no Subject Alt Name extension")]
     NoSubjectAltNames,

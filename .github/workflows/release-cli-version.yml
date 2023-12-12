@@ -1,4 +1,4 @@
-name: Release Cage CLI version
+name: Release Enclave CLI version
 
 on:
   push:
@@ -88,9 +88,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./linux/ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
+          asset_path: ./linux/ev-enclave-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
           asset_content_type: application/gzip
-          asset_name: ev-cage-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
+          asset_name: ev-enclave-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
 
       - name: Upload MacOS Release
         uses: actions/upload-release-asset@v1
@@ -98,9 +98,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
+          asset_path: ./macos/ev-enclave-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
           asset_content_type: application/gzip
-          asset_name: ev-cage-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
+          asset_name: ev-enclave-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
 
       - name: Upload Windows Release
         uses: actions/upload-release-asset@v1
@@ -109,6 +109,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
+          asset_path: ./windows/ev-enclave-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
           asset_content_type: application/gzip
-          asset_name: ev-cage-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
+          asset_name: ev-enclave-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz

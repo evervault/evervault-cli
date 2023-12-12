@@ -71,8 +71,8 @@ jobs:
           mkdir ${{ env.BIN_DIR }}
           mkdir ${{ env.RELEASE_DIR }}
           cross build --release --all-features --target ${{ env.LINUX_TARGET }} -Z registry-auth
-          mv ./target/${{ env.LINUX_TARGET }}/release/ev-cage ./${{ env.BIN_DIR }}/ev-cage
-          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-cage-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz
+          mv ./target/${{ env.LINUX_TARGET }}/release/ev-enclave ./${{ env.BIN_DIR }}/ev-enclave
+          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-enclave-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.evervault-rust-lib-index }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.evervault-rust-lib-token }}
@@ -122,8 +122,8 @@ jobs:
 
       - name: Compress binary
         run: |
-          mv target/${{env.MACOS_TARGET}}/release/ev-cage ${{ env.BIN_DIR }}/ev-cage
-          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ${{ env.RELEASE_DIR }}/ev-cage-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz
+          mv target/${{env.MACOS_TARGET}}/release/ev-enclave ${{ env.BIN_DIR }}/ev-enclave
+          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ${{ env.RELEASE_DIR }}/ev-enclave-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz
 
       - name: Upload as artifact
         uses: actions/upload-artifact@v2
@@ -179,8 +179,8 @@ jobs:
       - name: Compress
         shell: bash
         run: |
-          mv target/${{ env.WINDOWS_TARGET }}/release/ev-cage.exe ${{ env.BIN_DIR }}/ev-cage.exe
-          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-cage-${{ env.WINDOWS_TARGET }}-${{ inputs.full-version }}.tar.gz
+          mv target/${{ env.WINDOWS_TARGET }}/release/ev-enclave.exe ${{ env.BIN_DIR }}/ev-enclave.exe
+          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-enclave-${{ env.WINDOWS_TARGET }}-${{ inputs.full-version }}.tar.gz
 
       - name: Upload as artifact
         uses: actions/upload-artifact@v2
@@ -217,26 +217,26 @@ jobs:
 
       - name: Upload Windows CLI to S3
         run: |
-          aws s3 cp ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version}}/${{ env.WINDOWS_TARGET }}/ev-cage.tar.gz
+          aws s3 cp ./windows/ev-enclave-${{ env.WINDOWS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://enclave-build-assets-${{ inputs.stage }}/cli/${{ inputs.full-version }}/${{ inputs.full-version}}/${{ env.WINDOWS_TARGET }}/ev-enclave.tar.gz
 
       - name: Upload MacOS CLI to S3
         run: |
-          aws s3 cp ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version }}/${{ env.MACOS_TARGET }}/ev-cage.tar.gz
+          aws s3 cp ./macos/ev-enclave-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://enclave-build-assets-${{ inputs.stage }}/cli/${{ inputs.full-version }}/${{ inputs.full-version }}/${{ env.MACOS_TARGET }}/ev-enclave.tar.gz
 
       - name: Upload Ubuntu CLI to S3
         run: |
-          aws s3 cp ./linux/ev-cage-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version }}/${{ env.LINUX_TARGET }}/ev-cage.tar.gz
+          aws s3 cp ./linux/ev-enclave-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz s3://enclave-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version }}/${{ env.LINUX_TARGET }}/ev-enclave.tar.gz
 
       - uses: actions/checkout@v3
       - name: Update install script in S3
         run: |
           sh ./scripts/generate-installer.sh ${{ inputs.full-version }} ${{ inputs.major-version }} ${{ inputs.ev-domain }}
           sh ./scripts/update-versions.sh ${{ inputs.full-version }}
-          aws s3 cp scripts/install s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version }}/install
-          aws s3 cp scripts/install s3://cage-build-assets-${{ inputs.stage }}/cli/install
-          aws s3 cp scripts/version s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/version
-          aws s3 cp scripts/version s3://cage-build-assets-${{ inputs.stage }}/cli/version
-          aws s3 cp scripts/versions s3://cage-build-assets-${{ inputs.stage }}/cli/versions
+          aws s3 cp scripts/install s3://enclave-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version }}/install
+          aws s3 cp scripts/install s3://enclave-build-assets-${{ inputs.stage }}/cli/install
+          aws s3 cp scripts/version s3://enclave-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/version
+          aws s3 cp scripts/version s3://enclave-build-assets-${{ inputs.stage }}/cli/version
+          aws s3 cp scripts/versions s3://enclave-build-assets-${{ inputs.stage }}/cli/versions
           aws cloudfront create-invalidation --distribution-id ${{ secrets.aws-cloudfront-distribution-id }} --paths "/cli/install" "/cli/version" "/cli/versions"
 
 

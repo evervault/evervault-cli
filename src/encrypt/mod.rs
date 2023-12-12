@@ -1,7 +1,7 @@
-use crate::config::CageConfigError;
+use crate::config::EnclaveConfigError;
 use crate::{
     api::{
-        cage::{CageApi, CagesClient},
+        enclave::{EnclaveApi, EnclaveClient},
         AuthMode,
     },
     cli::encrypt::CurveName,
@@ -14,7 +14,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum EncryptError {
-    #[error("Team uuid and app uuid must be provided as arg or in cage toml")]
+    #[error("Team uuid and app uuid must be provided as arg or in Enclave toml")]
     MissingUuid,
     #[error("An error occurred contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),
@@ -22,8 +22,8 @@ pub enum EncryptError {
     Base64DecodeError(#[from] base64::DecodeError),
     #[error("An error occurred during decryption — {0}")]
     EvervaultCryptoError(#[from] EvervaultCryptoError),
-    #[error("An error occured reading cage.toml — {0}")]
-    CageConfigError(#[from] CageConfigError),
+    #[error("An error occured reading enclave.toml — {0}")]
+    EnclaveConfigError(#[from] EnclaveConfigError),
 }
 
 pub async fn encrypt(
@@ -32,8 +32,8 @@ pub async fn encrypt(
     app_uuid: String,
     curve: CurveName,
 ) -> Result<String, EncryptError> {
-    let cage_api = CagesClient::new(AuthMode::NoAuth);
-    let keys = cage_api.get_app_keys(&team_uuid, &app_uuid).await?;
+    let enclave_api = EnclaveClient::new(AuthMode::NoAuth);
+    let keys = enclave_api.get_app_keys(&team_uuid, &app_uuid).await?;
 
     let result = match curve {
         CurveName::Nist | CurveName::Secp256r1 => {

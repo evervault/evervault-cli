@@ -1,4 +1,4 @@
-use crate::config::ValidatedCageBuildConfig;
+use crate::config::ValidatedEnclaveBuildConfig;
 
 use super::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
 use super::AuthMode;
@@ -9,11 +9,11 @@ use serde::{Deserialize, Serialize};
 use mockall::automock;
 
 #[derive(Clone)]
-pub struct CagesClient {
+pub struct EnclaveClient {
     inner: GenericApiClient,
 }
 
-impl ApiClient for CagesClient {
+impl ApiClient for EnclaveClient {
     fn auth(&self) -> &AuthMode {
         self.inner.auth()
     }
@@ -28,62 +28,65 @@ impl ApiClient for CagesClient {
 
     fn base_url(&self) -> String {
         let api_base = self.inner.base_url();
-        format!("{}/v2/cages", api_base)
+        format!("{}/enclaves", api_base)
     }
 }
 
 #[async_trait::async_trait]
 #[cfg_attr(test, automock)]
-pub trait CageApi {
-    async fn create_cage(&self, cage_create_payload: CreateCageRequest) -> ApiResult<Cage>;
-    async fn create_cage_deployment_intent(
+pub trait EnclaveApi {
+    async fn create_enclave(
         &self,
-        cage_uuid: &str,
-        payload: CreateCageDeploymentIntentRequest,
-    ) -> ApiResult<CreateCageDeploymentIntentResponse>;
-    async fn create_cage_signing_cert_ref(
+        enclave_create_payload: CreateEnclaveRequest,
+    ) -> ApiResult<Enclave>;
+    async fn create_enclave_deployment_intent(
         &self,
-        payload: CreateCageSigningCertRefRequest,
-    ) -> ApiResult<CreateCageSigningCertRefResponse>;
-    async fn get_cages(&self) -> ApiResult<GetCagesResponse>;
-    async fn get_cage(&self, cage_uuid: &str) -> ApiResult<GetCageResponse>;
+        enclave_uuid: &str,
+        payload: CreateEnclaveDeploymentIntentRequest,
+    ) -> ApiResult<CreateEnclaveDeploymentIntentResponse>;
+    async fn create_enclave_signing_cert_ref(
+        &self,
+        payload: CreateEnclaveSigningCertRefRequest,
+    ) -> ApiResult<CreateEnclaveSigningCertRefResponse>;
+    async fn get_enclaves(&self) -> ApiResult<GetEnclavesResponse>;
+    async fn get_enclave(&self, enclave_uuid: &str) -> ApiResult<GetEnclaveResponse>;
     async fn get_app_keys(&self, team_uuid: &str, app_uuid: &str) -> ApiResult<GetKeysResponse>;
-    async fn add_env_var(&self, cage_uuid: String, payload: AddSecretRequest) -> ApiResult<()>;
-    async fn delete_env_var(&self, cage_uuid: String, name: String) -> ApiResult<()>;
-    async fn get_cage_env(&self, cage_uuid: String) -> ApiResult<CageEnv>;
-    async fn get_cage_deployment_by_uuid(
+    async fn add_env_var(&self, enclave_uuid: String, payload: AddSecretRequest) -> ApiResult<()>;
+    async fn delete_env_var(&self, enclave_uuid: String, name: String) -> ApiResult<()>;
+    async fn get_enclave_env(&self, enclave_uuid: String) -> ApiResult<EnclaveEnv>;
+    async fn get_enclave_deployment_by_uuid(
         &self,
-        cage_uuid: &str,
+        enclave_uuid: &str,
         deployment_uuid: &str,
-    ) -> ApiResult<GetCageDeploymentResponse>;
+    ) -> ApiResult<GetEnclaveDeploymentResponse>;
     async fn get_signing_certs(&self) -> ApiResult<GetSigningCertsResponse>;
-    async fn update_cage_locked_signing_certs(
+    async fn update_enclave_locked_signing_certs(
         &self,
-        cage_uuid: &str,
-        payload: UpdateLockedCageSigningCertRequest,
-    ) -> ApiResult<Vec<CageToSigningCert>>;
-    async fn get_cage_locked_signing_certs(
+        enclave_uuid: &str,
+        payload: UpdateLockedEnclaveSigningCertRequest,
+    ) -> ApiResult<Vec<EnclaveToSigningCert>>;
+    async fn get_enclave_locked_signing_certs(
         &self,
-        cage_uuid: &str,
-    ) -> ApiResult<Vec<CageSigningCert>>;
-    async fn get_cage_cert_by_uuid(&self, cert_uuid: &str) -> ApiResult<CageSigningCert>;
-    async fn get_cage_logs(
+        enclave_uuid: &str,
+    ) -> ApiResult<Vec<EnclaveSigningCert>>;
+    async fn get_enclave_cert_by_uuid(&self, cert_uuid: &str) -> ApiResult<EnclaveSigningCert>;
+    async fn get_enclave_logs(
         &self,
-        cage_uuid: &str,
+        enclave_uuid: &str,
         start_time: u128,
         end_time: u128,
-    ) -> ApiResult<CageLogs>;
-    async fn delete_cage(&self, cage_uuid: &str) -> ApiResult<DeleteCageResponse>;
-    async fn restart_cage(&self, cage_uuid: &str) -> ApiResult<CageDeployment>;
-    async fn get_scaling_config(&self, cage_uuid: &str) -> ApiResult<CageScalingConfig>;
+    ) -> ApiResult<EnclaveLogs>;
+    async fn delete_enclave(&self, enclave_uuid: &str) -> ApiResult<DeleteEnclaveResponse>;
+    async fn restart_enclave(&self, enclave_uuid: &str) -> ApiResult<EnclaveDeployment>;
+    async fn get_scaling_config(&self, enclave_uuid: &str) -> ApiResult<EnclaveScalingConfig>;
     async fn update_scaling_config(
         &self,
-        cage_uuid: &str,
-        update_scaling_config_request: UpdateCageScalingConfigRequest,
-    ) -> ApiResult<CageScalingConfig>;
+        enclave_uuid: &str,
+        update_scaling_config_request: UpdateEnclaveScalingConfigRequest,
+    ) -> ApiResult<EnclaveScalingConfig>;
 }
 
-impl CagesClient {
+impl EnclaveClient {
     pub fn new(auth_mode: AuthMode) -> Self {
         Self {
             inner: GenericApiClient::from(auth_mode),
@@ -92,23 +95,26 @@ impl CagesClient {
 }
 
 #[async_trait::async_trait]
-impl CageApi for CagesClient {
-    async fn create_cage(&self, cage_create_payload: CreateCageRequest) -> ApiResult<Cage> {
-        let create_cage_url = format!("{}/", self.base_url());
-        self.post(&create_cage_url)
-            .json(&cage_create_payload)
+impl EnclaveApi for EnclaveClient {
+    async fn create_enclave(
+        &self,
+        enclave_create_payload: CreateEnclaveRequest,
+    ) -> ApiResult<Enclave> {
+        let create_enclave_url = format!("{}/", self.base_url());
+        self.post(&create_enclave_url)
+            .json(&enclave_create_payload)
             .send()
             .await
             .handle_json_response()
             .await
     }
 
-    async fn create_cage_deployment_intent(
+    async fn create_enclave_deployment_intent(
         &self,
-        cage_uuid: &str,
-        payload: CreateCageDeploymentIntentRequest,
-    ) -> ApiResult<CreateCageDeploymentIntentResponse> {
-        let deployment_intent_url = format!("{}/{}/credentials", self.base_url(), cage_uuid);
+        enclave_uuid: &str,
+        payload: CreateEnclaveDeploymentIntentRequest,
+    ) -> ApiResult<CreateEnclaveDeploymentIntentResponse> {
+        let deployment_intent_url = format!("{}/{}/credentials", self.base_url(), enclave_uuid);
         self.post(&deployment_intent_url)
             .json(&payload)
             .send()
@@ -117,10 +123,10 @@ impl CageApi for CagesClient {
             .await
     }
 
-    async fn create_cage_signing_cert_ref(
+    async fn create_enclave_signing_cert_ref(
         &self,
-        payload: CreateCageSigningCertRefRequest,
-    ) -> ApiResult<CreateCageSigningCertRefResponse> {
+        payload: CreateEnclaveSigningCertRefRequest,
+    ) -> ApiResult<CreateEnclaveSigningCertRefResponse> {
         let signing_cert_url = format!("{}/signing/certs", self.base_url());
         self.post(&signing_cert_url)
             .json(&payload)
@@ -130,18 +136,18 @@ impl CageApi for CagesClient {
             .await
     }
 
-    async fn get_cages(&self) -> ApiResult<GetCagesResponse> {
-        let get_cages_url = format!("{}/", self.base_url());
-        self.get(&get_cages_url)
+    async fn get_enclaves(&self) -> ApiResult<GetEnclavesResponse> {
+        let get_enclaves_url = format!("{}/", self.base_url());
+        self.get(&get_enclaves_url)
             .send()
             .await
             .handle_json_response()
             .await
     }
 
-    async fn get_cage(&self, cage_uuid: &str) -> ApiResult<GetCageResponse> {
-        let get_cage_url = format!("{}/{}", self.base_url(), cage_uuid);
-        self.get(&get_cage_url)
+    async fn get_enclave(&self, enclave_uuid: &str) -> ApiResult<GetEnclaveResponse> {
+        let get_enclave_url = format!("{}/{}", self.base_url(), enclave_uuid);
+        self.get(&get_enclave_url)
             .send()
             .await
             .handle_json_response()
@@ -149,16 +155,16 @@ impl CageApi for CagesClient {
     }
 
     async fn get_app_keys(&self, team_uuid: &str, app_uuid: &str) -> ApiResult<GetKeysResponse> {
-        let get_cage_url = format!("{}/{}/apps/{}", self.keys_url(), team_uuid, app_uuid);
-        self.get(&get_cage_url)
+        let get_enclave_url = format!("{}/{}/apps/{}", self.keys_url(), team_uuid, app_uuid);
+        self.get(&get_enclave_url)
             .send()
             .await
             .handle_json_response()
             .await
     }
 
-    async fn add_env_var(&self, cage_uuid: String, payload: AddSecretRequest) -> ApiResult<()> {
-        let add_env_url = format!("{}/{}/secrets", self.base_url(), cage_uuid);
+    async fn add_env_var(&self, enclave_uuid: String, payload: AddSecretRequest) -> ApiResult<()> {
+        let add_env_url = format!("{}/{}/secrets", self.base_url(), enclave_uuid);
         self.put(&add_env_url)
             .json(&payload)
             .send()
@@ -166,16 +172,16 @@ impl CageApi for CagesClient {
             .handle_no_op_response()
     }
 
-    async fn delete_env_var(&self, cage_uuid: String, name: String) -> ApiResult<()> {
-        let delete_env_url = format!("{}/{}/secrets/{}", self.base_url(), cage_uuid, name);
+    async fn delete_env_var(&self, enclave_uuid: String, name: String) -> ApiResult<()> {
+        let delete_env_url = format!("{}/{}/secrets/{}", self.base_url(), enclave_uuid, name);
         self.delete(&delete_env_url)
             .send()
             .await
             .handle_no_op_response()
     }
 
-    async fn get_cage_env(&self, cage_uuid: String) -> ApiResult<CageEnv> {
-        let get_env_url = format!("{}/{}/secrets", self.base_url(), cage_uuid);
+    async fn get_enclave_env(&self, enclave_uuid: String) -> ApiResult<EnclaveEnv> {
+        let get_env_url = format!("{}/{}/secrets", self.base_url(), enclave_uuid);
         self.get(&get_env_url)
             .send()
             .await
@@ -183,18 +189,18 @@ impl CageApi for CagesClient {
             .await
     }
 
-    async fn get_cage_deployment_by_uuid(
+    async fn get_enclave_deployment_by_uuid(
         &self,
-        cage_uuid: &str,
+        enclave_uuid: &str,
         deployment_uuid: &str,
-    ) -> ApiResult<GetCageDeploymentResponse> {
-        let get_cage_url = format!(
+    ) -> ApiResult<GetEnclaveDeploymentResponse> {
+        let get_enclave_url = format!(
             "{}/{}/deployments/{}",
             self.base_url(),
-            cage_uuid,
+            enclave_uuid,
             deployment_uuid
         );
-        self.get(&get_cage_url)
+        self.get(&get_enclave_url)
             .send()
             .await
             .handle_json_response()
@@ -210,13 +216,14 @@ impl CageApi for CagesClient {
             .await
     }
 
-    async fn update_cage_locked_signing_certs(
+    async fn update_enclave_locked_signing_certs(
         &self,
-        cage_uuid: &str,
-        payload: UpdateLockedCageSigningCertRequest,
-    ) -> ApiResult<Vec<CageToSigningCert>> {
-        let get_cage_lock_certs_url = format!("{}/{}/signing/certs", self.base_url(), cage_uuid);
-        self.put(&get_cage_lock_certs_url)
+        enclave_uuid: &str,
+        payload: UpdateLockedEnclaveSigningCertRequest,
+    ) -> ApiResult<Vec<EnclaveToSigningCert>> {
+        let get_enclave_lock_certs_url =
+            format!("{}/{}/signing/certs", self.base_url(), enclave_uuid);
+        self.put(&get_enclave_lock_certs_url)
             .json(&payload)
             .send()
             .await
@@ -224,19 +231,20 @@ impl CageApi for CagesClient {
             .await
     }
 
-    async fn get_cage_locked_signing_certs(
+    async fn get_enclave_locked_signing_certs(
         &self,
-        cage_uuid: &str,
-    ) -> ApiResult<Vec<CageSigningCert>> {
-        let get_cage_lock_certs_url = format!("{}/{}/signing/certs", self.base_url(), cage_uuid);
-        self.get(&get_cage_lock_certs_url)
+        enclave_uuid: &str,
+    ) -> ApiResult<Vec<EnclaveSigningCert>> {
+        let get_enclave_lock_certs_url =
+            format!("{}/{}/signing/certs", self.base_url(), enclave_uuid);
+        self.get(&get_enclave_lock_certs_url)
             .send()
             .await
             .handle_json_response()
             .await
     }
 
-    async fn get_cage_cert_by_uuid(&self, cert_uuid: &str) -> ApiResult<CageSigningCert> {
+    async fn get_enclave_cert_by_uuid(&self, cert_uuid: &str) -> ApiResult<EnclaveSigningCert> {
         let get_cert_url = format!("{}/signing/certs/{}", self.base_url(), cert_uuid);
         self.get(&get_cert_url)
             .send()
@@ -245,16 +253,16 @@ impl CageApi for CagesClient {
             .await
     }
 
-    async fn get_cage_logs(
+    async fn get_enclave_logs(
         &self,
-        cage_uuid: &str,
+        enclave_uuid: &str,
         start_time: u128,
         end_time: u128,
-    ) -> ApiResult<CageLogs> {
+    ) -> ApiResult<EnclaveLogs> {
         let get_logs_url = format!(
             "{}/{}/logs?startTime={start_time}&endTime={end_time}",
             self.base_url(),
-            cage_uuid
+            enclave_uuid
         );
 
         self.get(&get_logs_url)
@@ -264,27 +272,27 @@ impl CageApi for CagesClient {
             .await
     }
 
-    async fn delete_cage(&self, cage_uuid: &str) -> ApiResult<DeleteCageResponse> {
-        let delete_cage_url = format!("{}/{}", self.base_url(), cage_uuid);
-        self.delete(&delete_cage_url)
+    async fn delete_enclave(&self, enclave_uuid: &str) -> ApiResult<DeleteEnclaveResponse> {
+        let delete_enclave_url = format!("{}/{}", self.base_url(), enclave_uuid);
+        self.delete(&delete_enclave_url)
             .send()
             .await
             .handle_json_response()
             .await
     }
 
-    async fn restart_cage(&self, cage_uuid: &str) -> ApiResult<CageDeployment> {
-        let patch_cage_url = format!("{}/{}", self.base_url(), cage_uuid);
-        self.patch(&patch_cage_url)
+    async fn restart_enclave(&self, enclave_uuid: &str) -> ApiResult<EnclaveDeployment> {
+        let patch_enclave_url = format!("{}/{}", self.base_url(), enclave_uuid);
+        self.patch(&patch_enclave_url)
             .send()
             .await
             .handle_json_response()
             .await
     }
 
-    async fn get_scaling_config(&self, cage_uuid: &str) -> ApiResult<CageScalingConfig> {
-        let cage_scaling_url = format!("{}/{}/scale", self.base_url(), cage_uuid);
-        self.get(&cage_scaling_url)
+    async fn get_scaling_config(&self, enclave_uuid: &str) -> ApiResult<EnclaveScalingConfig> {
+        let enclave_scaling_url = format!("{}/{}/scale", self.base_url(), enclave_uuid);
+        self.get(&enclave_scaling_url)
             .send()
             .await
             .handle_json_response()
@@ -293,11 +301,11 @@ impl CageApi for CagesClient {
 
     async fn update_scaling_config(
         &self,
-        cage_uuid: &str,
-        update_scaling_config_request: UpdateCageScalingConfigRequest,
-    ) -> ApiResult<CageScalingConfig> {
-        let cage_scaling_url = format!("{}/{}/scale", self.base_url(), cage_uuid);
-        self.put(&cage_scaling_url)
+        enclave_uuid: &str,
+        update_scaling_config_request: UpdateEnclaveScalingConfigRequest,
+    ) -> ApiResult<EnclaveScalingConfig> {
+        let enclave_scaling_url = format!("{}/{}/scale", self.base_url(), enclave_uuid);
+        self.put(&enclave_scaling_url)
             .json(&update_scaling_config_request)
             .send()
             .await
@@ -317,7 +325,7 @@ pub struct VersionMetadata {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateCageDeploymentIntentRequest {
+pub struct CreateEnclaveDeploymentIntentRequest {
     #[serde(flatten)]
     pcrs: crate::enclave::PCRs,
     debug_mode: bool,
@@ -335,10 +343,10 @@ pub struct CreateCageDeploymentIntentRequest {
     desired_replicas: Option<u32>,
 }
 
-impl CreateCageDeploymentIntentRequest {
+impl CreateEnclaveDeploymentIntentRequest {
     pub fn new(
         pcrs: &crate::enclave::PCRs,
-        config: ValidatedCageBuildConfig,
+        config: ValidatedEnclaveBuildConfig,
         eif_size_bytes: u64,
         data_plane_version: String,
         installer_version: String,
@@ -369,14 +377,14 @@ impl CreateCageDeploymentIntentRequest {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateCageSigningCertRefRequest {
+pub struct CreateEnclaveSigningCertRefRequest {
     cert_hash: String,
     name: String,
     not_before: String,
     not_after: String,
 }
 
-impl CreateCageSigningCertRefRequest {
+impl CreateEnclaveSigningCertRefRequest {
     pub fn new(cert_hash: String, name: String, not_before: String, not_after: String) -> Self {
         Self {
             cert_hash,
@@ -389,11 +397,11 @@ impl CreateCageSigningCertRefRequest {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateLockedCageSigningCertRequest {
+pub struct UpdateLockedEnclaveSigningCertRequest {
     cert_uuids: Vec<String>,
 }
 
-impl UpdateLockedCageSigningCertRequest {
+impl UpdateLockedEnclaveSigningCertRequest {
     pub fn new(cert_uuids: Vec<String>) -> Self {
         Self { cert_uuids }
     }
@@ -401,7 +409,7 @@ impl UpdateLockedCageSigningCertRequest {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateCageRequest {
+pub struct CreateEnclaveRequest {
     name: String,
     is_time_bound: bool,
 }
@@ -415,13 +423,13 @@ pub struct AddSecretRequest {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CageSecrets {
+pub struct EnclaveSecrets {
     pub name: String,
     pub secret: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CageEnv {
+pub struct EnclaveEnv {
     pub secrets: Vec<Secret>,
 }
 
@@ -431,10 +439,10 @@ pub struct Secret {
     pub secret: String,
 }
 
-impl CreateCageRequest {
-    pub fn new(cage_name: String, is_time_bound: bool) -> Self {
+impl CreateEnclaveRequest {
+    pub fn new(enclave_name: String, is_time_bound: bool) -> Self {
         Self {
-            name: cage_name,
+            name: enclave_name,
             is_time_bound,
         }
     }
@@ -442,20 +450,20 @@ impl CreateCageRequest {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateCageDeploymentIntentResponse {
+pub struct CreateEnclaveDeploymentIntentResponse {
     signed_url: String,
-    cage_uuid: String,
+    enclave_uuid: String,
     deployment_uuid: String,
     version: u32,
 }
 
-impl CreateCageDeploymentIntentResponse {
+impl CreateEnclaveDeploymentIntentResponse {
     pub fn signed_url(&self) -> &str {
         &self.signed_url
     }
 
-    pub fn cage_uuid(&self) -> &str {
-        &self.cage_uuid
+    pub fn enclave_uuid(&self) -> &str {
+        &self.enclave_uuid
     }
 
     pub fn deployment_uuid(&self) -> &str {
@@ -469,7 +477,7 @@ impl CreateCageDeploymentIntentResponse {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateCageSigningCertRefResponse {
+pub struct CreateEnclaveSigningCertRefResponse {
     cert_hash: String,
     not_before: String,
     not_after: String,
@@ -477,7 +485,7 @@ pub struct CreateCageSigningCertRefResponse {
     uuid: String,
 }
 
-impl CreateCageSigningCertRefResponse {
+impl CreateEnclaveSigningCertRefResponse {
     pub fn cert_hash(&self) -> &str {
         &self.cert_hash
     }
@@ -501,14 +509,14 @@ impl CreateCageSigningCertRefResponse {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CageToSigningCert {
-    pub cage_uuid: String,
+pub struct EnclaveToSigningCert {
+    pub enclave_uuid: String,
     pub signing_cert_uuid: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub enum CageState {
+pub enum EnclaveState {
     Pending,
     Active,
     Deleting,
@@ -517,18 +525,18 @@ pub enum CageState {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Cage {
+pub struct Enclave {
     pub uuid: String,
     pub name: String,
     pub team_uuid: String,
     pub app_uuid: String,
     pub domain: String,
-    pub state: CageState,
+    pub state: EnclaveState,
     pub created_at: String,
     pub updated_at: String,
 }
 
-impl Cage {
+impl Enclave {
     pub fn uuid(&self) -> &str {
         &self.uuid
     }
@@ -548,9 +556,9 @@ impl Cage {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CageDeployment {
+pub struct EnclaveDeployment {
     pub uuid: String,
-    pub cage_uuid: String,
+    pub enclave_uuid: String,
     pub version_uuid: String,
     pub signing_cert_uuid: String,
     pub debug_mode: bool,
@@ -558,13 +566,13 @@ pub struct CageDeployment {
     pub completed_at: Option<String>,
 }
 
-impl CageDeployment {
+impl EnclaveDeployment {
     pub fn is_finished(&self) -> bool {
         self.completed_at.is_some()
     }
 
-    pub fn cage_uuid(&self) -> &str {
-        &self.cage_uuid
+    pub fn enclave_uuid(&self) -> &str {
+        &self.enclave_uuid
     }
 
     pub fn uuid(&self) -> &str {
@@ -583,7 +591,7 @@ pub enum BuildStatus {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CageVersion {
+pub struct EnclaveVersion {
     pub uuid: String,
     pub version: u16,
     pub control_plane_img_url: Option<String>,
@@ -597,7 +605,7 @@ pub struct CageVersion {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, PartialOrd)]
 #[serde(rename_all = "camelCase")]
-pub struct CageSigningCert {
+pub struct EnclaveSigningCert {
     pub name: Option<String>,
     pub uuid: String,
     pub app_uuid: String,
@@ -606,7 +614,7 @@ pub struct CageSigningCert {
     pub not_after: Option<String>,
 }
 
-impl CageSigningCert {
+impl EnclaveSigningCert {
     pub fn new(
         name: Option<String>,
         uuid: String,
@@ -661,7 +669,7 @@ pub enum DeployStatus {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CageRegionalDeployment {
+pub struct EnclaveRegionalDeployment {
     pub uuid: String,
     pub deployment_uuid: String,
     pub deployment_order: u16,
@@ -675,7 +683,7 @@ pub struct CageRegionalDeployment {
     pub detailed_status: Option<String>,
 }
 
-impl CageRegionalDeployment {
+impl EnclaveRegionalDeployment {
     pub fn is_failed(&self) -> bool {
         self.deploy_status == DeployStatus::Failed
     }
@@ -695,32 +703,32 @@ impl CageRegionalDeployment {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GetCagesResponse {
-    cages: Vec<Cage>,
+pub struct GetEnclavesResponse {
+    enclaves: Vec<Enclave>,
 }
 
-impl GetCagesResponse {
-    pub fn cages(&self) -> &Vec<Cage> {
-        self.cages.as_ref()
+impl GetEnclavesResponse {
+    pub fn enclaves(&self) -> &Vec<Enclave> {
+        self.enclaves.as_ref()
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DeploymentsForGetCage {
+pub struct DeploymentsForGetEnclave {
     #[serde(flatten)]
-    pub deployment: CageDeployment,
-    #[serde(rename = "teeCageVersion")]
-    pub version: CageVersion,
+    pub deployment: EnclaveDeployment,
+    #[serde(rename = "enclaveVersion")]
+    pub version: EnclaveVersion,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GetCageResponse {
+pub struct GetEnclaveResponse {
     #[serde(flatten)]
-    pub cage: Cage,
-    #[serde(rename = "teeCageDeployments")]
-    pub deployments: Vec<DeploymentsForGetCage>,
+    pub enclaves: Enclave,
+    #[serde(rename = "enclaveDeployments")]
+    pub deployments: Vec<DeploymentsForGetEnclave>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -731,29 +739,29 @@ pub struct GetKeysResponse {
     pub ecdh_key: String,
 }
 
-impl GetCageResponse {
+impl GetEnclaveResponse {
     pub fn is_deleted(&self) -> bool {
-        self.cage.state == CageState::Deleted
+        self.enclaves.state == EnclaveState::Deleted
     }
 
     pub fn domain(&self) -> &str {
-        self.cage.domain.as_str()
+        self.enclaves.domain.as_str()
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GetCageDeploymentResponse {
+pub struct GetEnclaveDeploymentResponse {
     #[serde(flatten)]
-    pub deployment: CageDeployment,
-    pub tee_cage_version: CageVersion,
-    pub tee_cage_signing_cert: CageSigningCert,
-    pub tee_cage_regional_deployments: Vec<CageRegionalDeployment>,
+    pub deployment: EnclaveDeployment,
+    pub enclave_version: EnclaveVersion,
+    pub enclave_signing_cert: EnclaveSigningCert,
+    pub enclave_regional_deployments: Vec<EnclaveRegionalDeployment>,
 }
 
-impl GetCageDeploymentResponse {
+impl GetEnclaveDeploymentResponse {
     pub fn is_built(&self) -> bool {
-        matches!(self.tee_cage_version.build_status, BuildStatus::Ready)
+        matches!(self.enclave_version.build_status, BuildStatus::Ready)
     }
 
     pub fn is_finished(&self) -> bool {
@@ -762,25 +770,25 @@ impl GetCageDeploymentResponse {
 
     //TODO: Handle multi region deployment failures
     pub fn is_failed(&self) -> bool {
-        let build_failed = matches!(self.tee_cage_version.build_status, BuildStatus::Failed);
+        let build_failed = matches!(self.enclave_version.build_status, BuildStatus::Failed);
         build_failed
             || self
-                .tee_cage_regional_deployments
+                .enclave_regional_deployments
                 .first()
                 .map(|depl| depl.is_failed())
                 .unwrap_or_default()
     }
 
     pub fn get_failure_reason(&self) -> Option<String> {
-        self.tee_cage_version.failure_reason.clone().or_else(|| {
-            self.tee_cage_regional_deployments
+        self.enclave_version.failure_reason.clone().or_else(|| {
+            self.enclave_regional_deployments
                 .first()
                 .map(|depl| depl.get_failure_reason())
         })
     }
 
     pub fn get_detailed_status(&self) -> Option<String> {
-        self.tee_cage_regional_deployments
+        self.enclave_regional_deployments
             .first()
             .map(|depl| depl.get_detailed_status())
     }
@@ -789,19 +797,19 @@ impl GetCageDeploymentResponse {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetSigningCertsResponse {
-    pub certs: Vec<CageSigningCert>,
+    pub certs: Vec<EnclaveSigningCert>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CageLogs {
+pub struct EnclaveLogs {
     log_events: Vec<LogEvent>,
     next_token: Option<String>,
     start_time: String,
     end_time: String,
 }
 
-impl CageLogs {
+impl EnclaveLogs {
     pub fn start_time(&self) -> &str {
         &self.start_time
     }
@@ -838,15 +846,15 @@ impl LogEvent {
     }
 }
 
-pub type DeleteCageResponse = Cage;
+pub type DeleteEnclaveResponse = Enclave;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CageScalingConfig {
+pub struct EnclaveScalingConfig {
     limits: ScalingLimits,
     config: ScalingConfig,
 }
 
-impl CageScalingConfig {
+impl EnclaveScalingConfig {
     pub fn max_instances(&self) -> u32 {
         self.limits.max_instances
     }
@@ -881,16 +889,16 @@ impl std::convert::From<u32> for ScalingConfig {
     }
 }
 
-pub type UpdateCageScalingConfigRequest = ScalingConfig;
+pub type UpdateEnclaveScalingConfigRequest = ScalingConfig;
 
 #[cfg(test)]
 mod test {
     use super::*;
 
-    fn get_testing_deployment() -> CageDeployment {
-        CageDeployment {
+    fn get_testing_deployment() -> EnclaveDeployment {
+        EnclaveDeployment {
             uuid: "abc".to_string(),
-            cage_uuid: "def".to_string(),
+            enclave_uuid: "def".to_string(),
             version_uuid: "ghi".to_string(),
             signing_cert_uuid: "jkl".to_string(),
             debug_mode: false,
@@ -899,8 +907,8 @@ mod test {
         }
     }
 
-    fn get_testing_version() -> CageVersion {
-        CageVersion {
+    fn get_testing_version() -> EnclaveVersion {
+        EnclaveVersion {
             uuid: "abc".to_string(),
             version: 1,
             control_plane_img_url: Some("control-plane.com".to_string()),
@@ -913,8 +921,8 @@ mod test {
         }
     }
 
-    fn get_testing_cert() -> CageSigningCert {
-        CageSigningCert {
+    fn get_testing_cert() -> EnclaveSigningCert {
+        EnclaveSigningCert {
             name: Some("abc".to_string()),
             uuid: "abc".to_string(),
             app_uuid: "def".to_string(),
@@ -929,11 +937,11 @@ mod test {
         let deployment = get_testing_deployment();
         let version = get_testing_version();
         let cert = get_testing_cert();
-        let deployment_with_empty_regional = GetCageDeploymentResponse {
+        let deployment_with_empty_regional = GetEnclaveDeploymentResponse {
             deployment,
-            tee_cage_version: version,
-            tee_cage_signing_cert: cert,
-            tee_cage_regional_deployments: vec![],
+            enclave_version: version,
+            enclave_signing_cert: cert,
+            enclave_regional_deployments: vec![],
         };
 
         assert!(deployment_with_empty_regional
@@ -953,11 +961,11 @@ mod test {
 
         let failure_reason = "An error occurred provisioning your TEE".to_string();
         let detailed_failure_reason = "Insufficient capacity".to_string();
-        let deployment_with_regional = GetCageDeploymentResponse {
+        let deployment_with_regional = GetEnclaveDeploymentResponse {
             deployment,
-            tee_cage_version: version,
-            tee_cage_signing_cert: cert,
-            tee_cage_regional_deployments: vec![CageRegionalDeployment {
+            enclave_version: version,
+            enclave_signing_cert: cert,
+            enclave_regional_deployments: vec![EnclaveRegionalDeployment {
                 uuid: "abc".to_string(),
                 deployment_uuid: "def".to_string(),
                 deployment_order: 1,

@@ -188,28 +188,28 @@ impl std::convert::TryFrom<&ValidatedSigningInfo> for EnclaveSigningInfo {
 }
 
 #[derive(Debug, Error)]
-pub enum CageConfigError {
+pub enum EnclaveConfigError {
     #[error("Failed to find config file at {0}")]
     MissingConfigFile(String),
     #[error("Failed to read config file — {0:?}")]
     FailedToAccessConfig(#[from] std::io::Error),
-    #[error("Failed to parse Cage config")]
-    FailedToParseCageConfig(#[from] toml::de::Error),
+    #[error("Failed to parse Enclave config")]
+    FailedToParseEnclaveConfig(#[from] toml::de::Error),
     #[error("{0}. Signing credentials can be generated using the cert new command.")]
     MissingSigningInfo(#[from] SigningInfoError),
     #[error("Dockerfile is required and was not given.")]
     MissingDockerfile,
     #[error("{0} was not set in the toml.")]
     MissingField(String),
-    #[error("TLS Termination must be enabled to enable cage logging.")]
+    #[error("TLS Termination must be enabled to enable Enclave logging.")]
     LoggingEnabledWithoutTLSTermination(),
 }
 
-impl CliError for CageConfigError {
+impl CliError for EnclaveConfigError {
     fn exitcode(&self) -> exitcode::ExitCode {
         match self {
             Self::MissingConfigFile(_) | Self::FailedToAccessConfig(_) => exitcode::NOINPUT,
-            Self::FailedToParseCageConfig(_)
+            Self::FailedToParseEnclaveConfig(_)
             | Self::MissingDockerfile
             | Self::MissingField(_)
             | Self::LoggingEnabledWithoutTLSTermination() => exitcode::DATAERR,
@@ -227,7 +227,7 @@ pub fn default_true() -> bool {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CageConfig {
+pub struct EnclaveConfig {
     pub name: String,
     pub uuid: Option<String>,
     pub app_uuid: Option<String>,
@@ -255,15 +255,15 @@ pub struct CageConfig {
     pub runtime: Option<RuntimeVersions>,
 }
 
-impl CageConfig {
-    pub fn annotate(&mut self, cage: crate::api::cage::Cage) {
-        self.uuid = Some(cage.uuid().into());
-        self.app_uuid = Some(cage.app_uuid().into());
-        self.team_uuid = Some(cage.team_uuid().into());
+impl EnclaveConfig {
+    pub fn annotate(&mut self, enclave: crate::api::enclave::Enclave) {
+        self.uuid = Some(enclave.uuid().into());
+        self.app_uuid = Some(enclave.app_uuid().into());
+        self.team_uuid = Some(enclave.team_uuid().into());
     }
 }
 
-impl std::convert::AsRef<CageConfig> for CageConfig {
+impl std::convert::AsRef<EnclaveConfig> for EnclaveConfig {
     fn as_ref(&self) -> &Self {
         self
     }
@@ -271,9 +271,9 @@ impl std::convert::AsRef<CageConfig> for CageConfig {
 
 // Helper type to guarantee the presence of fields when combining multiple config sources
 #[derive(Clone, Debug)]
-pub struct ValidatedCageBuildConfig {
-    pub cage_name: String,
-    pub cage_uuid: String,
+pub struct ValidatedEnclaveBuildConfig {
+    pub enclave_name: String,
+    pub enclave_uuid: String,
     pub app_uuid: String,
     pub team_uuid: String,
     pub debug: bool,
@@ -291,7 +291,7 @@ pub struct ValidatedCageBuildConfig {
     pub healthcheck: Option<String>,
 }
 
-impl ValidatedCageBuildConfig {
+impl ValidatedEnclaveBuildConfig {
     pub fn signing_info(&self) -> &ValidatedSigningInfo {
         &self.signing
     }
@@ -304,12 +304,12 @@ impl ValidatedCageBuildConfig {
         &self.egress
     }
 
-    pub fn cage_name(&self) -> &str {
-        &self.cage_name
+    pub fn enclave_name(&self) -> &str {
+        &self.enclave_name
     }
 
-    pub fn cage_uuid(&self) -> &str {
-        &self.cage_uuid
+    pub fn enclave_uuid(&self) -> &str {
+        &self.enclave_uuid
     }
 
     pub fn app_uuid(&self) -> &str {
@@ -359,7 +359,7 @@ impl ValidatedCageBuildConfig {
     }
 }
 
-impl CageConfig {
+impl EnclaveConfig {
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -408,41 +408,41 @@ impl CageConfig {
         self.scaling = Some(scaling_info);
     }
 
-    pub fn try_from_filepath(path: &str) -> Result<Self, CageConfigError> {
+    pub fn try_from_filepath(path: &str) -> Result<Self, EnclaveConfigError> {
         let config_path = std::path::Path::new(path);
         if !config_path.exists() {
-            return Err(CageConfigError::MissingConfigFile(path.to_string()));
+            return Err(EnclaveConfigError::MissingConfigFile(path.to_string()));
         }
 
-        let cage_config_content = std::fs::read(config_path)?;
-        Ok(toml::de::from_slice(cage_config_content.as_slice())?)
+        let enclave_config_content = std::fs::read(config_path)?;
+        Ok(toml::de::from_slice(enclave_config_content.as_slice())?)
     }
 
-    pub fn get_cage_domain(&self) -> Result<String, CageConfigError> {
+    pub fn get_enclave_domain(&self) -> Result<String, EnclaveConfigError> {
         if self.uuid.is_none() {
-            return Err(CageConfigError::MissingField("cage_uuid".to_string()));
+            return Err(EnclaveConfigError::MissingField("enclave_uuid".to_string()));
         }
         Ok(format!(
-            "{}.{}.cage.evervault.com",
+            "{}.{}.enclave.evervault.com",
             self.name(),
             self.app_uuid
                 .as_ref()
                 .map(|uuid| uuid.replace('_', "-"))
-                .ok_or_else(|| CageConfigError::MissingField("app_uuid".to_string()))?
+                .ok_or_else(|| EnclaveConfigError::MissingField("app_uuid".to_string()))?
         ))
     }
 
-    pub fn get_attestation(&self) -> Result<&EIFMeasurements, CageConfigError> {
+    pub fn get_attestation(&self) -> Result<&EIFMeasurements, EnclaveConfigError> {
         self.attestation
             .as_ref()
-            .ok_or_else(|| CageConfigError::MissingField("attestation".to_string()))
+            .ok_or_else(|| EnclaveConfigError::MissingField("attestation".to_string()))
     }
 }
 
-impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
-    type Error = CageConfigError;
+impl std::convert::TryFrom<&EnclaveConfig> for ValidatedEnclaveBuildConfig {
+    type Error = EnclaveConfigError;
 
-    fn try_from(config: &CageConfig) -> Result<Self, Self::Error> {
+    fn try_from(config: &EnclaveConfig) -> Result<Self, Self::Error> {
         let signing_info = config
             .signing
             .as_ref()
@@ -451,29 +451,29 @@ impl std::convert::TryFrom<&CageConfig> for ValidatedCageBuildConfig {
         let app_uuid = config
             .app_uuid
             .clone()
-            .ok_or_else(|| CageConfigError::MissingField("App uuid".into()))?;
-        let cage_uuid = config
+            .ok_or_else(|| EnclaveConfigError::MissingField("App uuid".into()))?;
+        let enclave_uuid = config
             .uuid
             .clone()
-            .ok_or_else(|| CageConfigError::MissingField("Cage uuid".into()))?;
+            .ok_or_else(|| EnclaveConfigError::MissingField("Enclave uuid".into()))?;
         let team_uuid = config
             .team_uuid
             .clone()
-            .ok_or_else(|| CageConfigError::MissingField("Team uuid".into()))?;
+            .ok_or_else(|| EnclaveConfigError::MissingField("Team uuid".into()))?;
 
         let trx_logging_enabled = match (config.trx_logging, !config.disable_tls_termination) {
             (false, _) => Ok(false), // (logging disabled, _) = logging disabled
-            (true, false) => Err(CageConfigError::LoggingEnabledWithoutTLSTermination()), // (logging enabled, tls_termination disabled) = config error (Tls termination needed for logging)
+            (true, false) => Err(EnclaveConfigError::LoggingEnabledWithoutTLSTermination()), // (logging enabled, tls_termination disabled) = config error (Tls termination needed for logging)
             (true, true) => Ok(true), // (logging enabled, tls_termination enabled) = logging enabled
         }?;
 
         let scaling_settings = config.scaling.clone();
 
-        Ok(ValidatedCageBuildConfig {
-            cage_uuid,
+        Ok(ValidatedEnclaveBuildConfig {
+            enclave_uuid,
             app_uuid,
             team_uuid,
-            cage_name: config.name.clone(),
+            enclave_name: config.name.clone(),
             debug: config.debug,
             dockerfile: config.dockerfile.clone(),
             egress: config.egress.clone(),
@@ -504,7 +504,7 @@ pub trait BuildTimeConfig {
     }
 
     // Return new copy of config to prevent args being written to toml file in err
-    fn merge_with_config(&self, config: &CageConfig) -> CageConfig {
+    fn merge_with_config(&self, config: &EnclaveConfig) -> EnclaveConfig {
         let mut merged_config = config.clone();
 
         if let Some(cert) = self.certificate() {
@@ -529,17 +529,17 @@ impl BuildTimeConfig for () {}
 pub fn read_and_validate_config<B: BuildTimeConfig>(
     config_path: &str,
     args: &B,
-) -> Result<(CageConfig, ValidatedCageBuildConfig), CageConfigError> {
-    let cage_config = CageConfig::try_from_filepath(config_path)?;
-    let merged_config = args.merge_with_config(&cage_config);
-    let validated_config: ValidatedCageBuildConfig = merged_config.as_ref().try_into()?;
+) -> Result<(EnclaveConfig, ValidatedEnclaveBuildConfig), EnclaveConfigError> {
+    let enclave_config = EnclaveConfig::try_from_filepath(config_path)?;
+    let merged_config = args.merge_with_config(&enclave_config);
+    let validated_config: ValidatedEnclaveBuildConfig = merged_config.as_ref().try_into()?;
 
-    Ok((cage_config, validated_config))
+    Ok((enclave_config, validated_config))
 }
 
 #[cfg(test)]
 mod test {
-    use super::{BuildTimeConfig, CageConfig};
+    use super::{BuildTimeConfig, EnclaveConfig};
 
     struct ExampleArgs {
         cert: String,
@@ -563,8 +563,8 @@ mod test {
 
     #[test]
     fn merge_args_with_config() {
-        let config = CageConfig {
-            name: "Cage123".to_string(),
+        let config = EnclaveConfig {
+            name: "Enclave123".to_string(),
             uuid: Some("abcdef123".to_string()),
             app_uuid: Some("abcdef321".to_string()),
             team_uuid: Some("team_abcdef456".to_string()),

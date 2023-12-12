@@ -935,8 +935,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "ev-cage"
-version = "0.0.0-dev"
+name = "ev-enclave"
+version = "1.0.0-dev"
 dependencies = [
  "async-stream",
  "async-trait",

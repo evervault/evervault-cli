@@ -1,6 +1,6 @@
 pub mod assets;
-pub mod cage;
 pub mod client;
+pub mod enclave;
 
 pub use reqwest::Client;
 

@@ -1,11 +1,11 @@
-use crate::api::{cage::CageApi, AuthMode};
+use crate::api::{enclave::EnclaveApi, AuthMode};
 use crate::common::CliError;
 use crate::config::{read_and_validate_config, BuildTimeConfig};
 use crate::version::check_version;
 use crate::{api, get_api_key};
 use clap::Parser;
 
-/// List your Cages and Deployments
+/// List your Enclaves and Deployments
 #[derive(Debug, Parser)]
 #[clap(name = "list", about)]
 pub struct List {
@@ -18,22 +18,22 @@ pub struct List {
 #[derive(Debug, Parser)]
 #[clap(name = "list", about)]
 pub enum ListCommands {
-    /// List Cages
+    /// List Enclaves
     #[clap()]
-    Cages,
-    /// List Cage Deployments
+    Enclaves,
+    /// List Enclave Deployments
     #[clap()]
     Deployments(DeploymentArgs),
 }
 
 #[derive(Debug, Parser)]
 pub struct DeploymentArgs {
-    /// The cage uuid to get deployments for
-    #[clap(long = "cage-uuid")]
-    cage_uuid: Option<String>,
+    /// The Enclave uuid to get deployments for
+    #[clap(long = "enclave-uuid")]
+    enclave_uuid: Option<String>,
 
-    /// The file containing the Cage config
-    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    /// The file containing the Enclave config
+    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
     config: String,
 }
 impl BuildTimeConfig for DeploymentArgs {}
@@ -47,42 +47,42 @@ pub async fn run(list_action: List) -> exitcode::ExitCode {
     let api_key = get_api_key!();
     let auth = AuthMode::ApiKey(api_key);
 
-    let cage_client = api::cage::CagesClient::new(auth);
+    let enclave_client = api::enclave::EnclaveClient::new(auth);
 
     match list_action.resource {
-        ListCommands::Cages => list_cages(&cage_client).await,
+        ListCommands::Enclaves => list_enclaves(&enclave_client).await,
         ListCommands::Deployments(deployment_args) => {
-            list_deployments(&cage_client, deployment_args).await
+            list_deployments(&enclave_client, deployment_args).await
         }
     }
 }
 
-async fn list_cages(cage_client: &api::cage::CagesClient) -> exitcode::ExitCode {
-    let cages = match cage_client.get_cages().await {
-        Ok(cages) => cages,
+async fn list_enclaves(enclave_client: &api::enclave::EnclaveClient) -> exitcode::ExitCode {
+    let enclaves = match enclave_client.get_enclaves().await {
+        Ok(enclaves) => enclaves,
         Err(e) => {
-            log::error!("An error occurred while retrieving your Cages — {:?}", e);
+            log::error!("An error occurred while retrieving your Enclaves — {:?}", e);
             return e.exitcode();
         }
     };
 
-    let serialized_cages = serde_json::to_string_pretty(&cages).unwrap();
-    println!("{}", serialized_cages);
+    let serialized_enclaves = serde_json::to_string_pretty(&enclaves).unwrap();
+    println!("{}", serialized_enclaves);
     exitcode::OK
 }
 
 async fn list_deployments(
-    cage_client: &api::cage::CagesClient,
+    enclave_client: &api::enclave::EnclaveClient,
     deployment_args: DeploymentArgs,
 ) -> exitcode::ExitCode {
-    let cage_uuid = if let Some(uuid) = deployment_args.cage_uuid.clone() {
+    let enclave_uuid = if let Some(uuid) = deployment_args.enclave_uuid.clone() {
         uuid
     } else {
         match read_and_validate_config(&deployment_args.config, &deployment_args) {
-            Ok((_, validated_config)) => validated_config.cage_uuid().to_string(),
+            Ok((_, validated_config)) => validated_config.enclave_uuid().to_string(),
             Err(e) => {
                 log::error!(
-                    "No Cage uuid provided, and failed to parse the Cage config - {}",
+                    "No Enclave uuid provided, and failed to parse the Enclave config - {}",
                     e
                 );
                 return e.exitcode();
@@ -90,15 +90,15 @@ async fn list_deployments(
         }
     };
 
-    let cages = match cage_client.get_cage(&cage_uuid).await {
-        Ok(cages) => cages,
+    let enclave = match enclave_client.get_enclave(&enclave_uuid).await {
+        Ok(enclave) => enclave,
         Err(e) => {
-            log::error!("An error occurred while retrieving your Cages — {:?}", e);
+            log::error!("An error occurred while retrieving your Enclaves — {:?}", e);
             return e.exitcode();
         }
     };
 
-    let serialized_deployments = serde_json::to_string_pretty(&cages).unwrap();
+    let serialized_deployments = serde_json::to_string_pretty(&enclave).unwrap();
     println!("{}", serialized_deployments);
     exitcode::OK
 }

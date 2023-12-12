@@ -29,7 +29,7 @@ pub enum CertError {
     HashError(String),
     #[error("Failed to parse timestamp")]
     TimstampParseError(#[from] chrono::ParseError),
-    #[error("No certs found for the current Cage.")]
+    #[error("No certs found for the current Enclave.")]
     NoCertsFound,
 }
 

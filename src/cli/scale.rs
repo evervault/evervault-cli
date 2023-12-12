@@ -2,11 +2,11 @@ use crate::config::{self, ScalingSettings};
 use crate::version::check_version;
 use crate::{
     api::{
-        cage::{CageApi, CagesClient},
+        enclave::{EnclaveApi, EnclaveClient},
         AuthMode,
     },
     common::CliError,
-    config::CageConfig,
+    config::EnclaveConfig,
     get_api_key,
 };
 use clap::Parser;
@@ -14,10 +14,10 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ScaleError {
-    #[error("No Cage Uuid given. You can provide one by using either the --cage-uuid flag, or using the --config flag to point to a Cage.toml")]
+    #[error("No Enclave Uuid given. You can provide one by using either the --enclave-uuid flag, or using the --config flag to point to an Enclave.toml")]
     MissingUuid,
-    #[error("An error occurred parsing the Cage config - {0}")]
-    ConfigError(#[from] config::CageConfigError),
+    #[error("An error occurred parsing the Enclave config - {0}")]
+    ConfigError(#[from] config::EnclaveConfigError),
     #[error("An error occurred contacting the API — {0}")]
     ApiError(#[from] crate::api::client::ApiError),
 }
@@ -32,23 +32,23 @@ impl CliError for ScaleError {
     }
 }
 
-/// Update your Cage's Scaling config
+/// Update your Enclave's Scaling config
 #[derive(Debug, Parser)]
 #[clap(name = "scale", about)]
 pub struct ScaleArgs {
-    /// Path to cage.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    /// Path to enclave.toml config file
+    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 
-    /// Uuid of the Cage to scale
-    #[clap(long = "cage-uuid")]
-    pub cage_uuid: Option<String>,
+    /// Uuid of the Enclave to scale
+    #[clap(long = "enclave-uuid")]
+    pub enclave_uuid: Option<String>,
 
-    /// Number of replicas to run for this Cage. If unset, the command will read the current scaling config from the Evervault API.
+    /// Number of replicas to run for this Enclave. If unset, the command will read the current scaling config from the Evervault API.
     #[clap(long = "desired-replicas")]
     pub desired_replicas: Option<u32>,
 
-    /// Sync the local Cage.toml with the latest scaling config for a Cage if they differ.
+    /// Sync the local Enclave.toml with the latest scaling config for an Enclave if they differ.
     #[clap(long = "sync")]
     pub sync: bool,
 }
@@ -61,22 +61,25 @@ pub async fn run(args: ScaleArgs) -> i32 {
 
     let api_key = get_api_key!();
 
-    let cage_api = CagesClient::new(AuthMode::ApiKey(api_key.to_string()));
+    let enclave_api = EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
 
-    let cage_config = CageConfig::try_from_filepath(&args.config);
-    let cage_uuid = match args.cage_uuid.as_deref() {
-        Some(cage_uuid) => Ok(cage_uuid),
-        None => match cage_config.as_ref() {
-            Ok(cage_config) => cage_config.uuid.as_deref().ok_or(ScaleError::MissingUuid),
+    let enclave_config = EnclaveConfig::try_from_filepath(&args.config);
+    let enclave_uuid = match args.enclave_uuid.as_deref() {
+        Some(enclave_uuid) => Ok(enclave_uuid),
+        None => match enclave_config.as_ref() {
+            Ok(enclave_config) => enclave_config
+                .uuid
+                .as_deref()
+                .ok_or(ScaleError::MissingUuid),
             Err(e) => {
-                log::error!("Failed to resolve cage config - {e:?}");
+                log::error!("Failed to resolve Enclave config - {e:?}");
                 return e.exitcode();
             }
         },
     };
 
-    let cage_uuid = match cage_uuid {
-        Ok(cage_uuid) => cage_uuid,
+    let enclave_uuid = match enclave_uuid {
+        Ok(enclave_uuid) => enclave_uuid,
         Err(e) => {
             log::error!("{e:?}");
             return e.exitcode();
@@ -86,16 +89,16 @@ pub async fn run(args: ScaleArgs) -> i32 {
     let scaling_config_result = match args.desired_replicas {
         Some(new_desired_replicas) => {
             log::info!("Updating desired replicas to {new_desired_replicas}");
-            cage_api
-                .update_scaling_config(cage_uuid, new_desired_replicas.into())
+            enclave_api
+                .update_scaling_config(enclave_uuid, new_desired_replicas.into())
                 .await
         }
-        None => cage_api.get_scaling_config(cage_uuid).await,
+        None => enclave_api.get_scaling_config(enclave_uuid).await,
     };
 
     let scaling_config = match scaling_config_result {
         Ok(result) if args.desired_replicas.is_some() => {
-            log::info!("Cage scaling config updated successfully");
+            log::info!("Enclave scaling config updated successfully");
             result
         }
         Ok(result) => result,
@@ -105,12 +108,12 @@ pub async fn run(args: ScaleArgs) -> i32 {
             } else {
                 "read"
             };
-            log::error!("Failed to {action} the scaling config for {cage_uuid} - {e:?}");
+            log::error!("Failed to {action} the scaling config for {enclave_uuid} - {e:?}");
             return e.exitcode();
         }
     };
 
-    if let Ok(mut config) = cage_config {
+    if let Ok(mut config) = enclave_config {
         let has_scaling_drift = config
             .scaling
             .as_ref()
@@ -122,7 +125,7 @@ pub async fn run(args: ScaleArgs) -> i32 {
             config.set_scaling_config(ScalingSettings {
                 desired_replicas: scaling_config.desired_replicas(),
             });
-            crate::common::save_cage_config(&config, &args.config);
+            crate::common::save_enclave_config(&config, &args.config);
         }
     }
 

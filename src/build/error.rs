@@ -18,11 +18,11 @@ pub enum BuildError {
         "Failed to access dockerfile at {0}. You can specify the dockerfile using the -f flag."
     )]
     DockerfileAccessError(String),
-    #[error("Failed to write the Cage dockerfile to the file system - {0:?}")]
-    FailedToWriteCageDockerfile(std::io::Error),
+    #[error("Failed to write the Enclave dockerfile to the file system - {0:?}")]
+    FailedToWriteEnclaveDockerfile(std::io::Error),
     #[error("An error occurred while building your docker image — {0}")]
     DockerBuildError(String),
-    #[error("An error occurred while converting your image to an enclave — {0}")]
+    #[error("An error occurred while converting your image to an Enclave — {0}")]
     EnclaveConversionError(String),
     #[error(transparent)]
     EnclaveError(#[from] EnclaveError),
@@ -36,7 +36,7 @@ impl CliError for BuildError {
             Self::ContextPathDoesNotExist
             | Self::InvalidSigningInfo(_)
             | Self::DockerfileAccessError(_) => exitcode::NOINPUT,
-            Self::FailedToAccessOutputDir(_) | Self::FailedToWriteCageDockerfile(_) => {
+            Self::FailedToAccessOutputDir(_) | Self::FailedToWriteEnclaveDockerfile(_) => {
                 exitcode::IOERR
             }
             Self::DockerError(_) | Self::DockerBuildError(_) | Self::Utf8Error(_) => {
