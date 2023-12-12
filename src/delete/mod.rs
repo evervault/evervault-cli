@@ -49,7 +49,6 @@ async fn watch_deletion<T: CageApi>(
         let cage_response = match cage_api.get_cage(cage_uuid).await {
             Ok(response) => response,
             Err(e) => {
-                println!("error in status check");
                 log::error!("Unable to retrieve deletion status. Error: {:?}", e);
                 return Err(e.into());
             }
