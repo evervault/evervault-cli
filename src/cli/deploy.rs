@@ -115,15 +115,27 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         }
     };
 
-    let local_replicas = validated_config.scaling.desired_replicas;
+    let local_replicas = validated_config
+        .scaling
+        .as_ref()
+        .map(|local_scaling_config| local_scaling_config.desired_replicas);
 
     // Warn if local scaling config differs from remote
-    let has_scaling_config_drift = cage_scaling_config
-        .as_ref()
-        .is_some_and(|config| config.desired_replicas() != local_replicas);
+    let has_scaling_config_drift = cage_scaling_config.as_ref().is_some_and(|config| {
+        local_replicas.is_some_and(|replicas| config.desired_replicas() != replicas)
+    });
+
+    // cage scaling config is None - has_scaling_config_drift: false
+    // cage scaling config is Some - local scaling config is None : has_scaling_config_drift: false
+    // cage scaling config is Some - local scaling config is Some - scaling config differs : has_scaling_config_drift: true
+
     if has_scaling_config_drift {
         let remote_replicas = cage_scaling_config.as_ref().unwrap().desired_replicas();
-        log::warn!("Remote scaling config differs from local config. This deployment will apply the local config.\n\nCurrent remote replica count: {remote_replicas}\nLocal replica count: {local_replicas}\n");
+        let local_replicas_count = local_replicas
+            .map(|count| count.to_string())
+            .expect("Infallible - checked above");
+
+        log::warn!("Remote scaling config differs from local config. This deployment will apply the local config.\n\nCurrent remote replica count: {remote_replicas}\nLocal replica count: {local_replicas_count}\n");
     }
 
     let timestamp = get_source_date_epoch();

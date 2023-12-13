@@ -49,6 +49,10 @@ pub async fn deploy_eif<T: CageApi + Clone>(
         installer_version,
         get_source_date_epoch(),
         get_git_hash(),
+        validated_config
+            .scaling
+            .as_ref()
+            .map(|config| config.desired_replicas),
     );
 
     let deployment_intent = cage_api

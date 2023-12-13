@@ -331,7 +331,8 @@ pub struct CreateCageDeploymentIntentRequest {
     metadata: VersionMetadata,
     #[serde(skip_serializing_if = "Option::is_none")]
     healthcheck: Option<String>,
-    desired_replicas: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    desired_replicas: Option<u32>,
 }
 
 impl CreateCageDeploymentIntentRequest {
@@ -343,6 +344,7 @@ impl CreateCageDeploymentIntentRequest {
         installer_version: String,
         git_timestamp: String,
         git_hash: String,
+        desired_replicas: Option<u32>,
     ) -> Self {
         Self {
             pcrs: pcrs.clone(),
@@ -360,7 +362,7 @@ impl CreateCageDeploymentIntentRequest {
                 git_timestamp,
             },
             healthcheck: config.healthcheck().map(String::from),
-            desired_replicas: config.scaling.desired_replicas,
+            desired_replicas,
         }
     }
 }
