@@ -232,11 +232,11 @@ jobs:
         run: |
           sh ./scripts/generate-installer.sh ${{ inputs.full-version }} ${{ inputs.major-version }} ${{ inputs.ev-domain }}
           sh ./scripts/update-versions.sh ${{ inputs.full-version }}
-          aws s3 cp scripts/install s3://cage -build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version }}/install
-          aws s3 cp scripts/install s3://cage -build-assets-${{ inputs.stage }}/cli/install
-          aws s3 cp scripts/version s3://cage -build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/version
-          aws s3 cp scripts/version s3://cage -build-assets-${{ inputs.stage }}/cli/version
-          aws s3 cp scripts/versions s3://cage -build-assets-${{ inputs.stage }}/cli/versions
+          aws s3 cp scripts/install s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version }}/install
+          aws s3 cp scripts/install s3://cage-build-assets-${{ inputs.stage }}/cli/install
+          aws s3 cp scripts/version s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/version
+          aws s3 cp scripts/version s3://cage-build-assets-${{ inputs.stage }}/cli/version
+          aws s3 cp scripts/versions s3://cage-build-assets-${{ inputs.stage }}/cli/versions
           aws cloudfront create-invalidation --distribution-id ${{ secrets.aws-cloudfront-distribution-id }} --paths "/cli/install" "/cli/version" "/cli/versions"
 
 
