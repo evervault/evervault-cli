@@ -40,6 +40,7 @@ jobs:
     outputs:
       full_version: ${{ steps.get-full-version.outputs.full_version }}
     steps:
+      - uses: actions/checkout@v2
       - id: get-full-version
         run: |
           echo "using sha tag ${GITHUB_SHA::6}"
