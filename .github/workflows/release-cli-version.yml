@@ -23,6 +23,7 @@ jobs:
       full_version: ${{ steps.get-full-version.outputs.full_version }}
       major_version: ${{ steps.get-major-version.outputs.result }}
     steps:
+      - uses: actions/checkout@v4
       - id: get-full-version
         run: |
           echo "using version tag ${GITHUB_REF:11}"
