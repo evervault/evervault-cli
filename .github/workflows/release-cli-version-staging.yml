@@ -8,7 +8,7 @@ jobs:
   clippy_check_cli:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-hub/docker/cli@f5fdbfc3f9d2a9265ead8962c1314108a7b7ec5d
         env:
           SKIP_LOGIN: true
@@ -42,6 +42,7 @@ jobs:
       major-version: ${{ steps.get-major.outputs.major-version }}
       full-version: ${{ steps.get-full-version.outputs.full-version }}
     steps:
+      - uses: actions/checkout@v4
       - id: get-major
         run: |
           MAJOR=$(cargo metadata --no-deps | jq -r '.packages[] | select(.name == "ev-cage") | .version[0:1]')
