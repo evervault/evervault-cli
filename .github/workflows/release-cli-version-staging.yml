@@ -44,6 +44,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: get-major
+        env:
+          MAJOR: ${{ steps.get-major.outputs.major-version }}
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
         run: |
           MAJOR=$(cargo metadata --no-deps | jq -r '.packages[] | select(.name == "ev-cage") | .version[0:1]')
           echo "major-version=$MAJOR" >> "$GITHUB_OUTPUT"
