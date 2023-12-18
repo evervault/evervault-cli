@@ -24,10 +24,10 @@ pub struct EncryptArgs {
     #[clap(arg_enum, default_value = "nist", long = "curve")]
     pub curve: CurveName,
 
-    #[clap(long = "team_uuid")]
+    #[clap(long = "team-uuid")]
     pub team_uuid: Option<String>,
 
-    #[clap(long = "app_uuid")]
+    #[clap(long = "app-uuid")]
     pub app_uuid: Option<String>,
 
     /// Path to enclave.toml config file

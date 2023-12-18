@@ -79,7 +79,7 @@ pub struct InitArgs {
     pub forward_proxy_protocol: bool,
 
     /// Trusted headers sent into the Enclave will be persisted without redaction in the Enclave's transaction logs
-    #[clap(long = "trusted_headers")]
+    #[clap(long = "trusted-headers")]
     pub trusted_headers: Option<String>,
 
     /// The healthcheck endpoint exposed by your service
@@ -87,7 +87,7 @@ pub struct InitArgs {
     pub healthcheck: Option<String>,
 
     /// The desired number of instances for your Enclave to use. Default is 2.
-    #[clap(long = "desired_replicas")]
+    #[clap(long = "desired-replicas")]
     pub desired_replicas: Option<u32>,
 }
 
