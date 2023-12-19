@@ -24,8 +24,20 @@ pub struct DeleteArgs {
     #[clap(long)]
     pub background: bool,
 
+    /// Prevent confirmation dialogue and proceed with deletion. Use with caution.
     #[clap(long)]
     pub force: bool,
+}
+
+fn should_continue() -> Result<bool, exitcode::ExitCode> {
+    dialoguer::Confirm::new()
+        .with_prompt("Are you sure you want to delete this Cage?")
+        .default(false)
+        .interact()
+        .map_err(|_| {
+            log::error!("An error occurred while attempting to confirm this Cage delete.");
+            exitcode::IOERR
+        })
 }
 
 pub async fn run(delete_args: DeleteArgs) -> exitcode::ExitCode {
@@ -33,21 +45,17 @@ pub async fn run(delete_args: DeleteArgs) -> exitcode::ExitCode {
         log::error!("{e}");
         return exitcode::SOFTWARE;
     };
-    let should_del = match dialoguer::Confirm::new()
-        .with_prompt("Are you sure you want to delete this Cage?")
-        .default(false)
-        .interact()
-    {
-        Ok(should_delete) => should_delete,
-        Err(_) => {
-            log::error!("An error occurred while attempting to confirm this Cage delete.");
-            return exitcode::IOERR;
-        }
-    };
 
-    if !should_del {
-        log::info!("Phew! Exiting early...");
-        return exitcode::OK;
+    if !delete_args.force {
+        let should_delete = match should_continue() {
+            Ok(should_delete) => should_delete,
+            Err(e) => return e,
+        };
+
+        if !should_delete {
+            log::info!("Phew! Exiting early...");
+            return exitcode::OK;
+        }
     }
 
     let api_key = get_api_key!();
