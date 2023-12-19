@@ -30,13 +30,13 @@ pub struct DeleteArgs {
 }
 
 fn should_continue() -> Result<bool, exitcode::ExitCode> {
-  dialoguer::Confirm::new()
+    dialoguer::Confirm::new()
         .with_prompt("Are you sure you want to delete this Enclave?")
         .default(false)
         .interact()
         .map_err(|_| {
-          log::error!("An error occurred while attempting to confirm this Enclave delete.");
-          exitcode::IOERR
+            log::error!("An error occurred while attempting to confirm this Enclave delete.");
+            exitcode::IOERR
         })
 }
 
@@ -45,17 +45,17 @@ pub async fn run(delete_args: DeleteArgs) -> exitcode::ExitCode {
         log::error!("{e}");
         return exitcode::SOFTWARE;
     };
-    
-    if !delete_args.force {
-      let should_delete = match should_continue() { 
-        Ok(should_delete) => should_delete,
-        Err(e) => return e
-       };
 
-       if !should_delete {
-        log::info!("Phew! Exiting early...");
-        return exitcode::OK;
-       }
+    if !delete_args.force {
+        let should_delete = match should_continue() {
+            Ok(should_delete) => should_delete,
+            Err(e) => return e,
+        };
+
+        if !should_delete {
+            log::info!("Phew! Exiting early...");
+            return exitcode::OK;
+        }
     }
 
     let api_key = get_api_key!();
