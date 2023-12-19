@@ -47,6 +47,7 @@ jobs:
       major-version:  ${{ needs.get-version.outputs.major_version }}
       full-version: ${{ needs.get-version.outputs.full_version }}
       ev-domain: 'evervault.com'
+      base-branch: ${{ github.ref }}
     secrets:
       aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
       aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
