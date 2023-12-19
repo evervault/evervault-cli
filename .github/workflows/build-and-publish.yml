@@ -220,11 +220,11 @@ jobs:
 
       - name: Upload Windows CLI to S3
         run: |
-          aws s3 cp ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.full-version }}/${{ inputs.full-version}}/${{ env.WINDOWS_TARGET }}/ev-cage.tar.gz
+          aws s3 cp ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version}}/${{ env.WINDOWS_TARGET }}/ev-cage.tar.gz
 
       - name: Upload MacOS CLI to S3
         run: |
-          aws s3 cp ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.full-version }}/${{ inputs.full-version }}/${{ env.MACOS_TARGET }}/ev-cage.tar.gz
+          aws s3 cp ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version }}/${{ env.MACOS_TARGET }}/ev-cage.tar.gz
 
       - name: Upload Ubuntu CLI to S3
         run: |
