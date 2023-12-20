@@ -14,7 +14,10 @@ on:
         type: string 
       ev-domain:
         required: true
-        type: string   
+        type: string 
+      base-branch:
+        required: false
+        type: string
     secrets:    
       aws-cloudfront-distribution-id:
         required: true
@@ -217,26 +220,34 @@ jobs:
 
       - name: Upload Windows CLI to S3
         run: |
-          aws s3 cp ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.full-version }}/${{ inputs.full-version}}/${{ env.WINDOWS_TARGET }}/ev-cage.tar.gz
+          aws s3 cp ./windows/ev-cage-${{ env.WINDOWS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version}}/${{ env.WINDOWS_TARGET }}/ev-cage.tar.gz
 
       - name: Upload MacOS CLI to S3
         run: |
-          aws s3 cp ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.full-version }}/${{ inputs.full-version }}/${{ env.MACOS_TARGET }}/ev-cage.tar.gz
+          aws s3 cp ./macos/ev-cage-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version }}/${{ env.MACOS_TARGET }}/ev-cage.tar.gz
 
       - name: Upload Ubuntu CLI to S3
         run: |
           aws s3 cp ./linux/ev-cage-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version }}/${{ env.LINUX_TARGET }}/ev-cage.tar.gz
 
       - uses: actions/checkout@v3
-      - name: Update install script in S3
+      - name: Update current major install script in S3
         run: |
           sh ./scripts/generate-installer.sh ${{ inputs.full-version }} ${{ inputs.major-version }} ${{ inputs.ev-domain }}
           sh ./scripts/update-versions.sh ${{ inputs.full-version }}
           aws s3 cp scripts/install s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version }}/install
-          aws s3 cp scripts/install s3://cage-build-assets-${{ inputs.stage }}/cli/install
           aws s3 cp scripts/version s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/version
-          aws s3 cp scripts/version s3://cage-build-assets-${{ inputs.stage }}/cli/version
           aws s3 cp scripts/versions s3://cage-build-assets-${{ inputs.stage }}/cli/versions
-          aws cloudfront create-invalidation --distribution-id ${{ secrets.aws-cloudfront-distribution-id }} --paths "/cli/install" "/cli/version" "/cli/versions"
-
-
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.aws-cloudfront-distribution-id }} --paths "/cli/versions" "/cli/${{ inputs.major-version }}/version" "/cli/${{ inputs.major-version }}/${{ inputs.full-version }}/install"
+      
+      - name: Update latest install script in S3
+        if: ${{ !startsWith(inputs.base-branch, 'refs/heads/release/v') }}
+        run: |
+          aws s3 cp scripts/install s3://cage-build-assets-${{ inputs.stage }}/cli/install
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.aws-cloudfront-distribution-id }} --paths "/cli/install"
+      
+      - name: Support version script for v0
+        if: ${{ startsWith(inputs.base-branch, 'refs/heads/release/v0') }}
+        run: |
+          aws s3 cp scripts/version s3://cage-build-assets-${{ inputs.stage }}/cli/version
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.aws-cloudfront-distribution-id }} --paths "/cli/version"
