@@ -19,8 +19,6 @@ pub enum LogsError {
     ParseIntError(#[from] std::num::ParseIntError),
     #[error("Failed to parse timestamps")]
     TimestampFormatError,
-    #[error("{0}")]
-    NoLogsFound(String),
     #[error("An error occurred while paginating your log data - {0}")]
     MinusError(#[from] minus::MinusError),
 }
@@ -60,9 +58,8 @@ pub async fn get_logs(
         .await?;
 
     if enclave_logs.log_events().is_empty() {
-        return Err(LogsError::NoLogsFound(format!(
-            "No logs found between {log_start_time} and {log_end_time}"
-        )));
+        log::info!("No logs found between {log_start_time} and {log_end_time}");
+        return Ok(());
     }
 
     let mut output = minus::Pager::new();

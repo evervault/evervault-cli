@@ -422,13 +422,23 @@ impl EnclaveConfig {
         if self.uuid.is_none() {
             return Err(EnclaveConfigError::MissingField("enclave_uuid".to_string()));
         }
+        let base_domain = if std::env::var("EV_DOMAIN")
+            .unwrap_or_else(|_| String::from("evervault.com"))
+            == "evervault.io"
+        {
+            "evervault.dev"
+        } else {
+            "evervault.com"
+        };
+
         Ok(format!(
-            "{}.{}.enclave.evervault.com",
+            "{}.{}.enclave.{}",
             self.name(),
             self.app_uuid
                 .as_ref()
                 .map(|uuid| uuid.replace('_', "-"))
-                .ok_or_else(|| EnclaveConfigError::MissingField("app_uuid".to_string()))?
+                .ok_or_else(|| EnclaveConfigError::MissingField("app_uuid".to_string()))?,
+            base_domain
         ))
     }
 
