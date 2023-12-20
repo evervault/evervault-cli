@@ -26,7 +26,11 @@ pub async fn run(describe_args: DescribeArgs) -> exitcode::ExitCode {
         return exitcode::SOFTWARE;
     };
 
-    let description = match describe_eif(&describe_args.eif_path, !describe_args.quiet, describe_args.no_cache) {
+    let description = match describe_eif(
+        &describe_args.eif_path,
+        !describe_args.quiet,
+        describe_args.no_cache,
+    ) {
         Ok(measurements) => measurements,
         Err(e) => {
             log::error!("{e}");

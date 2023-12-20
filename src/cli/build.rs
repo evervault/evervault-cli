@@ -130,7 +130,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         timestamp,
         from_existing,
         build_args.reproducible,
-        build_args.no_cache
+        build_args.no_cache,
     )
     .await
     {

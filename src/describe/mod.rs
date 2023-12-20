@@ -6,7 +6,11 @@ use crate::enclave;
 use crate::progress::get_tracker;
 use error::DescribeError;
 
-pub fn describe_eif(eif_path: &str, verbose: bool, no_cache: bool) -> Result<enclave::DescribeEif, DescribeError> {
+pub fn describe_eif(
+    eif_path: &str,
+    verbose: bool,
+    no_cache: bool,
+) -> Result<enclave::DescribeEif, DescribeError> {
     let eif_path = std::path::Path::new(eif_path);
     if !eif_path.exists() {
         return Err(DescribeError::EIFNotFound(eif_path.to_path_buf()));

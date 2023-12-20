@@ -176,7 +176,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         data_plane_version.clone(),
         installer_version.clone(),
         deploy_args.reproducible,
-        deploy_args.no_cache
+        deploy_args.no_cache,
     )
     .await
     {
@@ -239,7 +239,7 @@ async fn resolve_eif(
     data_plane_version: String,
     installer_version: String,
     reproducible: bool,
-    no_cache: bool
+    no_cache: bool,
 ) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
     if let Some(path) = eif_path {
         get_eif(path, verbose, no_cache).map_err(|e| {
@@ -258,7 +258,7 @@ async fn resolve_eif(
             timestamp,
             from_existing,
             reproducible,
-            no_cache
+            no_cache,
         )
         .await
         .map_err(|build_err| {

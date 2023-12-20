@@ -11,16 +11,13 @@ pub struct CommandConfig {
 
 impl CommandConfig {
     pub fn new(verbose: bool, no_cache: bool) -> Self {
-        Self { 
-          verbose,
-          no_cache
-        }
+        Self { verbose, no_cache }
     }
 
     pub fn extra_build_args(&self) -> Vec<&OsStr> {
         let mut args = vec!["--platform".as_ref(), "linux/amd64".as_ref()];
         if self.no_cache {
-          args.push("--no-cache".as_ref());
+            args.push("--no-cache".as_ref());
         }
         args
     }
@@ -100,7 +97,7 @@ pub fn build_image(
     tag_name: &str,
     command_line_args: Vec<&OsStr>,
     verbose: bool,
-    no_cache: bool
+    no_cache: bool,
 ) -> Result<ExitStatus, CommandError> {
     let command_config = CommandConfig::new(verbose, no_cache);
     let build_image_args: Vec<&OsStr> = [
@@ -131,7 +128,7 @@ pub fn build_image_repro(
     command_line_args: Vec<&OsStr>,
     verbose: bool,
     timestamp: String,
-    no_cache: bool
+    no_cache: bool,
 ) -> Result<ExitStatus, CommandError> {
     let command_config = CommandConfig::new(verbose, no_cache);
     let build_image_args = if docker_buildkit_enabled()? {

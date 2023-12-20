@@ -57,7 +57,7 @@ pub async fn build_enclave_image_file(
                 verbose,
                 docker_build_args,
                 timestamp,
-                no_cache
+                no_cache,
             )?;
         }
         None => {
@@ -71,7 +71,7 @@ pub async fn build_enclave_image_file(
                 output_path.path(),
                 timestamp,
                 reproducible,
-                no_cache
+                no_cache,
             )
             .await?;
         }
@@ -99,7 +99,7 @@ pub async fn build_from_scratch(
     output_path: &Path,
     timestamp: String,
     reproducible: bool,
-    no_cache: bool
+    no_cache: bool,
 ) -> Result<(), BuildError> {
     if !verify_docker_is_running()? {
         return Err(DockerError::DaemonNotRunning.into());
@@ -149,7 +149,7 @@ pub async fn build_from_scratch(
         verbose,
         docker_build_args,
         timestamp,
-        no_cache
+        no_cache,
     )?;
     log::debug!("User image built...");
     Ok(())

@@ -251,7 +251,7 @@ fn create_zip_upload_stream(
 pub fn get_eif<S: AsRef<str>>(
     eif_path: S,
     verbose: bool,
-    no_cache: bool
+    no_cache: bool,
 ) -> Result<(EIFMeasurements, OutputPath), DeployError> {
     let eif = describe_eif(eif_path.as_ref(), verbose, no_cache)?;
     let output_path = resolve_output_path(None::<&str>)?;
