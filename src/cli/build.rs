@@ -57,6 +57,10 @@ pub struct BuildArgs {
     /// Enables forwarding proxy protocol when TLS Termination is disabled
     #[clap(long = "forward-proxy-protocol")]
     pub forward_proxy_protocol: bool,
+
+    /// Disables the use of cache during the image builds
+    #[clap(long = "no-cache")]
+    pub no_cache: bool,
 }
 
 impl BuildTimeConfig for BuildArgs {
@@ -126,6 +130,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         timestamp,
         from_existing,
         build_args.reproducible,
+        build_args.no_cache
     )
     .await
     {

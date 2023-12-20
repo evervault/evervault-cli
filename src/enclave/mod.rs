@@ -25,6 +25,7 @@ pub fn build_user_image(
     verbose: bool,
     docker_build_args: Option<Vec<&str>>,
     timestamp: String,
+    no_cache: bool
 ) -> Result<(), EnclaveError> {
     let mut command_line_args = vec![user_context_path.as_os_str()];
 
@@ -40,6 +41,7 @@ pub fn build_user_image(
         command_line_args,
         verbose,
         timestamp,
+        no_cache
     )?;
 
     if !build_output.success() {
@@ -103,6 +105,7 @@ pub fn build_nitro_cli_image(
     output_dir: &std::path::PathBuf,
     signing_info: Option<&EnclaveSigningInfo>,
     verbose: bool,
+    no_cache: bool
 ) -> Result<(), EnclaveError> {
     let mut nitro_cli_dockerfile_contents = include_bytes!("nitro-cli-image.Dockerfile").to_vec();
 
@@ -134,6 +137,7 @@ pub fn build_nitro_cli_image(
         },
         vec![output_dir.as_ref()],
         verbose,
+        no_cache
     );
 
     let build_image_status =

@@ -14,6 +14,10 @@ pub struct DescribeArgs {
     /// Disable verbose logging
     #[clap(long)]
     pub quiet: bool,
+
+    /// Disables the use of cache during the image builds
+    #[clap(long = "no-cache")]
+    pub no_cache: bool,
 }
 
 pub async fn run(describe_args: DescribeArgs) -> exitcode::ExitCode {
@@ -22,7 +26,7 @@ pub async fn run(describe_args: DescribeArgs) -> exitcode::ExitCode {
         return exitcode::SOFTWARE;
     };
 
-    let description = match describe_eif(&describe_args.eif_path, !describe_args.quiet) {
+    let description = match describe_eif(&describe_args.eif_path, !describe_args.quiet, describe_args.no_cache) {
         Ok(measurements) => measurements,
         Err(e) => {
             log::error!("{e}");
