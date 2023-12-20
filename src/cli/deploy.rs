@@ -62,6 +62,10 @@ pub struct DeployArgs {
     /// Healthcheck path exposed by your service
     #[clap(long = "healthcheck")]
     pub healthcheck: Option<String>,
+
+    /// Disables the use of cache during the image builds
+    #[clap(long = "no-cache")]
+    pub no_cache: bool,
 }
 
 impl BuildTimeConfig for DeployArgs {
@@ -172,6 +176,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         data_plane_version.clone(),
         installer_version.clone(),
         deploy_args.reproducible,
+        deploy_args.no_cache,
     )
     .await
     {
@@ -234,9 +239,10 @@ async fn resolve_eif(
     data_plane_version: String,
     installer_version: String,
     reproducible: bool,
+    no_cache: bool,
 ) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
     if let Some(path) = eif_path {
-        get_eif(path, verbose).map_err(|e| {
+        get_eif(path, verbose, no_cache).map_err(|e| {
             log::error!("{e}");
             e.exitcode()
         })
@@ -252,6 +258,7 @@ async fn resolve_eif(
             timestamp,
             from_existing,
             reproducible,
+            no_cache,
         )
         .await
         .map_err(|build_err| {

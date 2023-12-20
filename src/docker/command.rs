@@ -6,15 +6,20 @@ use std::process::{Command, ExitStatus, Output, Stdio};
 
 pub struct CommandConfig {
     verbose: bool,
+    no_cache: bool,
 }
 
 impl CommandConfig {
-    pub fn new(verbose: bool) -> Self {
-        Self { verbose }
+    pub fn new(verbose: bool, no_cache: bool) -> Self {
+        Self { verbose, no_cache }
     }
 
     pub fn extra_build_args(&self) -> Vec<&OsStr> {
-        vec!["--platform".as_ref(), "linux/amd64".as_ref()]
+        let mut args = vec!["--platform".as_ref(), "linux/amd64".as_ref()];
+        if self.no_cache {
+            args.push("--no-cache".as_ref());
+        }
+        args
     }
 
     pub fn output_setting(&self) -> Stdio {
@@ -30,7 +35,7 @@ pub fn load_image_into_local_docker_registry(
     image_archive: &Path,
     verbose: bool,
 ) -> Result<ExitStatus, CommandError> {
-    let command_config = CommandConfig::new(verbose);
+    let command_config = CommandConfig::new(verbose, false);
     let is_stdout_piped = atty::isnt(atty::Stream::Stdout);
     let docker_load_result = Command::new("docker")
         .args(vec![
@@ -92,8 +97,9 @@ pub fn build_image(
     tag_name: &str,
     command_line_args: Vec<&OsStr>,
     verbose: bool,
+    no_cache: bool,
 ) -> Result<ExitStatus, CommandError> {
-    let command_config = CommandConfig::new(verbose);
+    let command_config = CommandConfig::new(verbose, no_cache);
     let build_image_args: Vec<&OsStr> = [
         vec![
             "build".as_ref(),
@@ -122,8 +128,9 @@ pub fn build_image_repro(
     command_line_args: Vec<&OsStr>,
     verbose: bool,
     timestamp: String,
+    no_cache: bool,
 ) -> Result<ExitStatus, CommandError> {
-    let command_config = CommandConfig::new(verbose);
+    let command_config = CommandConfig::new(verbose, no_cache);
     let build_image_args = if docker_buildkit_enabled()? {
         log::info!("Docker version is reproducible build compatible");
         [
@@ -172,7 +179,7 @@ pub fn run_image(
     command_line_args: Vec<&OsStr>,
     verbose: bool,
 ) -> Result<Output, CommandError> {
-    let command_config = CommandConfig::new(verbose);
+    let command_config = CommandConfig::new(verbose, false);
 
     let mut run_image_args: Vec<&OsStr> = vec!["run".as_ref(), "--rm".as_ref()];
 

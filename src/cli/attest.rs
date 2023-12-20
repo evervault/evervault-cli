@@ -40,7 +40,7 @@ pub async fn run(attest_args: AttestArgs) -> i32 {
     let domain = unwrap_or_exit_with_error!(config.get_enclave_domain());
 
     let expected_pcrs = if let Some(eif_path) = attest_args.eif_path {
-        let description = unwrap_or_exit_with_error!(describe_eif(&eif_path, false));
+        let description = unwrap_or_exit_with_error!(describe_eif(&eif_path, false, false));
         description.measurements.measurements().clone()
     } else {
         unwrap_or_exit_with_error!(config.get_attestation()).clone()

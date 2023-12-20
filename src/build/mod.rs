@@ -31,6 +31,7 @@ pub async fn build_enclave_image_file(
     timestamp: String,
     from_existing: Option<String>,
     reproducible: bool,
+    no_cache: bool,
 ) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
     let context_path = Path::new(&context_path);
     if !context_path.exists() {
@@ -56,6 +57,7 @@ pub async fn build_enclave_image_file(
                 verbose,
                 docker_build_args,
                 timestamp,
+                no_cache,
             )?;
         }
         None => {
@@ -69,6 +71,7 @@ pub async fn build_enclave_image_file(
                 output_path.path(),
                 timestamp,
                 reproducible,
+                no_cache,
             )
             .await?;
         }
@@ -78,7 +81,7 @@ pub async fn build_enclave_image_file(
         log::debug!("Building Nitro CLI image... {output_path}");
     }
 
-    enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose)?;
+    enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose, no_cache)?;
     log::info!("Converting docker image to EIF...");
     enclave::run_conversion_to_enclave(output_path.path(), verbose)
         .map(|built_enc| (built_enc, output_path))
@@ -96,6 +99,7 @@ pub async fn build_from_scratch(
     output_path: &Path,
     timestamp: String,
     reproducible: bool,
+    no_cache: bool,
 ) -> Result<(), BuildError> {
     if !verify_docker_is_running()? {
         return Err(DockerError::DaemonNotRunning.into());
@@ -145,6 +149,7 @@ pub async fn build_from_scratch(
         verbose,
         docker_build_args,
         timestamp,
+        no_cache,
     )?;
     log::debug!("User image built...");
     Ok(())

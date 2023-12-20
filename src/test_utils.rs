@@ -36,6 +36,7 @@ pub async fn build_test_enclave(
         timestamp,
         from_existing,
         reproducible,
+        true,
     )
     .await
 }
