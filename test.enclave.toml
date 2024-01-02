@@ -6,7 +6,7 @@ debug = false
 dockerfile = "./sample-user.Dockerfile"
 api_key_auth = true
 trx_logging = true
-disable_tls_termination = false
+tls_termination = true
 forward_proxy_protocol = false
 trusted_headers = []
 

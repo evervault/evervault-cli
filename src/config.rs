@@ -239,8 +239,8 @@ pub struct EnclaveConfig {
     pub api_key_auth: bool,
     #[serde(default = "default_true")]
     pub trx_logging: bool,
-    #[serde(default)]
-    pub disable_tls_termination: bool,
+    #[serde(default = "default_true")]
+    pub tls_termination: bool,
     #[serde(default)]
     pub forward_proxy_protocol: bool,
     #[serde(default)]
@@ -282,7 +282,7 @@ pub struct ValidatedEnclaveBuildConfig {
     pub scaling: Option<ScalingSettings>,
     pub signing: ValidatedSigningInfo,
     pub attestation: Option<EIFMeasurements>,
-    pub disable_tls_termination: bool,
+    pub tls_termination: bool,
     pub api_key_auth: bool,
     pub trx_logging_enabled: bool,
     pub runtime: Option<RuntimeVersions>,
@@ -320,8 +320,8 @@ impl ValidatedEnclaveBuildConfig {
         &self.team_uuid
     }
 
-    pub fn disable_tls_termination(&self) -> bool {
-        self.disable_tls_termination
+    pub fn tls_termination(&self) -> bool {
+        self.tls_termination
     }
 
     pub fn get_dataplane_feature_label(&self) -> String {
@@ -330,10 +330,10 @@ impl ValidatedEnclaveBuildConfig {
         } else {
             "egress-disabled"
         };
-        let tls_label = if self.disable_tls_termination {
-            "tls-termination-disabled"
-        } else {
+        let tls_label = if self.tls_termination {
             "tls-termination-enabled"
+        } else {
+            "tls-termination-disabled"
         };
         format!("{egress_label}/{tls_label}")
     }
@@ -471,7 +471,7 @@ impl std::convert::TryFrom<&EnclaveConfig> for ValidatedEnclaveBuildConfig {
             .clone()
             .ok_or_else(|| EnclaveConfigError::MissingField("Team uuid".into()))?;
 
-        let trx_logging_enabled = match (config.trx_logging, !config.disable_tls_termination) {
+        let trx_logging_enabled = match (config.trx_logging, config.tls_termination) {
             (false, _) => Ok(false), // (logging disabled, _) = logging disabled
             (true, false) => Err(EnclaveConfigError::LoggingEnabledWithoutTLSTermination()), // (logging enabled, tls_termination disabled) = config error (Tls termination needed for logging)
             (true, true) => Ok(true), // (logging enabled, tls_termination enabled) = logging enabled
@@ -490,7 +490,7 @@ impl std::convert::TryFrom<&EnclaveConfig> for ValidatedEnclaveBuildConfig {
             signing: signing_info.try_into()?,
             scaling: scaling_settings,
             attestation: config.attestation.clone(),
-            disable_tls_termination: config.disable_tls_termination,
+            tls_termination: config.tls_termination,
             api_key_auth: config.api_key_auth,
             trx_logging_enabled,
             runtime: config.runtime.clone(),
@@ -580,7 +580,7 @@ mod test {
             team_uuid: Some("team_abcdef456".to_string()),
             debug: false,
             dockerfile: "./Dockerfile.config".to_string(),
-            disable_tls_termination: false,
+            tls_termination: true,
             egress: super::EgressSettings {
                 enabled: false,
                 destinations: None,

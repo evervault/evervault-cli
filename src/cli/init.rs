@@ -116,7 +116,7 @@ impl std::convert::From<InitArgs> for EnclaveConfig {
             dockerfile: val.dockerfile.unwrap_or_else(default_dockerfile), // need to manually set default dockerfile
             signing: signing_info,
             attestation: None,
-            disable_tls_termination: val.disable_tls_termination,
+            tls_termination: !val.disable_tls_termination,
             api_key_auth: !val.disable_api_key_auth,
             trx_logging: !val.trx_logging_disabled,
             runtime: None,
@@ -243,7 +243,7 @@ debug = false
 dockerfile = "Dockerfile"
 api_key_auth = true
 trx_logging = true
-disable_tls_termination = false
+tls_termination = true
 forward_proxy_protocol = false
 trusted_headers = ["X-Evervault-*"]
 
