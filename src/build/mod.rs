@@ -210,10 +210,10 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         return Err(directive_parse_error);
     }
 
-    let wait_for_env = if build_config.disable_tls_termination {
-        "echo TLS termination is off, not waiting for environment to be ready"
-    } else {
+    let wait_for_env = if build_config.tls_termination {
         r#"while ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n"#
+    } else {
+        "echo TLS termination is off, not waiting for environment to be ready"
     };
     let user_service_builder =
         crate::docker::utils::create_combined_docker_entrypoint(last_entrypoint, last_cmd).map(
@@ -466,7 +466,7 @@ mod test {
                     not_after: "".into(),
                 },
             },
-            disable_tls_termination: false,
+            tls_termination: true,
             api_key_auth: true,
             trx_logging_enabled: true,
             runtime: None,
