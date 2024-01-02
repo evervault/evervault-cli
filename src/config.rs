@@ -239,7 +239,7 @@ pub struct EnclaveConfig {
     pub api_key_auth: bool,
     #[serde(default = "default_true")]
     pub trx_logging: bool,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub tls_termination: bool,
     #[serde(default)]
     pub forward_proxy_protocol: bool,
