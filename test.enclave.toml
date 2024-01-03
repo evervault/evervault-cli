@@ -1,3 +1,4 @@
+version = 1
 name = "test-enclave"
 uuid = "1234"
 app_uuid = "4321"

@@ -228,10 +228,10 @@ pub fn default_true() -> bool {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EnclaveConfig {
+    pub version: u8,
     pub name: String,
     pub uuid: Option<String>,
     pub app_uuid: Option<String>,
-    pub version: u8,
     pub team_uuid: Option<String>,
     pub debug: bool,
     #[serde(default = "default_dockerfile")]
