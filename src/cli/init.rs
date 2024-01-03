@@ -107,6 +107,7 @@ impl std::convert::From<InitArgs> for EnclaveConfig {
             uuid: None,
             app_uuid: None,
             team_uuid: None,
+            version: 1,
             debug: val.debug,
 
             egress: EgressSettings::new(convert_comma_list(val.egress_destinations), val.egress),

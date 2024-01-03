@@ -5,7 +5,8 @@ use env_logger::{Builder, Env};
 #[cfg(not(target_os = "windows"))]
 use ev_enclave::cli::attest;
 use ev_enclave::cli::{
-    build, cert, delete, deploy, describe, init, list, logs, restart, scale, update, Command,
+    build, cert, delete, deploy, describe, init, list, logs, migrate, restart, scale, update,
+    Command,
 };
 
 #[cfg(feature = "internal_dependency")]
@@ -67,6 +68,7 @@ async fn main() {
         Command::Encrypt(env_args) => encrypt::run(env_args).await,
         Command::Restart(restart_args) => restart::run(restart_args).await,
         Command::Scale(scale_args) => scale::run(scale_args).await,
+        Command::Migrate(migrate_args) => migrate::run(migrate_args).await,
     };
     std::process::exit(exit_code);
 }

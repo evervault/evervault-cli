@@ -231,6 +231,7 @@ pub struct EnclaveConfig {
     pub name: String,
     pub uuid: Option<String>,
     pub app_uuid: Option<String>,
+    pub version: u8,
     pub team_uuid: Option<String>,
     pub debug: bool,
     #[serde(default = "default_dockerfile")]
@@ -255,6 +256,57 @@ pub struct EnclaveConfig {
     pub runtime: Option<RuntimeVersions>,
 }
 
+// This type exists only to read V0 tomls and migrate to V1
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct EnclaveConfigV0 {
+    pub name: String,
+    pub uuid: Option<String>,
+    pub app_uuid: Option<String>,
+    pub team_uuid: Option<String>,
+    pub debug: bool,
+    pub dockerfile: String,
+    pub api_key_auth: bool,
+    pub trx_logging: bool,
+    pub disable_tls_termination: bool,
+    #[serde(default)]
+    pub forward_proxy_protocol: bool,
+    #[serde(default)]
+    pub trusted_headers: Vec<String>,
+    #[serde(default)]
+    pub healthcheck: Option<String>,
+    // Table configs
+    pub egress: EgressSettings,
+    pub scaling: Option<ScalingSettings>,
+    pub signing: Option<SigningInfo>,
+    pub attestation: Option<EIFMeasurements>,
+    pub runtime: Option<RuntimeVersions>,
+}
+
+impl std::convert::From<EnclaveConfigV0> for EnclaveConfig {
+    fn from(value: EnclaveConfigV0) -> Self {
+        EnclaveConfig {
+            name: value.name,
+            uuid: value.uuid,
+            app_uuid: value.app_uuid,
+            version: 1,
+            team_uuid: value.team_uuid,
+            debug: value.debug,
+            dockerfile: value.dockerfile,
+            api_key_auth: value.api_key_auth,
+            trx_logging: value.trx_logging,
+            tls_termination: !value.disable_tls_termination,
+            forward_proxy_protocol: value.forward_proxy_protocol,
+            trusted_headers: value.trusted_headers,
+            healthcheck: value.healthcheck,
+            egress: value.egress,
+            scaling: value.scaling,
+            signing: value.signing,
+            attestation: value.attestation,
+            runtime: value.runtime,
+        }
+    }
+}
+
 impl EnclaveConfig {
     pub fn annotate(&mut self, enclave: crate::api::enclave::Enclave) {
         self.uuid = Some(enclave.uuid().into());
@@ -272,6 +324,7 @@ impl std::convert::AsRef<EnclaveConfig> for EnclaveConfig {
 // Helper type to guarantee the presence of fields when combining multiple config sources
 #[derive(Clone, Debug)]
 pub struct ValidatedEnclaveBuildConfig {
+    pub version: u8,
     pub enclave_name: String,
     pub enclave_uuid: String,
     pub app_uuid: String,
@@ -480,6 +533,7 @@ impl std::convert::TryFrom<&EnclaveConfig> for ValidatedEnclaveBuildConfig {
         let scaling_settings = config.scaling.clone();
 
         Ok(ValidatedEnclaveBuildConfig {
+            version: config.version,
             enclave_uuid,
             app_uuid,
             team_uuid,
@@ -574,6 +628,7 @@ mod test {
     #[test]
     fn merge_args_with_config() {
         let config = EnclaveConfig {
+            version: 1,
             name: "Enclave123".to_string(),
             uuid: Some("abcdef123".to_string()),
             app_uuid: Some("abcdef321".to_string()),

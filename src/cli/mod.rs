@@ -15,6 +15,7 @@ pub mod env;
 pub mod init;
 pub mod list;
 pub mod logs;
+pub mod migrate;
 pub mod restart;
 pub mod scale;
 pub mod update;
@@ -40,4 +41,5 @@ pub enum Command {
     Encrypt(encrypt::EncryptArgs),
     Restart(restart::RestartArgs),
     Scale(scale::ScaleArgs),
+    Migrate(migrate::MigrateArgs),
 }
