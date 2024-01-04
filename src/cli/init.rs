@@ -107,6 +107,7 @@ impl std::convert::From<InitArgs> for EnclaveConfig {
             uuid: None,
             app_uuid: None,
             team_uuid: None,
+            version: 1,
             debug: val.debug,
 
             egress: EgressSettings::new(convert_comma_list(val.egress_destinations), val.egress),
@@ -235,7 +236,8 @@ mod init_tests {
         let config_path = output_dir.path().join("enclave.toml");
         assert!(config_path.exists());
         let config_content = String::from_utf8(read(config_path).unwrap()).unwrap();
-        let expected_config_content = r#"name = "hello"
+        let expected_config_content = r#"version = 1
+name = "hello"
 uuid = "1234"
 app_uuid = "1234"
 team_uuid = "1234"

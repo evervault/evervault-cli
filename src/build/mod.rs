@@ -443,6 +443,7 @@ mod test {
             enclave_name: "test".into(),
             enclave_uuid: "1234".into(),
             team_uuid: "teamid".into(),
+            version: 1,
             debug: false,
             app_uuid: "3241".into(),
             dockerfile: "".into(),

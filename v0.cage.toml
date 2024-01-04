@@ -1,4 +1,3 @@
-version = 1
 name = "test-enclave"
 uuid = "1234"
 app_uuid = "4321"
@@ -7,12 +6,14 @@ debug = false
 dockerfile = "./sample-user.Dockerfile"
 api_key_auth = true
 trx_logging = true
-tls_termination = true
+disable_tls_termination = false
 forward_proxy_protocol = false
-trusted_headers = []
+trusted_headers = ["X-Evervault-*"]
 
 [egress]
-enabled = false
+enabled = true
+destinations = ["*"]
+ports = ["443"]
 
 [signing]
 certPath = "./cert.pem"

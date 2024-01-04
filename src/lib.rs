@@ -18,6 +18,7 @@ pub mod encrypt;
 #[cfg(feature = "internal_dependency")]
 pub mod env;
 pub mod logs;
+pub mod migrate;
 pub mod progress;
 pub mod restart;
 mod version;
