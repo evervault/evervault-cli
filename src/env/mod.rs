@@ -29,21 +29,21 @@ pub async fn env(
     match action {
         EnvCommands::Add(command) => {
             let details = get_enclave_details(command.config)?;
-            let env_secret = if command.is_secret {
+            let env_value = if command.is_secret {
                 encrypt(
-                    command.secret,
+                    command.value,
                     details.team_uuid,
                     details.app_uuid,
                     command.curve,
                 )
                 .await?
             } else {
-                command.secret
+                command.value
             };
 
             let request = AddSecretRequest {
                 name: command.name,
-                secret: env_secret,
+                secret: env_value,
             };
             client.add_env_var(details.uuid, request).await?;
             Ok(None)

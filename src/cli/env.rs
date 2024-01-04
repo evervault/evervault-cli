@@ -45,7 +45,7 @@ pub struct AddEnvArgs {
 
     /// Environment variable value
     #[clap(long = "value")]
-    pub secret: String,
+    pub value: String,
 
     /// Is the env var is a secret, it will be encrypted
     #[clap(long = "secret")]
