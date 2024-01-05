@@ -41,6 +41,7 @@ jobs:
           result-encoding: string
 
   build-and-deploy:
+    needs: [get-version]
     uses: ./.github/workflows/build-and-publish.yml
     with:
       stage: 'production'
