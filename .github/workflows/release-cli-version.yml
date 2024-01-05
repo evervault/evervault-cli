@@ -56,7 +56,7 @@ jobs:
       evervault-rust-lib-token: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
 
   release-cli-version: 
-    needs: [ build-and-deploy ]
+    needs: [ build-and-deploy, get-version ]
     runs-on: ubuntu-latest
     steps:
 
