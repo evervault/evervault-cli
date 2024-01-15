@@ -9,7 +9,7 @@
       "distinct": true,
       "id": "00000001",
       "message": "Add a feature which undeniably makes it better",
-      "modified": ["src/main.rs"],
+      "modified": ["crates/enclave-cli/src/main.rs"],
       "timestamp": "2023-10-23T18:11:24.647Z",
       "tree_id": "",
       "url": ""
