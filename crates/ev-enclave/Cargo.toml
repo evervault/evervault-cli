@@ -1,5 +1,5 @@
 [package]
-name = "enclave-cli"
+name = "ev-enclave"
 version = "1.0.0-dev"
 edition = "2021"
 
