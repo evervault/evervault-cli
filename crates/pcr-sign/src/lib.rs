@@ -7,107 +7,106 @@ pub use p384::ecdsa::{
 
 /// Wrapping stuct to ensure signatures are generated correctly for the provided version
 pub struct Signature<'a, T: PCRProvider> {
-  version: SignatureVersion,
-  pcrs: &'a T,
-  private_key: SigningKey
+    version: SignatureVersion,
+    pcrs: &'a T,
+    private_key: SigningKey,
 }
 
-
-impl<'a, T: PCRProvider>  Signature<'a, T> {
-  pub fn new(version: SignatureVersion, pcrs: &'a T, private_key: SigningKey) -> Self {
-    Self {
-      version,
-      pcrs,
-      private_key,
+impl<'a, T: PCRProvider> Signature<'a, T> {
+    pub fn new(version: SignatureVersion, pcrs: &'a T, private_key: SigningKey) -> Self {
+        Self {
+            version,
+            pcrs,
+            private_key,
+        }
     }
-  }
 
-  /// Produce a hex encoded signature over the PCRs formatted for the given signature version.
-  pub fn sign(&self) -> String {
-    let formatted_payload = self.version.format_signature_payload(self.pcrs);
-    let signed: EcdsaSig = self.private_key.sign(&formatted_payload);
-    let der_encoded_sig = signed.to_der();
-    let hex_slice = HexSlice(der_encoded_sig.as_bytes());
-    format!("{:02X}{:X}", self.version.to_byte(), hex_slice)
-  }
+    /// Produce a hex encoded signature over the PCRs formatted for the given signature version.
+    pub fn sign(&self) -> String {
+        let formatted_payload = self.version.format_signature_payload(self.pcrs);
+        let signed: EcdsaSig = self.private_key.sign(&formatted_payload);
+        let der_encoded_sig = signed.to_der();
+        let hex_slice = HexSlice(der_encoded_sig.as_bytes());
+        format!("{:02X}{:X}", self.version.to_byte(), hex_slice)
+    }
 }
 
 /// Create a verifying instance over a signature and set of PCRs
 pub struct Verifier<'a, T: PCRProvider> {
-  signature: &'a str,
-  pcrs: &'a T,
-  verifier_key: VerifyingKey
+    signature: &'a str,
+    pcrs: &'a T,
+    verifier_key: VerifyingKey,
 }
 
 impl<'a, T: PCRProvider> Verifier<'a, T> {
-  pub fn new(signature: &'a str, pcrs: &'a T, verifier_key: VerifyingKey) -> Self {
-    Self {
-        signature,
-        pcrs,
-        verifier_key
+    pub fn new(signature: &'a str, pcrs: &'a T, verifier_key: VerifyingKey) -> Self {
+        Self {
+            signature,
+            pcrs,
+            verifier_key,
+        }
     }
-  }
 
-  /// Attempt to verify the provided signature over the PCRs using the given key. The signature version is inferred from the leading byte over the signature.
-  pub fn try_verify(&self) -> Result<(), SignatureVerificationError> {
-    let decoded_signature = decode_hex(&self.signature)?;
-    let (signature_version, signature) = decoded_signature.split_at(1);
-    let parsed_version = SignatureVersion::try_from(signature_version[0])?;
-    let ecdsa_sig = EcdsaSig::from_der(signature)?;
+    /// Attempt to verify the provided signature over the PCRs using the given key. The signature version is inferred from the leading byte over the signature.
+    pub fn try_verify(&self) -> Result<(), SignatureVerificationError> {
+        let decoded_signature = decode_hex(&self.signature)?;
+        let (signature_version, signature) = decoded_signature.split_at(1);
+        let parsed_version = SignatureVersion::try_from(signature_version[0])?;
+        let ecdsa_sig = EcdsaSig::from_der(signature)?;
 
-    let signature_payload = parsed_version.format_signature_payload(self.pcrs);
-    self.verifier_key.verify(&signature_payload, &ecdsa_sig)?;
-    Ok(())
-  }
+        let signature_payload = parsed_version.format_signature_payload(self.pcrs);
+        self.verifier_key.verify(&signature_payload, &ecdsa_sig)?;
+        Ok(())
+    }
 }
 
 /// Enum of supported signature versions
 #[derive(Clone)]
 pub enum SignatureVersion {
-  V1
+    V1,
 }
 
 impl SignatureVersion {
-  /// Convert the Signature version to a byte to be used as the leading byte on the signature for later parsing.
-  pub fn to_byte(&self) -> u8 {
-    match self {
-      Self::V1 => 1_u8
+    /// Convert the Signature version to a byte to be used as the leading byte on the signature for later parsing.
+    pub fn to_byte(&self) -> u8 {
+        match self {
+            Self::V1 => 1_u8,
+        }
     }
-  }
 
-  /// Format a set of PCRs to be signed according to the signature version scheme.
-  /// 
-  /// Currently supported signature versions are: V1.
-  ///
-  /// V1 Signature Format:
-  /// VERSION
-  /// 1
-  /// PCR0
-  /// <PCR0 Value>
-  /// PCR1
-  /// <PCR1 Value>
-  /// PCR2
-  /// <PCR2 Value>
-  /// PCR8
-  /// <PCR8 Value>
-  pub fn format_signature_payload<T: PCRProvider>(&self, provider: &T) -> Vec<u8> {
-    match self {
-      Self::V1 => self.format_payload_for_v1(provider)
+    /// Format a set of PCRs to be signed according to the signature version scheme.
+    ///
+    /// Currently supported signature versions are: V1.
+    ///
+    /// V1 Signature Format:
+    /// VERSION
+    /// 1
+    /// PCR0
+    /// <PCR0 Value>
+    /// PCR1
+    /// <PCR1 Value>
+    /// PCR2
+    /// <PCR2 Value>
+    /// PCR8
+    /// <PCR8 Value>
+    pub fn format_signature_payload<T: PCRProvider>(&self, provider: &T) -> Vec<u8> {
+        match self {
+            Self::V1 => self.format_payload_for_v1(provider),
+        }
     }
-  }
 
-  fn format_payload_for_v1<T: PCRProvider>(&self, provider: &T) -> Vec<u8> {
-    let formatted_payload = format!(
-      "VERSION\n{}\nPCR0\n{}\nPCR1\n{}\nPCR2\n{}\nPCR8\n{}",
-      self.to_string(),
-      provider.pcr0().to_uppercase(),
-      provider.pcr1().to_uppercase(),
-      provider.pcr2().to_uppercase(),
-      provider.pcr8().to_uppercase()
-    );
+    fn format_payload_for_v1<T: PCRProvider>(&self, provider: &T) -> Vec<u8> {
+        let formatted_payload = format!(
+            "VERSION\n{}\nPCR0\n{}\nPCR1\n{}\nPCR2\n{}\nPCR8\n{}",
+            self.to_string(),
+            provider.pcr0().to_uppercase(),
+            provider.pcr1().to_uppercase(),
+            provider.pcr2().to_uppercase(),
+            provider.pcr8().to_uppercase()
+        );
 
-    formatted_payload.as_bytes().to_vec()
-  }
+        formatted_payload.as_bytes().to_vec()
+    }
 }
 
 impl std::default::Default for SignatureVersion {
@@ -121,8 +120,8 @@ impl std::convert::TryFrom<u8> for SignatureVersion {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-          1_u8 => Ok(Self::V1),
-          _ => Err(SignatureVerificationError::UnsupportedSignatureVersion)
+            1_u8 => Ok(Self::V1),
+            _ => Err(SignatureVerificationError::UnsupportedSignatureVersion),
         }
     }
 }
@@ -130,7 +129,7 @@ impl std::convert::TryFrom<u8> for SignatureVersion {
 impl std::fmt::Display for SignatureVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-          Self::V1 => write!(f, "1")?
+            Self::V1 => write!(f, "1")?,
         };
         Ok(())
     }
@@ -172,7 +171,7 @@ pub enum SignatureVerificationError {
     /// Failed to validate the signature using the provided verifying key.
     SignatureError(SignatureError),
     /// Signature version is not supported.
-    UnsupportedSignatureVersion
+    UnsupportedSignatureVersion,
 }
 
 impl std::convert::From<ParseIntError> for SignatureVerificationError {
@@ -198,12 +197,9 @@ impl std::fmt::Display for SignatureVerificationError {
                     f,
                     "Failed to validate provided signature over the PCR set provided - {e}"
                 )?;
-            },
+            }
             Self::UnsupportedSignatureVersion => {
-                write!(
-                    f,
-                    "Failed to parse leading byte to known signature version"
-                )?;
+                write!(f, "Failed to parse leading byte to known signature version")?;
             }
         };
         Ok(())
@@ -269,7 +265,11 @@ mod tests {
             decoded_payload,
             format!(
                 "VERSION\n{}\nPCR0\n{}\nPCR1\n{}\nPCR2\n{}\nPCR8\n{}",
-                SignatureVersion::V1.to_string(), &debug_pcr, &debug_pcr, &debug_pcr, &debug_pcr
+                SignatureVersion::V1.to_string(),
+                &debug_pcr,
+                &debug_pcr,
+                &debug_pcr,
+                &debug_pcr
             )
         );
     }
@@ -339,7 +339,7 @@ mod tests {
         let debug_pcrs = TestPCRs::from("0".repeat(96));
         let signer = Signature::new(SignatureVersion::V1, &debug_pcrs, signing_key);
         let signature = signer.sign();
-        
+
         let incorrect_key = SigningKey::random(&mut rand_core::OsRng);
         let incorrect_verifier = VerifyingKey::from(incorrect_key);
 
@@ -362,7 +362,7 @@ mod tests {
         let (_version, original_signature) = signature.split_at(2);
         let mut unsupported_version = "00".to_string();
         unsupported_version.push_str(original_signature);
-        
+
         let correct_verifying_key = VerifyingKey::from(signing_key);
         let verifier = Verifier::new(&unsupported_version, &debug_pcrs, correct_verifying_key);
         let verdict = verifier.try_verify();
