@@ -1,10 +1,9 @@
 on:
   push:
     paths:
-      - crates/ev-enclave/**
+      - crates/**
       - .github/workflows/lint-and-test-cli.yml
-      - Cargo.toml
-name: Lint and Test CLI
+name: Lint and Test crates
 
 jobs:
   clippy_check_cli:
@@ -20,12 +19,16 @@ jobs:
           override: true
           components: rustfmt, clippy
       - name: Compile project
-        run: cargo build --all-features -p ev-enclave -Z registry-auth
+        run: cargo build --all-features -Z registry-auth
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
+      - name: Prepare pcr-sign package for integration testing
+        run: |
+          cd crates/pcr-sign
+          sh ./scripts/generate-test-signature.sh
       - name: Test project
-        run: cargo test -p ev-enclave
+        run: cargo test
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
       - name: Format project

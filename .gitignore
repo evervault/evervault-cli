@@ -9,6 +9,9 @@ enclave.Dockerfile
 *.eif
 .metals/
 
+### PCR-Sign Testing Files ###
+crates/pcr-sign/signature.txt
+
 ### macOS ###
 # General
 .DS_Store
