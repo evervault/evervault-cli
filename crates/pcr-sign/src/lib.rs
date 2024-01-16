@@ -1,10 +1,142 @@
 use std::num::ParseIntError;
 
 pub use p384::ecdsa::{
-    signature::{Error as SignatureError, Signer, Verifier},
-    Signature, SigningKey, VerifyingKey,
+    signature::{Error as SignatureError, Signer, Verifier as _Verifier},
+    Signature as EcdsaSig, SigningKey, VerifyingKey,
 };
 
+/// Wrapping stuct to ensure signatures are generated correctly for the provided version
+pub struct Signature<'a, T: PCRProvider> {
+  version: SignatureVersion,
+  pcrs: &'a T,
+  private_key: SigningKey
+}
+
+
+impl<'a, T: PCRProvider>  Signature<'a, T> {
+  pub fn new(version: SignatureVersion, pcrs: &'a T, private_key: SigningKey) -> Self {
+    Self {
+      version,
+      pcrs,
+      private_key,
+    }
+  }
+
+  /// Produce a hex encoded signature over the PCRs formatted for the given signature version.
+  pub fn sign(&self) -> String {
+    let formatted_payload = self.version.format_signature_payload(self.pcrs);
+    let signed: EcdsaSig = self.private_key.sign(&formatted_payload);
+    let der_encoded_sig = signed.to_der();
+    let hex_slice = HexSlice(der_encoded_sig.as_bytes());
+    format!("{:02X}{:X}", self.version.to_byte(), hex_slice)
+  }
+}
+
+/// Create a verifying instance over a signature and set of PCRs
+pub struct Verifier<'a, T: PCRProvider> {
+  signature: &'a str,
+  pcrs: &'a T,
+  verifier_key: VerifyingKey
+}
+
+impl<'a, T: PCRProvider> Verifier<'a, T> {
+  pub fn new(signature: &'a str, pcrs: &'a T, verifier_key: VerifyingKey) -> Self {
+    Self {
+        signature,
+        pcrs,
+        verifier_key
+    }
+  }
+
+  /// Attempt to verify the provided signature over the PCRs using the given key. The signature version is inferred from the leading byte over the signature.
+  pub fn try_verify(&self) -> Result<(), SignatureVerificationError> {
+    let decoded_signature = decode_hex(&self.signature)?;
+    let (signature_version, signature) = decoded_signature.split_at(1);
+    let parsed_version = SignatureVersion::try_from(signature_version[0])?;
+    let ecdsa_sig = EcdsaSig::from_der(signature)?;
+
+    let signature_payload = parsed_version.format_signature_payload(self.pcrs);
+    self.verifier_key.verify(&signature_payload, &ecdsa_sig)?;
+    Ok(())
+  }
+}
+
+/// Enum of supported signature versions
+#[derive(Clone)]
+pub enum SignatureVersion {
+  V1
+}
+
+impl SignatureVersion {
+  /// Convert the Signature version to a byte to be used as the leading byte on the signature for later parsing.
+  pub fn to_byte(&self) -> u8 {
+    match self {
+      Self::V1 => 1_u8
+    }
+  }
+
+  /// Format a set of PCRs to be signed according to the signature version scheme.
+  /// 
+  /// Currently supported signature versions are: V1.
+  ///
+  /// V1 Signature Format:
+  /// VERSION
+  /// 1
+  /// PCR0
+  /// <PCR0 Value>
+  /// PCR1
+  /// <PCR1 Value>
+  /// PCR2
+  /// <PCR2 Value>
+  /// PCR8
+  /// <PCR8 Value>
+  pub fn format_signature_payload<T: PCRProvider>(&self, provider: &T) -> Vec<u8> {
+    match self {
+      Self::V1 => self.format_payload_for_v1(provider)
+    }
+  }
+
+  fn format_payload_for_v1<T: PCRProvider>(&self, provider: &T) -> Vec<u8> {
+    let formatted_payload = format!(
+      "VERSION\n{}\nPCR0\n{}\nPCR1\n{}\nPCR2\n{}\nPCR8\n{}",
+      self.to_string(),
+      provider.pcr0().to_uppercase(),
+      provider.pcr1().to_uppercase(),
+      provider.pcr2().to_uppercase(),
+      provider.pcr8().to_uppercase()
+    );
+
+    formatted_payload.as_bytes().to_vec()
+  }
+}
+
+impl std::default::Default for SignatureVersion {
+    fn default() -> Self {
+        Self::V1
+    }
+}
+
+impl std::convert::TryFrom<u8> for SignatureVersion {
+    type Error = SignatureVerificationError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+          1_u8 => Ok(Self::V1),
+          _ => Err(SignatureVerificationError::UnsupportedSignatureVersion)
+        }
+    }
+}
+
+impl std::fmt::Display for SignatureVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+          Self::V1 => write!(f, "1")?
+        };
+        Ok(())
+    }
+}
+
+/// Trait to expose PCRs from arbitrary types. PCR8 is assumed to be provided as the EIF is signed using the same private key in the ev-enclave project.
 pub trait PCRProvider {
     fn pcr0(&self) -> &str;
     fn pcr1(&self) -> &str;
@@ -12,41 +144,7 @@ pub trait PCRProvider {
     fn pcr8(&self) -> &str;
 }
 
-/// Format a set of PCRs to be signed. All PCR values and their labels are capitalised in the signature payload.
-/// The returned value is the UTF8 encoded signature payload.
-///
-/// The PCRs are formatted as follows:
-/// PCR0
-/// <PCR0 Value>
-/// PCR1
-/// <PCR1 Value>
-/// PCR2
-/// <PCR2 Value>
-/// PCR8
-/// <PCR8 Value>
-///
-///
-/// For example, an Enclave with all 0 PCR values would produce a signature payload of:
-/// PCR0
-/// 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-/// PCR1
-/// 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-/// PCR2
-/// 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-/// PCR8
-/// 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-pub fn format_signature_payload<T: PCRProvider>(pcr_provider: &T) -> Vec<u8> {
-    let formatted_payload = format!(
-        "PCR0\n{}\nPCR1\n{}\nPCR2\n{}\nPCR8\n{}",
-        pcr_provider.pcr0().to_uppercase(),
-        pcr_provider.pcr1().to_uppercase(),
-        pcr_provider.pcr2().to_uppercase(),
-        pcr_provider.pcr8().to_uppercase()
-    );
-
-    formatted_payload.as_bytes().to_vec()
-}
-
+/// Utility type to enable Hex upper case serialization of slices of `u8`s
 struct HexSlice<'a>(&'a [u8]);
 
 impl<'a> std::fmt::UpperHex for HexSlice<'a> {
@@ -66,21 +164,15 @@ fn decode_hex(hex_str: &str) -> Result<Vec<u8>, ParseIntError> {
         .collect()
 }
 
-/// Encode a set of PCRs according to the spec defined in `format_signature_payload`, and sign with the given private key.
-/// Returns a der encoded signature in upper case hex.
-pub fn sign_pcrs<T: PCRProvider>(private_key: &SigningKey, pcr_provider: &T) -> String {
-    let payload = format_signature_payload(pcr_provider);
-    let signature: Signature = private_key.sign(&payload);
-    let der_encoded_sig = signature.to_der();
-    let hex_slice = HexSlice(der_encoded_sig.as_bytes());
-    format!("{:X}", hex_slice)
-}
-
 /// Error types returned from verifying a signature over PCRs
 #[derive(Debug)]
 pub enum SignatureVerificationError {
+    /// Failed to decode a given signature as hex data.
     HexDecode,
+    /// Failed to validate the signature using the provided verifying key.
     SignatureError(SignatureError),
+    /// Signature version is not supported.
+    UnsupportedSignatureVersion
 }
 
 impl std::convert::From<ParseIntError> for SignatureVerificationError {
@@ -106,6 +198,12 @@ impl std::fmt::Display for SignatureVerificationError {
                     f,
                     "Failed to validate provided signature over the PCR set provided - {e}"
                 )?;
+            },
+            Self::UnsupportedSignatureVersion => {
+                write!(
+                    f,
+                    "Failed to parse leading byte to known signature version"
+                )?;
             }
         };
         Ok(())
@@ -119,19 +217,6 @@ impl std::error::Error for SignatureVerificationError {
             _ => None,
         }
     }
-}
-
-/// Verify a signature over a set of PCRs using the provided verifying key. Returns `Ok(())` if the signature is deemed to be valid, else an `Err(SignatureVerificationError)`
-pub fn verify_pcrs<T: PCRProvider>(
-    public_key: &VerifyingKey,
-    signature: &str,
-    pcr_provider: &T,
-) -> Result<(), SignatureVerificationError> {
-    let signature_payload = format_signature_payload(pcr_provider);
-    let decoded_signature = decode_hex(&signature)?;
-    let signature = Signature::from_der(&decoded_signature)?;
-    public_key.verify(&signature_payload, &signature)?;
-    Ok(())
 }
 
 #[cfg(test)]
@@ -178,13 +263,13 @@ mod tests {
     fn test_debug_pcr_formatting() {
         let debug_pcr = "0".repeat(96);
         let pcrs = TestPCRs::from(debug_pcr.clone());
-        let formatted_payload = format_signature_payload(&pcrs);
+        let formatted_payload = SignatureVersion::V1.format_signature_payload(&pcrs);
         let decoded_payload = String::from_utf8(formatted_payload).unwrap();
         assert_eq!(
             decoded_payload,
             format!(
-                "PCR0\n{}\nPCR1\n{}\nPCR2\n{}\nPCR8\n{}",
-                &debug_pcr, &debug_pcr, &debug_pcr, &debug_pcr
+                "VERSION\n{}\nPCR0\n{}\nPCR1\n{}\nPCR2\n{}\nPCR8\n{}",
+                SignatureVersion::V1.to_string(), &debug_pcr, &debug_pcr, &debug_pcr, &debug_pcr
             )
         );
     }
@@ -197,12 +282,13 @@ mod tests {
             pcr2: "2".to_string(),
             pcr8: "8".to_string(),
         };
-        let formatted_payload = format_signature_payload(&pcrs);
+        let formatted_payload = SignatureVersion::V1.format_signature_payload(&pcrs);
         let decoded_payload = String::from_utf8(formatted_payload).unwrap();
         assert_eq!(
             decoded_payload,
             format!(
-                "PCR0\n{}\nPCR1\n{}\nPCR2\n{}\nPCR8\n{}",
+                "VERSION\n{}\nPCR0\n{}\nPCR1\n{}\nPCR2\n{}\nPCR8\n{}",
+                SignatureVersion::V1.to_string(),
                 pcrs.pcr0(),
                 pcrs.pcr1(),
                 pcrs.pcr2(),
@@ -222,9 +308,11 @@ mod tests {
     fn test_sign_and_verify() {
         let signing_key = SigningKey::random(&mut rand_core::OsRng);
         let debug_pcrs = TestPCRs::from("0".repeat(96));
-        let signature = sign_pcrs(&signing_key, &debug_pcrs);
-        let verifier = VerifyingKey::from(signing_key);
-        let verification = verify_pcrs(&verifier, &signature, &debug_pcrs);
+        let verifier = VerifyingKey::from(signing_key.clone());
+        let signature = Signature::new(SignatureVersion::V1, &debug_pcrs, signing_key);
+        let signature = signature.sign();
+        let sig_to_verify = Verifier::new(&signature, &debug_pcrs, verifier);
+        let verification = sig_to_verify.try_verify();
         assert!(verification.is_ok());
     }
 
@@ -233,7 +321,9 @@ mod tests {
         let signing_key = SigningKey::random(&mut rand_core::OsRng);
         let debug_pcrs = TestPCRs::from("0".repeat(96));
         let verifier = VerifyingKey::from(signing_key);
-        let verification = verify_pcrs(&verifier, "thisisnothex", &debug_pcrs);
+        let sig = "thisisnothex";
+        let sig_to_verify = Verifier::new(&sig, &debug_pcrs, verifier);
+        let verification = sig_to_verify.try_verify();
         assert!(verification.is_err());
         #[allow(unused_variables)]
         let verification_err = verification.unwrap_err();
@@ -247,16 +337,40 @@ mod tests {
     fn test_verify_with_incorrect_verifying_key() {
         let signing_key = SigningKey::random(&mut rand_core::OsRng);
         let debug_pcrs = TestPCRs::from("0".repeat(96));
-        let signature = sign_pcrs(&signing_key, &debug_pcrs);
-
+        let signer = Signature::new(SignatureVersion::V1, &debug_pcrs, signing_key);
+        let signature = signer.sign();
+        
         let incorrect_key = SigningKey::random(&mut rand_core::OsRng);
         let incorrect_verifier = VerifyingKey::from(incorrect_key);
-        let verification = verify_pcrs(&incorrect_verifier, &signature, &debug_pcrs);
-        assert!(verification.is_err());
-        let verification_err = verification.unwrap_err();
+
+        let verifier = Verifier::new(&signature, &debug_pcrs, incorrect_verifier);
+        let verdict = verifier.try_verify();
+        assert!(verdict.is_err());
+        let verification_err = verdict.unwrap_err();
         assert!(matches!(
             verification_err,
             SignatureVerificationError::SignatureError(_)
+        ));
+    }
+
+    #[test]
+    fn test_verify_with_unsupported_signature_version() {
+        let signing_key = SigningKey::random(&mut rand_core::OsRng);
+        let debug_pcrs = TestPCRs::from("0".repeat(96));
+        let signer = Signature::new(SignatureVersion::V1, &debug_pcrs, signing_key.clone());
+        let signature = signer.sign();
+        let (_version, original_signature) = signature.split_at(2);
+        let mut unsupported_version = "00".to_string();
+        unsupported_version.push_str(original_signature);
+        
+        let correct_verifying_key = VerifyingKey::from(signing_key);
+        let verifier = Verifier::new(&unsupported_version, &debug_pcrs, correct_verifying_key);
+        let verdict = verifier.try_verify();
+        assert!(verdict.is_err());
+        let verification_err = verdict.unwrap_err();
+        assert!(matches!(
+            verification_err,
+            SignatureVerificationError::UnsupportedSignatureVersion
         ));
     }
 }

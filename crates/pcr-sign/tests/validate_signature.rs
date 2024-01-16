@@ -1,5 +1,5 @@
 use p384::pkcs8::DecodePublicKey;
-use pcr_sign::{verify_pcrs, PCRProvider, SignatureVerificationError, SigningKey, VerifyingKey};
+use pcr_sign::{Verifier, PCRProvider, SignatureVerificationError, SigningKey, VerifyingKey};
 use rand_core::OsRng;
 
 const DEBUG_PCR_VALUE: &'static str = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
@@ -33,7 +33,8 @@ pub fn test_signature_verification_using_generated_keys() {
     let pub_key_str = String::from_utf8(public_key.to_vec()).unwrap();
     let verifying_key = VerifyingKey::from_public_key_pem(&pub_key_str).unwrap();
     let debug_pcrs = DebugPCRs;
-    let verification_verdict = verify_pcrs(&verifying_key, &signature_str, &debug_pcrs);
+    let verifier = Verifier::new(&signature_str, &debug_pcrs, verifying_key);
+    let verification_verdict = verifier.try_verify();
     assert!(verification_verdict.is_ok());
 }
 
@@ -45,7 +46,8 @@ pub fn test_signature_verification_using_incorrect_key() {
     let random_key = SigningKey::random(&mut OsRng);
     let verifying_key = VerifyingKey::from(random_key);
     let debug_pcrs: DebugPCRs = DebugPCRs;
-    let verification_verdict = verify_pcrs(&verifying_key, &signature_str, &debug_pcrs);
+    let verifier = Verifier::new(&signature_str, &debug_pcrs, verifying_key);
+    let verification_verdict = verifier.try_verify();
     assert!(verification_verdict.is_err());
     let verification_error = verification_verdict.unwrap_err();
     assert!(matches!(
