@@ -14,7 +14,7 @@ use std::path::Path;
 use tokio::fs::File;
 use tokio::io::AsyncRead;
 
-use elliptic_curve::{SecretKey, pkcs8::DecodePrivateKey};
+use elliptic_curve::{pkcs8::DecodePrivateKey, SecretKey};
 
 const EV_USER_DOCKERFILE_PATH: &str = "enclave.Dockerfile";
 const INSTALLER_DIRECTORY: &str = "/opt/evervault";
@@ -92,13 +92,11 @@ pub async fn build_enclave_image_file(
         std::fs::read_to_string(signing_info.key()).map_err(SigningInfoError::FileSystemIOError)?;
 
     let signing_key = SecretKey::from_pkcs8_pem(private_key.as_str())
-      .map(|secret_key| secret_key.into())
-      .map_err(|e| {
-          SigningInfoError::InvalidKey {
-              curve: "p384r1".into(),
-              inner: e,
-          }
-      })?;
+        .map(|secret_key| secret_key.into())
+        .map_err(|e| SigningInfoError::InvalidKey {
+            curve: "p384r1".into(),
+            inner: e,
+        })?;
 
     let pcrs_signature = pcr_sign::Signature::new(
         pcr_sign::SignatureVersion::default(),
