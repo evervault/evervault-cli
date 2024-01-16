@@ -197,6 +197,12 @@ impl std::fmt::Display for SignatureVerificationError {
                     f,
                     "Failed to validate provided signature over the PCR set provided - {e}"
                 )?;
+            },
+            Self::UnsupportedSignatureVersion => {
+                write!(
+                    f,
+                    "Failed to parse leading byte to known signature version"
+                )?;
             }
             Self::UnsupportedSignatureVersion => {
                 write!(f, "Failed to parse leading byte to known signature version")?;
@@ -339,7 +345,6 @@ mod tests {
         let debug_pcrs = TestPCRs::from("0".repeat(96));
         let signer = Signature::new(SignatureVersion::V1, &debug_pcrs, signing_key);
         let signature = signer.sign();
-
         let incorrect_key = SigningKey::random(&mut rand_core::OsRng);
         let incorrect_verifier = VerifyingKey::from(incorrect_key);
 
@@ -362,7 +367,6 @@ mod tests {
         let (_version, original_signature) = signature.split_at(2);
         let mut unsupported_version = "00".to_string();
         unsupported_version.push_str(original_signature);
-
         let correct_verifying_key = VerifyingKey::from(signing_key);
         let verifier = Verifier::new(&unsupported_version, &debug_pcrs, correct_verifying_key);
         let verdict = verifier.try_verify();
