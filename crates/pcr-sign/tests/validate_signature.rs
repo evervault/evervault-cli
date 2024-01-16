@@ -1,5 +1,5 @@
 use p384::pkcs8::DecodePublicKey;
-use pcr_sign::{verify_pcrs, PCRProvider, VerifyingKey, SigningKey, SignatureVerificationError};
+use pcr_sign::{verify_pcrs, PCRProvider, SignatureVerificationError, SigningKey, VerifyingKey};
 use rand_core::OsRng;
 
 const DEBUG_PCR_VALUE: &'static str = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
@@ -48,5 +48,8 @@ pub fn test_signature_verification_using_incorrect_key() {
     let verification_verdict = verify_pcrs(&verifying_key, &signature_str, &debug_pcrs);
     assert!(verification_verdict.is_err());
     let verification_error = verification_verdict.unwrap_err();
-    assert!(matches!(verification_error, SignatureVerificationError::SignatureError(_)));
+    assert!(matches!(
+        verification_error,
+        SignatureVerificationError::SignatureError(_)
+    ));
 }
