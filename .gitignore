@@ -2,9 +2,9 @@
 target
 */target
 *.pem
-!/test-cert/cert.pem
+!/crates/ev-enclave/test-cert/cert.pem
 *-build.json
-nitro-cli-image.Dockerfile
+!crates/ev-enclave/**/nitro-cli-image.Dockerfile
 enclave.Dockerfile
 *.eif
 .metals/

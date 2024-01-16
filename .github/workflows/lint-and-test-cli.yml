@@ -1,8 +1,7 @@
 on:
   push:
     paths:
-      - src/**
-      - tests/**
+      - crates/ev-enclave/**
       - .github/workflows/lint-and-test-cli.yml
       - Cargo.toml
 name: Lint and Test CLI
