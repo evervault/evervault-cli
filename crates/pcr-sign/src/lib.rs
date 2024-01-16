@@ -197,12 +197,6 @@ impl std::fmt::Display for SignatureVerificationError {
                     f,
                     "Failed to validate provided signature over the PCR set provided - {e}"
                 )?;
-            },
-            Self::UnsupportedSignatureVersion => {
-                write!(
-                    f,
-                    "Failed to parse leading byte to known signature version"
-                )?;
             }
             Self::UnsupportedSignatureVersion => {
                 write!(f, "Failed to parse leading byte to known signature version")?;
