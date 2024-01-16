@@ -2,7 +2,7 @@ use std::num::ParseIntError;
 
 pub use p384::ecdsa::{
     signature::{Error as SignatureError, Signer, Verifier as _Verifier},
-    Signature as EcdsaSig, SigningKey, VerifyingKey,
+    Error as EcdsaError, Signature as EcdsaSig, SigningKey, VerifyingKey,
 };
 
 /// Wrapping stuct to ensure signatures are generated correctly for the provided version

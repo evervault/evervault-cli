@@ -55,11 +55,17 @@ pub struct EIFMeasurements {
     hash_algorithm: String,
     #[serde(flatten)] // serialize as though these are attribtues on this struct
     pcrs: PCRs,
+    #[serde(skip_serializing_if = "Option::is_none")] // custom signature field
+    signature: Option<String>,
 }
 
 impl EIFMeasurements {
     pub fn pcrs(&self) -> &PCRs {
         &self.pcrs
+    }
+
+    pub fn set_signature(&mut self, signature: String) {
+        self.signature = Some(signature);
     }
 }
 
@@ -74,6 +80,26 @@ pub struct PCRs {
     pub pcr2: String,
     #[serde(rename = "PCR8")]
     pub pcr8: Option<String>,
+}
+
+impl pcr_sign::PCRProvider for PCRs {
+    fn pcr0(&self) -> &str {
+        &self.pcr0
+    }
+
+    fn pcr1(&self) -> &str {
+        &self.pcr1
+    }
+
+    fn pcr2(&self) -> &str {
+        &self.pcr2
+    }
+
+    fn pcr8(&self) -> &str {
+        self.pcr8
+            .as_deref()
+            .expect("Failed to access PCR8 on built enclave. Required for PCRs to be signed.")
+    }
 }
 
 // Struct for deserializing the output from the nitro cli
@@ -105,6 +131,10 @@ impl BuiltEnclave {
 
     pub fn measurements(&self) -> &EIFMeasurements {
         &self.measurements
+    }
+
+    pub fn measurements_mut(&mut self) -> &mut EIFMeasurements {
+        &mut self.measurements
     }
 
     pub fn location(&self) -> &std::path::Path {

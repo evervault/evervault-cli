@@ -46,6 +46,8 @@ git2 = "0.17.1"
 version-compare = "0.1.1"
 regex = "1.8.1"
 semver = "1.0.20"
+pcr-sign = { path = "../pcr-sign" }
+elliptic-curve = { version = "0.13.8", features = ["pkcs8"] }
 
 [dev-dependencies]
 tokio-test = "0.4.2"

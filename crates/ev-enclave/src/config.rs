@@ -74,7 +74,7 @@ impl SigningInfo {
     }
 }
 
-#[derive(Clone, Debug, Error)]
+#[derive(Debug, Error)]
 pub enum SigningInfoError {
     #[error("No signing info given.")]
     NoSigningInfoGiven,
@@ -88,6 +88,13 @@ pub enum SigningInfoError {
     SigningCertNotFound(String),
     #[error("Could not find signing key file at {0}")]
     SigningKeyNotFound(String),
+    #[error("Failed to access signing info: {0}")]
+    FileSystemIOError(#[from] std::io::Error),
+    #[error("Failed to interpret key for curve({curve}): {inner}")]
+    InvalidKey {
+        curve: String,
+        inner: elliptic_curve::pkcs8::Error,
+    },
 }
 
 impl CliError for SigningInfoError {
@@ -96,7 +103,9 @@ impl CliError for SigningInfoError {
             Self::NoSigningInfoGiven
             | Self::EmptySigningCert
             | Self::EmptySigningKey
-            | Self::InvalidSigningCert => exitcode::DATAERR,
+            | Self::InvalidSigningCert
+            | Self::InvalidKey { .. } => exitcode::DATAERR,
+            Self::FileSystemIOError(_) => exitcode::IOERR,
             Self::SigningCertNotFound(_) | Self::SigningKeyNotFound(_) => exitcode::NOINPUT,
         }
     }
