@@ -242,10 +242,24 @@ async fn resolve_eif(
     no_cache: bool,
 ) -> Result<(EIFMeasurements, OutputPath), exitcode::ExitCode> {
     if let Some(path) = eif_path {
-        get_eif(path, verbose, no_cache).map_err(|e| {
+        let (mut measurements, output_path) = get_eif(path, verbose, no_cache).map_err(|e| {
             log::error!("{e}");
             e.exitcode()
-        })
+        })?;
+
+        let consistent_pcrs = validated_config.attestation.as_ref()
+          .map(|existing_attestation| existing_attestation.pcrs() == measurements.pcrs())
+          .unwrap_or(false);
+
+        if consistent_pcrs {
+          validated_config.attestation.as_ref().unwrap().signature().map(|signature| {
+            measurements.set_signature(signature.to_string());
+          });
+        } else {
+          log::warn!("The PCRs in the enclave.toml do not match the EIF to upload. The deployment will continue, but the signature stored in the enclave.toml will not be uploaded to Evervault.");
+        }
+
+        Ok((measurements, output_path))
     } else {
         let (built_enclave, output_path) = build_enclave_image_file(
             validated_config,

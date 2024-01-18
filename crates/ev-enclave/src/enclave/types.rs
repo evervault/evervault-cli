@@ -67,6 +67,10 @@ impl EIFMeasurements {
     pub fn set_signature(&mut self, signature: String) {
         self.signature = Some(signature);
     }
+
+    pub fn signature(&self) -> Option<&str> {
+      self.signature.as_deref()
+    }
 }
 
 // Isolated PCRs from remainder of the measures to use in API requests
