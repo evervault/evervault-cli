@@ -2,7 +2,7 @@ pub mod error;
 use error::BuildError;
 
 use crate::common::{resolve_output_path, OutputPath};
-use crate::config::ValidatedEnclaveBuildConfig;
+use crate::config::{SigningInfoError, ValidatedEnclaveBuildConfig};
 use crate::docker::error::DockerError;
 use crate::docker::parse::{Directive, DockerfileDecoder, EnvVar, Mode};
 use crate::docker::utils::verify_docker_is_running;
@@ -13,6 +13,8 @@ use std::io::Write;
 use std::path::Path;
 use tokio::fs::File;
 use tokio::io::AsyncRead;
+
+use elliptic_curve::{pkcs8::DecodePrivateKey, SecretKey};
 
 const EV_USER_DOCKERFILE_PATH: &str = "enclave.Dockerfile";
 const INSTALLER_DIRECTORY: &str = "/opt/evervault";
@@ -83,9 +85,29 @@ pub async fn build_enclave_image_file(
 
     enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose, no_cache)?;
     log::info!("Converting docker image to EIF...");
-    enclave::run_conversion_to_enclave(output_path.path(), verbose)
-        .map(|built_enc| (built_enc, output_path))
-        .map_err(|e| e.into())
+    let mut built_enclave = enclave::run_conversion_to_enclave(output_path.path(), verbose)
+        .map_err(BuildError::from)?;
+
+    let private_key =
+        std::fs::read_to_string(signing_info.key()).map_err(SigningInfoError::FileSystemIOError)?;
+
+    let signing_key = SecretKey::from_pkcs8_pem(private_key.as_str())
+        .map(|secret_key| secret_key.into())
+        .map_err(|e| SigningInfoError::InvalidKey {
+            curve: "p384r1".into(),
+            inner: e,
+        })?;
+
+    let pcrs_signature = pcr_sign::Signature::new(
+        pcr_sign::SignatureVersion::default(),
+        built_enclave.measurements().pcrs(),
+        signing_key,
+    );
+    let signature = pcrs_signature.sign();
+
+    built_enclave.measurements_mut().set_signature(signature);
+
+    Ok((built_enclave, output_path))
 }
 
 #[allow(clippy::too_many_arguments)]
