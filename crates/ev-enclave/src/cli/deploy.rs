@@ -249,22 +249,31 @@ async fn resolve_eif(
 
         /*
          * We cannot guarantee that the signing key pair of the provided EIF are present when it is being uploaded.
-         * We compare the PCRs found in the toml to the PCRs of the EIF (returned by `nitro-cli describe-eif`). 
-         * If the PCRs match, then we know that the signature in the enclave.toml was generated using the key pair which signed this EIF 
+         * We compare the PCRs found in the toml to the PCRs of the EIF (returned by `nitro-cli describe-eif`).
+         * If the PCRs match, then we know that the signature in the enclave.toml was generated using the key pair which signed this EIF
          * and can include the signature in our Deployment request.
          * Otherwise, upload the PCRs without the signature and warn the user.
          */
-        let consistent_pcrs = validated_config.attestation.as_ref()
-          .map(|existing_attestation| existing_attestation.pcrs() == measurements.pcrs())
-          .unwrap_or(false);
+        let consistent_pcrs = validated_config
+            .attestation
+            .as_ref()
+            .map(|existing_attestation| existing_attestation.pcrs() == measurements.pcrs())
+            .unwrap_or(false);
 
         if consistent_pcrs {
-          validated_config.attestation.as_ref().unwrap().signature().map(|signature| {
-            measurements.set_signature(signature.to_string());
-          });
+            validated_config
+                .attestation
+                .as_ref()
+                .unwrap()
+                .signature()
+                .map(|signature| {
+                    measurements.set_signature(signature.to_string());
+                });
         } else {
-          log::warn!("The PCRs in the enclave.toml do not match the PCRs of the EIF provided. The deployment will continue using the PCRs from the EIF.");
-          log::warn!("The signature value in your enclave.toml will not be uploaded to Evervault.");
+            log::warn!("The PCRs in the enclave.toml do not match the PCRs of the EIF provided. The deployment will continue using the PCRs from the EIF.");
+            log::warn!(
+                "The signature value in your enclave.toml will not be uploaded to Evervault."
+            );
         }
 
         Ok((measurements, output_path))

@@ -342,7 +342,7 @@ pub struct CreateEnclaveDeploymentIntentRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     desired_replicas: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pcrs_signature: Option<String>
+    pcrs_signature: Option<String>,
 }
 
 impl CreateEnclaveDeploymentIntentRequest {
@@ -355,7 +355,7 @@ impl CreateEnclaveDeploymentIntentRequest {
         git_timestamp: String,
         git_hash: String,
         desired_replicas: Option<u32>,
-        pcrs_signature: Option<String>
+        pcrs_signature: Option<String>,
     ) -> Self {
         Self {
             pcrs: pcrs.clone(),
@@ -374,7 +374,7 @@ impl CreateEnclaveDeploymentIntentRequest {
             },
             healthcheck: config.healthcheck().map(String::from),
             desired_replicas,
-            pcrs_signature
+            pcrs_signature,
         }
     }
 }

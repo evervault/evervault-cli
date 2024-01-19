@@ -69,7 +69,7 @@ impl EIFMeasurements {
     }
 
     pub fn signature(&self) -> Option<&str> {
-      self.signature.as_deref()
+        self.signature.as_deref()
     }
 }
 
