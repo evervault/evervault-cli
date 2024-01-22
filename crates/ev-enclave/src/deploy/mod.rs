@@ -53,6 +53,7 @@ pub async fn deploy_eif<T: EnclaveApi + Clone>(
             .scaling
             .as_ref()
             .map(|config| config.desired_replicas),
+        eif_measurements.signature().map(String::from),
     );
 
     let deployment_intent = enclave_api
