@@ -1004,7 +1004,6 @@ dependencies = [
  "attestation-doc-validation",
  "atty",
  "aws-nitro-enclaves-image-format",
- "aws-nitro-enclaves-nsm-api",
  "axum",
  "base64 0.13.1",
  "bytes",
