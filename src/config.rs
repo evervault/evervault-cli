@@ -74,7 +74,7 @@ impl SigningInfo {
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Clone, Debug, Error)]
 pub enum SigningInfoError {
     #[error("No signing info given.")]
     NoSigningInfoGiven,
@@ -88,13 +88,6 @@ pub enum SigningInfoError {
     SigningCertNotFound(String),
     #[error("Could not find signing key file at {0}")]
     SigningKeyNotFound(String),
-    #[error("Failed to access signing info: {0}")]
-    FileSystemIOError(#[from] std::io::Error),
-    #[error("Failed to interpret key for curve({curve}): {inner}")]
-    InvalidKey {
-        curve: String,
-        inner: elliptic_curve::pkcs8::Error,
-    },
 }
 
 impl CliError for SigningInfoError {
@@ -103,9 +96,7 @@ impl CliError for SigningInfoError {
             Self::NoSigningInfoGiven
             | Self::EmptySigningCert
             | Self::EmptySigningKey
-            | Self::InvalidSigningCert
-            | Self::InvalidKey { .. } => exitcode::DATAERR,
-            Self::FileSystemIOError(_) => exitcode::IOERR,
+            | Self::InvalidSigningCert => exitcode::DATAERR,
             Self::SigningCertNotFound(_) | Self::SigningKeyNotFound(_) => exitcode::NOINPUT,
         }
     }
@@ -247,7 +238,7 @@ pub struct EnclaveConfig {
     pub egress: EgressSettings,
     pub scaling: Option<ScalingSettings>,
     pub signing: Option<SigningInfo>,
-    pub attestation: Option<EIFMeasurements>
+    pub attestation: Option<EIFMeasurements>,
 }
 
 // This type exists only to read V0 tomls and migrate to V1

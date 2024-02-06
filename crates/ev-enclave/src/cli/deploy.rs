@@ -156,7 +156,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         .map(|args| args.iter().map(AsRef::as_ref).collect());
 
     let (data_plane_version, installer_version) =
-        match get_data_plane_and_installer_version(&validated_config).await {
+        match get_data_plane_and_installer_version().await {
             Ok(versions) => versions,
             Err(e) => {
                 log::error!("Failed to get data plane and installer versions – {e}");
@@ -300,14 +300,9 @@ async fn resolve_eif(
     }
 }
 
-async fn get_data_plane_and_installer_version(
-    validated_config: &ValidatedEnclaveBuildConfig,
-) -> Result<(String, String), ExitCode> {
+async fn get_data_plane_and_installer_version() -> Result<(String, String), ExitCode> {
     let enclave_build_assets_client = AssetsClient::new();
-    match validated_config.runtime.clone() {
-        Some(config) => Ok((config.data_plane_version.clone(), config.installer_version)),
-        None => {
-            let data_plane_version =
+    let data_plane_version =
                 match enclave_build_assets_client.get_data_plane_version().await {
                     Ok(version) => version,
                     Err(e) => {
@@ -324,6 +319,5 @@ async fn get_data_plane_and_installer_version(
                 }
             };
             Ok((data_plane_version, installer_version))
-        }
-    }
 }
+

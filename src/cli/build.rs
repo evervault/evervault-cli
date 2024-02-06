@@ -140,6 +140,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
     };
 
     enclave_config.set_attestation(built_enclave.measurements());
+    enclave_config.set_runtime_info(runtime_info);
     crate::common::save_enclave_config(&enclave_config, &build_args.config);
 
     if enclave_config.debug {
