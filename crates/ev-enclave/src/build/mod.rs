@@ -488,7 +488,6 @@ mod test {
             tls_termination: true,
             api_key_auth: true,
             trx_logging_enabled: true,
-            runtime: None,
             forward_proxy_protocol: false,
             trusted_headers: vec!["X-Evervault-*".to_string()],
             healthcheck: None,

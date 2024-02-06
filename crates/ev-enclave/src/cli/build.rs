@@ -1,7 +1,7 @@
 use crate::api::assets::AssetsClient;
 use crate::build::build_enclave_image_file;
 use crate::common::{prepare_build_args, CliError};
-use crate::config::{read_and_validate_config, BuildTimeConfig, RuntimeVersions};
+use crate::config::{read_and_validate_config, BuildTimeConfig};
 use crate::docker::command::get_source_date_epoch;
 use crate::version::check_version;
 use clap::Parser;
@@ -116,8 +116,6 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
 
     let timestamp = get_source_date_epoch();
 
-    let runtime_info = RuntimeVersions::new(data_plane_version.clone(), installer_version.clone());
-
     let from_existing = build_args.from_existing;
     let built_enclave = match build_enclave_image_file(
         &validated_config,
@@ -142,7 +140,6 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
     };
 
     enclave_config.set_attestation(built_enclave.measurements());
-    enclave_config.set_runtime_info(runtime_info);
     crate::common::save_enclave_config(&enclave_config, &build_args.config);
 
     if enclave_config.debug {

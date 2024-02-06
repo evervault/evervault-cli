@@ -88,9 +88,6 @@ PCR1 = "bcdf05fefccaa8e55bf2c8d6dee9e79bbff31e34bf28a99aa19e6b29c37ee80b214a414b
 PCR2 = "42997b22af1f96a6b32372402af03a5d16e47316e7990314bdb01c0759fa11a7ae88e3ae2f3628b1c1ab734ea2f2ba34"
 PCR8 = "a94237284c822603176cfe5abbf62664a786b8eef7c5ead7ff725fc2750f06520ce775fec55405ac1837cf2c42e1443a"
 
-[runtime]
-data_plane_version = "0.0.39"
-installer_version = "b8073166b7c5bc8fe2abf192f66e1106f2d4be547b1841be69f95ff2c4ea578c"
 "#;
         assert_eq!(config_content, expected_config_content);
     }
