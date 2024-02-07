@@ -120,7 +120,6 @@ impl std::convert::From<InitArgs> for EnclaveConfig {
             tls_termination: !val.disable_tls_termination,
             api_key_auth: !val.disable_api_key_auth,
             trx_logging: !val.trx_logging_disabled,
-            runtime: None,
             forward_proxy_protocol: val.forward_proxy_protocol,
             trusted_headers: convert_comma_list(val.trusted_headers).unwrap_or_default(),
             healthcheck: val.healthcheck,

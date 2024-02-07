@@ -155,14 +155,14 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
         .as_ref()
         .map(|args| args.iter().map(AsRef::as_ref).collect());
 
-    let (data_plane_version, installer_version) =
-        match get_data_plane_and_installer_version(&validated_config).await {
-            Ok(versions) => versions,
-            Err(e) => {
-                log::error!("Failed to get data plane and installer versions – {e}");
-                return e;
-            }
-        };
+    let (data_plane_version, installer_version) = match get_data_plane_and_installer_version().await
+    {
+        Ok(versions) => versions,
+        Err(e) => {
+            log::error!("Failed to get data plane and installer versions – {e}");
+            return e;
+        }
+    };
 
     let from_existing = deploy_args.from_existing;
     let (eif_measurements, output_path) = match resolve_eif(
@@ -300,30 +300,21 @@ async fn resolve_eif(
     }
 }
 
-async fn get_data_plane_and_installer_version(
-    validated_config: &ValidatedEnclaveBuildConfig,
-) -> Result<(String, String), ExitCode> {
+async fn get_data_plane_and_installer_version() -> Result<(String, String), ExitCode> {
     let enclave_build_assets_client = AssetsClient::new();
-    match validated_config.runtime.clone() {
-        Some(config) => Ok((config.data_plane_version.clone(), config.installer_version)),
-        None => {
-            let data_plane_version =
-                match enclave_build_assets_client.get_data_plane_version().await {
-                    Ok(version) => version,
-                    Err(e) => {
-                        log::error!("Failed to retrieve the latest data plane version - {e:?}");
-                        return Err(e.exitcode());
-                    }
-                };
-            let installer_version = match enclave_build_assets_client.get_installer_version().await
-            {
-                Ok(version) => version,
-                Err(e) => {
-                    log::error!("Failed to retrieve the latest installer version - {e:?}");
-                    return Err(e.exitcode());
-                }
-            };
-            Ok((data_plane_version, installer_version))
+    let data_plane_version = match enclave_build_assets_client.get_data_plane_version().await {
+        Ok(version) => version,
+        Err(e) => {
+            log::error!("Failed to retrieve the latest data plane version - {e:?}");
+            return Err(e.exitcode());
         }
-    }
+    };
+    let installer_version = match enclave_build_assets_client.get_installer_version().await {
+        Ok(version) => version,
+        Err(e) => {
+            log::error!("Failed to retrieve the latest installer version - {e:?}");
+            return Err(e.exitcode());
+        }
+    };
+    Ok((data_plane_version, installer_version))
 }

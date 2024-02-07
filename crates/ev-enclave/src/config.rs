@@ -111,21 +111,6 @@ impl CliError for SigningInfoError {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct RuntimeVersions {
-    pub data_plane_version: String,
-    pub installer_version: String,
-}
-
-impl RuntimeVersions {
-    pub fn new(data_plane_version: String, installer_version: String) -> RuntimeVersions {
-        RuntimeVersions {
-            data_plane_version,
-            installer_version,
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct ValidatedSigningInfo {
     pub cert: String,
@@ -262,7 +247,6 @@ pub struct EnclaveConfig {
     pub scaling: Option<ScalingSettings>,
     pub signing: Option<SigningInfo>,
     pub attestation: Option<EIFMeasurements>,
-    pub runtime: Option<RuntimeVersions>,
 }
 
 // This type exists only to read V0 tomls and migrate to V1
@@ -288,7 +272,6 @@ pub struct EnclaveConfigV0 {
     pub scaling: Option<ScalingSettings>,
     pub signing: Option<SigningInfo>,
     pub attestation: Option<EIFMeasurements>,
-    pub runtime: Option<RuntimeVersions>,
 }
 
 impl std::convert::From<EnclaveConfigV0> for EnclaveConfig {
@@ -311,7 +294,6 @@ impl std::convert::From<EnclaveConfigV0> for EnclaveConfig {
             scaling: value.scaling,
             signing: value.signing,
             attestation: value.attestation,
-            runtime: value.runtime,
         }
     }
 }
@@ -347,7 +329,6 @@ pub struct ValidatedEnclaveBuildConfig {
     pub tls_termination: bool,
     pub api_key_auth: bool,
     pub trx_logging_enabled: bool,
-    pub runtime: Option<RuntimeVersions>,
     pub forward_proxy_protocol: bool,
     pub trusted_headers: Vec<String>,
     pub healthcheck: Option<String>,
@@ -462,10 +443,6 @@ impl EnclaveConfig {
         self.attestation = Some(measurements.clone());
     }
 
-    pub fn set_runtime_info(&mut self, runtime: RuntimeVersions) {
-        self.runtime = Some(runtime.clone());
-    }
-
     pub fn set_scaling_config(&mut self, scaling_info: ScalingSettings) {
         self.scaling = Some(scaling_info);
     }
@@ -556,7 +533,6 @@ impl std::convert::TryFrom<&EnclaveConfig> for ValidatedEnclaveBuildConfig {
             tls_termination: config.tls_termination,
             api_key_auth: config.api_key_auth,
             trx_logging_enabled,
-            runtime: config.runtime.clone(),
             forward_proxy_protocol: config.forward_proxy_protocol,
             trusted_headers: config.trusted_headers.clone(),
             healthcheck: config.healthcheck.clone(),
@@ -657,7 +633,6 @@ mod test {
             api_key_auth: true,
             trx_logging: true,
             forward_proxy_protocol: false,
-            runtime: None,
             trusted_headers: vec![],
             healthcheck: Some("/health".to_string()),
         };
