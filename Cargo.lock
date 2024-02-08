@@ -222,9 +222,9 @@ dependencies = [
 
 [[package]]
 name = "attestation-doc-validation"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43330618843e99e4c62cdf93452e5d550e335b503bf5b9adb399484989b0b424"
+checksum = "8edfc5441adc8e75762764fc70b0f7ad838170f9867e139fedbe4a1d66ab2f8b"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -311,13 +311,12 @@ dependencies = [
 
 [[package]]
 name = "aws-nitro-enclaves-nsm-api"
-version = "0.2.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17e83ef53714474149215e48438d2cf8f96fb76ae5a00f21f16051fab79c0627"
+checksum = "d92c1f4471b33f6a7af9ea421b249ed18a11c71156564baf6293148fa6ad1b09"
 dependencies = [
  "libc",
  "log",
- "nix",
  "serde",
  "serde_bytes",
  "serde_cbor",
@@ -1788,18 +1787,6 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
-]
-
-[[package]]
-name = "nix"
-version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa9b4819da1bc61c0ea48b63b7bc8604064dd43013e7cc325df098d49cd7c18a"
-dependencies = [
- "bitflags 1.3.2",
- "cc",
- "cfg-if",
- "libc",
 ]
 
 [[package]]

@@ -48,7 +48,7 @@ regex = "1.8.1"
 semver = "1.0.20"
 pcr-sign = { path = "../pcr-sign" }
 elliptic-curve = { version = "0.13.8", features = ["pkcs8"] }
-attestation-doc-validation = "0.7.3"
+attestation-doc-validation = "0.7.4"
 
 [dev-dependencies]
 tokio-test = "0.4.2"
