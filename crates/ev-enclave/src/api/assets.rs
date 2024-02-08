@@ -76,7 +76,7 @@ impl AssetsClient {
     }
 
     pub async fn get_cli_install_script(&self) -> ApiResult<String> {
-        let cli_install_url = format!("{}/cli/install", self.base_url());
+        let cli_install_url = format!("{}/cli/v1/install", self.base_url());
         self.get(&cli_install_url)
             .send()
             .await
