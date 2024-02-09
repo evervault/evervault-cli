@@ -2,7 +2,7 @@ pub mod error;
 use error::BuildError;
 
 use crate::common::{resolve_output_path, OutputPath};
-use crate::config::{SigningInfoError, ValidatedEnclaveBuildConfig};
+use crate::config::ValidatedEnclaveBuildConfig;
 use crate::docker::error::DockerError;
 use crate::docker::parse::{Directive, DockerfileDecoder, EnvVar, Mode};
 use crate::docker::utils::verify_docker_is_running;
@@ -14,7 +14,10 @@ use std::path::Path;
 use tokio::fs::File;
 use tokio::io::AsyncRead;
 
+#[cfg(feature = "pcr_signature")]
 use elliptic_curve::{pkcs8::DecodePrivateKey, SecretKey};
+#[cfg(feature = "pcr_signature")]
+use crate::config::SigningInfoError;
 
 const EV_USER_DOCKERFILE_PATH: &str = "enclave.Dockerfile";
 const INSTALLER_DIRECTORY: &str = "/opt/evervault";
@@ -85,27 +88,31 @@ pub async fn build_enclave_image_file(
 
     enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose, no_cache)?;
     log::info!("Converting docker image to EIF...");
+    #[allow(unused_mut)]
     let mut built_enclave = enclave::run_conversion_to_enclave(output_path.path(), verbose)
         .map_err(BuildError::from)?;
 
-    let private_key =
-        std::fs::read_to_string(signing_info.key()).map_err(SigningInfoError::FileSystemIOError)?;
+    #[cfg(feature = "pcr_signature")]
+    {
+      let private_key =
+          std::fs::read_to_string(signing_info.key()).map_err(SigningInfoError::FileSystemIOError)?;
 
-    let signing_key = SecretKey::from_pkcs8_pem(private_key.as_str())
-        .map(|secret_key| secret_key.into())
-        .map_err(|e| SigningInfoError::InvalidKey {
-            curve: "p384r1".into(),
-            inner: e,
-        })?;
+      let signing_key = SecretKey::from_pkcs8_pem(private_key.as_str())
+          .map(|secret_key| secret_key.into())
+          .map_err(|e| SigningInfoError::InvalidKey {
+              curve: "p384r1".into(),
+              inner: e,
+          })?;
 
-    let pcrs_signature = pcr_sign::Signature::new(
-        pcr_sign::SignatureVersion::default(),
-        built_enclave.measurements().pcrs(),
-        signing_key,
-    );
-    let signature = pcrs_signature.sign();
+      let pcrs_signature = pcr_sign::Signature::new(
+          pcr_sign::SignatureVersion::default(),
+          built_enclave.measurements().pcrs(),
+          signing_key,
+      );
+      let signature = pcrs_signature.sign();
 
-    built_enclave.measurements_mut().set_signature(signature);
+      built_enclave.measurements_mut().set_signature(signature);
+    }
 
     Ok((built_enclave, output_path))
 }

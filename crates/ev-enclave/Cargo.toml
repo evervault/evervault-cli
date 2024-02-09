@@ -46,7 +46,7 @@ git2 = "0.17.1"
 version-compare = "0.1.1"
 regex = "1.8.1"
 semver = "1.0.20"
-pcr-sign = { path = "../pcr-sign" }
+pcr-sign = { path = "../pcr-sign", optional=true }
 elliptic-curve = { version = "0.13.8", features = ["pkcs8"] }
 attestation-doc-validation = "0.7.4"
 
@@ -57,3 +57,4 @@ mockall = "0.11.4"
 
 [features]
 internal_dependency = ["rust-crypto"]
+pcr_signature = ["pcr-sign"]
