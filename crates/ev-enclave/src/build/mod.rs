@@ -15,9 +15,9 @@ use tokio::fs::File;
 use tokio::io::AsyncRead;
 
 #[cfg(feature = "pcr_signature")]
-use elliptic_curve::{pkcs8::DecodePrivateKey, SecretKey};
-#[cfg(feature = "pcr_signature")]
 use crate::config::SigningInfoError;
+#[cfg(feature = "pcr_signature")]
+use elliptic_curve::{pkcs8::DecodePrivateKey, SecretKey};
 
 const EV_USER_DOCKERFILE_PATH: &str = "enclave.Dockerfile";
 const INSTALLER_DIRECTORY: &str = "/opt/evervault";
@@ -94,24 +94,24 @@ pub async fn build_enclave_image_file(
 
     #[cfg(feature = "pcr_signature")]
     {
-      let private_key =
-          std::fs::read_to_string(signing_info.key()).map_err(SigningInfoError::FileSystemIOError)?;
+        let private_key = std::fs::read_to_string(signing_info.key())
+            .map_err(SigningInfoError::FileSystemIOError)?;
 
-      let signing_key = SecretKey::from_pkcs8_pem(private_key.as_str())
-          .map(|secret_key| secret_key.into())
-          .map_err(|e| SigningInfoError::InvalidKey {
-              curve: "p384r1".into(),
-              inner: e,
-          })?;
+        let signing_key = SecretKey::from_pkcs8_pem(private_key.as_str())
+            .map(|secret_key| secret_key.into())
+            .map_err(|e| SigningInfoError::InvalidKey {
+                curve: "p384r1".into(),
+                inner: e,
+            })?;
 
-      let pcrs_signature = pcr_sign::Signature::new(
-          pcr_sign::SignatureVersion::default(),
-          built_enclave.measurements().pcrs(),
-          signing_key,
-      );
-      let signature = pcrs_signature.sign();
+        let pcrs_signature = pcr_sign::Signature::new(
+            pcr_sign::SignatureVersion::default(),
+            built_enclave.measurements().pcrs(),
+            signing_key,
+        );
+        let signature = pcrs_signature.sign();
 
-      built_enclave.measurements_mut().set_signature(signature);
+        built_enclave.measurements_mut().set_signature(signature);
     }
 
     Ok((built_enclave, output_path))
