@@ -86,6 +86,7 @@ pub struct PCRs {
     pub pcr8: Option<String>,
 }
 
+#[cfg(feature = "pcr_signature")]
 impl pcr_sign::PCRProvider for PCRs {
     fn pcr0(&self) -> &str {
         &self.pcr0
