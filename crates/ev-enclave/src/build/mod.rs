@@ -272,7 +272,9 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         dataplane_info["egress"] = json!({
             "allow_list": &egress.clone().get_destinations()
         });
-        r#"iptables -A OUTPUT -t nat -p tcp --dport 1:65535 ! -d 127.0.0.1  -j DNAT --to-destination 127.0.0.1:4444\nip route add default via 127.0.0.1 dev lo\niptables -t nat -A POSTROUTING -o lo -s 0.0.0.0 -j SNAT --to-source 127.0.0.1\n"#
+        let ipv4_rules = r#"iptables -A OUTPUT -t nat -p tcp --dport 1:65535 ! -d 127.0.0.1  -j DNAT --to-destination 127.0.0.1:4444\nev-ip route add default via 127.0.0.1 dev lo\niptables -t nat -A POSTROUTING -o lo -s 0.0.0.0 -j SNAT --to-source 127.0.0.1\n"#;
+        let ipv6_rules = r#"ip6tables -A OUTPUT -t nat -p tcp --dport 1:65535 -j DNAT --to-destination [::1]:4444\nev-ip ip -6 route add local ::/0 dev lo\nev-ip ip -6 route add default via ::1 dev lo\n"#;
+        format!("{}\n{}", ipv4_rules, ipv6_rules)
     } else {
         ""
     };
@@ -914,7 +916,7 @@ ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-e
 RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
-RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \niptables -A OUTPUT -t nat -p tcp --dport 1:65535 ! -d 127.0.0.1  -j DNAT --to-destination 127.0.0.1:4444\nip route add default via 127.0.0.1 dev lo\niptables -t nat -A POSTROUTING -o lo -s 0.0.0.0 -j SNAT --to-source 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \niptables -A OUTPUT -t nat -p tcp --dport 1:65535 ! -d 127.0.0.1  -j DNAT --to-destination 127.0.0.1:4444\nev-ip route add default via 127.0.0.1 dev lo\niptables -t nat -A POSTROUTING -o lo -s 0.0.0.0 -j SNAT --to-source 127.0.0.1\necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
 
