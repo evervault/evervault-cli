@@ -809,16 +809,16 @@ pub struct GetSigningCertsResponse {
 pub struct EnclaveLogs {
     log_events: Vec<LogEvent>,
     next_token: Option<String>,
-    start_time: String,
-    end_time: String,
+    start_time: u64,
+    end_time: u64,
 }
 
 impl EnclaveLogs {
-    pub fn start_time(&self) -> &str {
+    pub fn start_time(&self) -> &u64 {
         &self.start_time
     }
 
-    pub fn end_time(&self) -> &str {
+    pub fn end_time(&self) -> &u64 {
         &self.end_time
     }
 
