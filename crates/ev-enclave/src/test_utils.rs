@@ -8,7 +8,7 @@ use crate::build::build_enclave_image_file;
 use crate::build::error::BuildError;
 use crate::common::OutputPath;
 use crate::config::{read_and_validate_config, ValidatedEnclaveBuildConfig};
-use crate::enclave::BuiltEnclave;
+use crate::nitro::BuiltEnclave;
 
 pub async fn build_test_enclave(
     output_dir: Option<&str>,

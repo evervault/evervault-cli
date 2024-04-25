@@ -9,7 +9,7 @@ use crate::{
     common::{CliError, OutputPath},
     config::{read_and_validate_config, BuildTimeConfig, ValidatedEnclaveBuildConfig},
     deploy::{deploy_eif, get_eif},
-    enclave::EIFMeasurements,
+    nitro::EIFMeasurements,
 };
 use atty::Stream;
 use clap::Parser;

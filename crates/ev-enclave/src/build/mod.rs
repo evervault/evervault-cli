@@ -6,7 +6,7 @@ use crate::config::ValidatedEnclaveBuildConfig;
 use crate::docker::error::DockerError;
 use crate::docker::parse::{Directive, DockerfileDecoder, EnvVar, Mode};
 use crate::docker::utils::verify_docker_is_running;
-use crate::enclave;
+use crate::nitro;
 
 use serde_json::json;
 use std::io::Write;
@@ -37,7 +37,7 @@ pub async fn build_enclave_image_file(
     from_existing: Option<String>,
     reproducible: bool,
     no_cache: bool,
-) -> Result<(enclave::BuiltEnclave, OutputPath), BuildError> {
+) -> Result<(nitro::BuiltEnclave, OutputPath), BuildError> {
     let context_path = Path::new(&context_path);
     if !context_path.exists() {
         log::error!(
@@ -51,12 +51,12 @@ pub async fn build_enclave_image_file(
     // function so it isn't deleted until all the builds are finished.
     let output_path = resolve_output_path(output_dir)?;
 
-    let signing_info = enclave::EnclaveSigningInfo::try_from(enclave_config.signing_info())?;
+    let signing_info = nitro::EnclaveSigningInfo::try_from(enclave_config.signing_info())?;
 
     match from_existing {
         Some(path) => {
             let user_dockerfile_path = output_path.path().join(path);
-            enclave::build_user_image(
+            nitro::build_user_image(
                 &user_dockerfile_path,
                 context_path,
                 verbose,
@@ -86,11 +86,11 @@ pub async fn build_enclave_image_file(
         log::debug!("Building Nitro CLI image... {output_path}");
     }
 
-    enclave::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose, no_cache)?;
+    nitro::build_nitro_cli_image(output_path.path(), Some(&signing_info), verbose, no_cache)?;
     log::info!("Converting docker image to EIF...");
     #[allow(unused_mut)]
-    let mut built_enclave = enclave::run_conversion_to_enclave(output_path.path(), verbose)
-        .map_err(BuildError::from)?;
+    let mut built_enclave =
+        nitro::run_conversion_to_enclave(output_path.path(), verbose).map_err(BuildError::from)?;
 
     #[cfg(feature = "pcr_signature")]
     {
@@ -172,7 +172,7 @@ pub async fn build_from_scratch(
 
     log::info!("Building docker image...");
 
-    enclave::build_user_image(
+    nitro::build_user_image(
         &user_dockerfile_path,
         context_path,
         verbose,
@@ -462,7 +462,7 @@ mod test {
     use crate::config::ValidatedEnclaveBuildConfig;
     use crate::config::ValidatedSigningInfo;
     use crate::docker;
-    use crate::enclave;
+    use crate::nitro;
     use crate::test_utils;
     use std::iter::zip;
     use tempfile::TempDir;
@@ -1020,8 +1020,8 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
             .exists());
         assert!(output_dir
             .path()
-            .join(enclave::NITRO_CLI_IMAGE_FILENAME)
+            .join(nitro::NITRO_CLI_IMAGE_FILENAME)
             .exists());
-        assert!(output_dir.path().join(enclave::ENCLAVE_FILENAME).exists());
+        assert!(output_dir.path().join(nitro::ENCLAVE_FILENAME).exists());
     }
 }

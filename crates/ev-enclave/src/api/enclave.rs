@@ -327,7 +327,7 @@ pub struct VersionMetadata {
 #[serde(rename_all = "camelCase")]
 pub struct CreateEnclaveDeploymentIntentRequest {
     #[serde(flatten)]
-    pcrs: crate::enclave::PCRs,
+    pcrs: crate::nitro::PCRs,
     debug_mode: bool,
     trusted_headers: Vec<String>,
     egress_enabled: bool,
@@ -347,7 +347,7 @@ pub struct CreateEnclaveDeploymentIntentRequest {
 
 impl CreateEnclaveDeploymentIntentRequest {
     pub fn new(
-        pcrs: &crate::enclave::PCRs,
+        pcrs: &crate::nitro::PCRs,
         config: ValidatedEnclaveBuildConfig,
         eif_size_bytes: u64,
         data_plane_version: String,

@@ -3,7 +3,7 @@ use crate::api::{enclave::CreateEnclaveDeploymentIntentRequest, enclave::Enclave
 use crate::common::{resolve_output_path, OutputPath};
 use crate::config::ValidatedEnclaveBuildConfig;
 use crate::describe::describe_eif;
-use crate::enclave::{EIFMeasurements, ENCLAVE_FILENAME};
+use crate::nitro::{EIFMeasurements, ENCLAVE_FILENAME};
 use crate::progress::{get_tracker, poll_fn_and_report_status, ProgressLogger, StatusReport};
 use std::io::Write;
 use std::sync::Arc;
@@ -289,7 +289,7 @@ pub async fn timed_operation<T: std::future::Future>(
 mod tests {
     use super::*;
     use crate::api::enclave::MockEnclaveApi;
-    use crate::enclave::PCRs;
+    use crate::nitro::PCRs;
     use crate::progress::NonTty;
     use crate::test_utils;
     use std::time::Duration;

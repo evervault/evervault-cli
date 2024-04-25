@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::cert::{get_cert_validity_period, CertValidityPeriod};
 
 use super::common::CliError;
-use super::enclave::{EIFMeasurements, EnclaveSigningInfo};
+use super::nitro::{EIFMeasurements, EnclaveSigningInfo};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
