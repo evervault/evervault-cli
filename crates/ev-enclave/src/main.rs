@@ -3,8 +3,8 @@ use clap::{AppSettings, Parser};
 use env_logger::fmt::Formatter;
 use env_logger::{Builder, Env};
 #[cfg(not(target_os = "windows"))]
-use ev_enclave::cli::attest;
-use ev_enclave::cli::{
+use ev_enclave::enclave::cli::attest;
+use ev_enclave::enclave::cli::{
     build, cert, delete, deploy, describe, init, list, logs, migrate, restart, scale, update,
     Command,
 };
