@@ -1,10 +1,11 @@
-use crate::config::EnclaveConfigError;
-use crate::{
+use crate::enclave::{
+    api,
     api::{
         enclave::{EnclaveApi, EnclaveClient},
         AuthMode,
     },
     cli::encrypt::CurveName,
+    config::EnclaveConfigError,
 };
 use rust_crypto::{
     backend::{ies_secp256k1_openssl, ies_secp256r1_openssl, CryptoClient, Datatype},
@@ -17,7 +18,7 @@ pub enum EncryptError {
     #[error("Team uuid and app uuid must be provided as arg or in Enclave toml")]
     MissingUuid,
     #[error("An error occurred contacting the API — {0}")]
-    ApiError(#[from] crate::api::client::ApiError),
+    ApiError(#[from] api::client::ApiError),
     #[error("Error decoding public key — {0}")]
     Base64DecodeError(#[from] base64::DecodeError),
     #[error("An error occurred during decryption — {0}")]

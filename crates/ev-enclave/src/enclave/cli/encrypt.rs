@@ -1,7 +1,7 @@
-use crate::version::check_version;
-use crate::{
+use crate::enclave::{
     config::EnclaveConfig,
     encrypt::{self, EncryptError},
+    version::check_version,
 };
 use clap::Parser;
 

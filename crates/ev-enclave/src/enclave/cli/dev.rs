@@ -1,5 +1,4 @@
-use crate::dev::run_mock_crypto_api;
-use crate::version::check_version;
+use crate::enclave::{dev::run_mock_crypto_api, version::check_version};
 use clap::Parser;
 
 /// Start a mock encryption API for local testing

@@ -1,7 +1,10 @@
-use crate::api::enclave::{AddSecretRequest, EnclaveApi, EnclaveClient, EnclaveEnv};
-use crate::cli::env::EnvCommands;
-use crate::config::{EnclaveConfig, EnclaveConfigError};
-use crate::encrypt::{self, encrypt};
+use crate::enclave::{
+    api,
+    api::enclave::{AddSecretRequest, EnclaveApi, EnclaveClient, EnclaveEnv},
+    cli::env::EnvCommands,
+    config::{EnclaveConfig, EnclaveConfigError},
+    encrypt::{self, encrypt},
+};
 #[cfg(feature = "internal_dependency")]
 use rust_crypto::EvervaultCryptoError;
 use thiserror::Error;
@@ -9,7 +12,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum EnvError {
     #[error("An error occurred contacting the API — {0}")]
-    ApiError(#[from] crate::api::client::ApiError),
+    ApiError(#[from] api::client::ApiError),
     #[error("Error decoding public key — {0}")]
     Base64DecodeError(#[from] base64::DecodeError),
     #[error("An error occurred during decryption — {0}")]

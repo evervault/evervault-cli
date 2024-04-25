@@ -10,7 +10,7 @@ use ev_enclave::enclave::cli::{
 };
 
 #[cfg(feature = "internal_dependency")]
-use ev_enclave::cli::{dev, encrypt, env};
+use ev_enclave::enclave::cli::{dev, encrypt, env};
 use human_panic::setup_panic;
 use log::Record;
 use std::io::Write;

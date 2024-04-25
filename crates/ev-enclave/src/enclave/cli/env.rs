@@ -1,13 +1,13 @@
-use crate::version::check_version;
 use clap::{Parser, Subcommand};
 
-use crate::{
+use crate::enclave::{
     api::{enclave::EnclaveClient, AuthMode},
-    get_api_key,
+    env::env,
+    version::check_version,
 };
 
 use super::encrypt::CurveName;
-use crate::env::env;
+use crate::get_api_key;
 
 #[derive(Clone, Debug, clap::ArgEnum, Subcommand)]
 pub enum EnvAction {
