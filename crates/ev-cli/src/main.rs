@@ -3,9 +3,6 @@ use clap::Parser;
 use commands::Command;
 use env_logger::fmt::Formatter;
 use env_logger::{Builder, Env};
-#[cfg(not(target_os = "windows"))]
-#[cfg(feature = "internal_dependency")]
-use ev_enclave::enclave::cli::{dev, encrypt, env};
 use human_panic::setup_panic;
 use log::Record;
 use std::io::Write;
