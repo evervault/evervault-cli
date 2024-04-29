@@ -18,7 +18,7 @@ jobs:
           toolchain: stable
           components: rustfmt, clippy
       - name: Compile project
-        run: cargo build --features internal_dependency
+        run: cargo build 
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
