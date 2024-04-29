@@ -1,4 +1,4 @@
-use clap::Subcommand;
+use clap::Parser;
 #[cfg(not(target_os = "windows"))]
 pub mod attest;
 pub mod build;
@@ -20,8 +20,9 @@ pub mod restart;
 pub mod scale;
 pub mod update;
 
-#[derive(Debug, Subcommand)]
-pub enum Command {
+#[derive(Parser, Debug)]
+#[command(name = "enclave")]
+pub enum EnclaveCommand {
     Build(build::BuildArgs),
     Cert(cert::CertArgs),
     Delete(delete::DeleteArgs),
