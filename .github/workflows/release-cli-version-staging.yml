@@ -17,7 +17,7 @@ jobs:
           override: true
           components: rustfmt, clippy
       - name: Compile project
-        run: cargo build -p ev-enclave
+        run: cargo build -p ev-enclave -Z registry-auth
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
@@ -45,18 +45,18 @@ jobs:
         run: |
           echo "using sha tag ${GITHUB_SHA::6}"
           echo ::set-output name=full_version::1.0.0-${GITHUB_SHA::6}
-          
+
   build-and-deploy:
     needs: [get-version]
     uses: ./.github/workflows/build-and-publish.yml
     with:
-      stage: 'staging'
-      major-version: '1'
+      stage: "staging"
+      major-version: "1"
       full-version: "${{ needs.get-version.outputs.full_version }}"
-      ev-domain: 'evervault.io'
+      ev-domain: "evervault.io"
     secrets:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}
-        aws-cloudfront-distribution-id: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }}
-        evervault-rust-lib-index: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-        evervault-rust-lib-token: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
+      aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}
+      aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}
+      aws-cloudfront-distribution-id: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }}
+      evervault-rust-lib-index: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+      evervault-rust-lib-token: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
