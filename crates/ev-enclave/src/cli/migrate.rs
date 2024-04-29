@@ -3,14 +3,14 @@ use clap::Parser;
 
 /// Migrate an Enclave toml from v0 to v1
 #[derive(Parser, Debug)]
-#[clap(name = "migrate", about)]
+#[command(name = "migrate", about)]
 pub struct MigrateArgs {
     /// Path to the toml file containing the Enclave's config
-    #[clap(short = 'c', long = "config", default_value = "./cage.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./cage.toml")]
     pub config: String,
 
     /// Path to the new toml created by the migration
-    #[clap(short = 'o', long = "output")]
+    #[arg(short = 'o', long = "output")]
     pub output: Option<String>,
 }
 

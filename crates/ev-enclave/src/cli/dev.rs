@@ -4,10 +4,10 @@ use clap::Parser;
 
 /// Start a mock encryption API for local testing
 #[derive(Debug, Parser)]
-#[clap(name = "dev", about)]
+#[command(name = "dev", about)]
 pub struct DevArgs {
     /// The port to run the crypto API on
-    #[clap(short = 'p', long = "port", default_value = "9999")]
+    #[arg(short = 'p', long = "port", default_value = "9999")]
     pub port: u16,
 }
 

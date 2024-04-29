@@ -8,58 +8,59 @@ use clap::Parser;
 
 /// Build an Enclave from a Dockerfile
 #[derive(Parser, Debug)]
-#[clap(name = "build", about)]
+#[command(name = "build", about)]
 pub struct BuildArgs {
     /// Path to enclave.toml config file. This can be generated using the init command
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 
     /// Path to Dockerfile for Enclave. Will override any dockerfile specified in the .toml file.
-    #[clap(short = 'f', long = "file")]
+    #[arg(short = 'f', long = "file")]
     pub dockerfile: Option<String>,
 
     /// Path to use for Docker context. Defaults to the current directory.
-    #[clap(default_value = ".")]
+    #[arg(default_value = ".")]
     pub context_path: String,
 
     /// Certificate used to sign the Enclave image file
-    #[clap(long = "signing-cert")]
+    #[arg(long = "signing-cert")]
     pub certificate: Option<String>,
 
     /// Private key used to sign the Enclave image file
-    #[clap(long = "private-key")]
+    #[arg(long = "private-key")]
     pub private_key: Option<String>,
 
     /// Disable verbose logging
-    #[clap(long)]
+    #[arg(long)]
     pub quiet: bool,
 
+    // TODO(Mark): check
     /// Enable JSON output
-    #[clap(long, from_global)]
-    pub json: bool,
+    // #[arg(long, from_global)]
+    // pub json: bool,
 
     /// Path to directory where the processed dockerfile and Enclave will be saved
-    #[clap(short = 'o', long = "output", default_value = ".")]
+    #[arg(short = 'o', long = "output", default_value = ".")]
     pub output_dir: String,
 
     /// Build time arguments to provide to docker
-    #[clap(long = "build-arg")]
+    #[arg(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 
     /// Path to an Enclave dockerfile to build from existing
-    #[clap(long = "from-existing")]
+    #[arg(long = "from-existing")]
     pub from_existing: Option<String>,
 
     /// Deterministic builds
-    #[clap(long = "reproducible")]
+    #[arg(long = "reproducible")]
     pub reproducible: bool,
 
     /// Enables forwarding proxy protocol when TLS Termination is disabled
-    #[clap(long = "forward-proxy-protocol")]
+    #[arg(long = "forward-proxy-protocol")]
     pub forward_proxy_protocol: bool,
 
     /// Disables the use of cache during the image builds
-    #[clap(long = "no-cache")]
+    #[arg(long = "no-cache")]
     pub no_cache: bool,
 }
 

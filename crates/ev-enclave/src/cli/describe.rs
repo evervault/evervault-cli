@@ -5,18 +5,18 @@ use clap::Parser;
 
 /// Get the PCRs of a built EIF
 #[derive(Debug, Parser)]
-#[clap(name = "describe", about)]
+#[command(name = "describe", about)]
 pub struct DescribeArgs {
     /// Path to the EIF to descibe.
-    #[clap(default_value = "./enclave.eif")]
+    #[arg(default_value = "./enclave.eif")]
     pub eif_path: String,
 
     /// Disable verbose logging
-    #[clap(long)]
+    #[arg(long)]
     pub quiet: bool,
 
     /// Disables the use of cache during the image builds
-    #[clap(long = "no-cache")]
+    #[arg(long = "no-cache")]
     pub no_cache: bool,
 }
 

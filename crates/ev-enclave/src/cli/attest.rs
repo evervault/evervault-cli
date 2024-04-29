@@ -8,13 +8,13 @@ use clap::Parser;
 
 /// Validate the attestation doc provided by an Enclave
 #[derive(Debug, Parser)]
-#[clap(name = "attest", about)]
+#[command(name = "attest", about)]
 pub struct AttestArgs {
     /// Path to enclave.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
     /// Path to EIF file. When included, the attestation measures returned from the Enclave will be compared to the measures of the EIF.
-    #[clap(long = "eif-path")]
+    #[arg(long = "eif-path")]
     pub eif_path: Option<String>,
 }
 

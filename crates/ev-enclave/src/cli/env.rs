@@ -9,7 +9,7 @@ use crate::{
 use super::encrypt::CurveName;
 use crate::env::env;
 
-#[derive(Clone, Debug, clap::ArgEnum, Subcommand)]
+#[derive(Clone, Debug, Subcommand)]
 pub enum EnvAction {
     Add,
     Delete,
@@ -18,15 +18,15 @@ pub enum EnvAction {
 
 /// Manage Enclave environment
 #[derive(Debug, Parser)]
-#[clap(name = "cert", about)]
+#[command(name = "cert", about)]
 pub struct EnvArgs {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     action: EnvCommands,
 }
 
 #[derive(Debug, Subcommand)]
 pub enum EnvCommands {
-    #[clap()]
+    #[command()]
     /// Add Enclave environment variable
     Add(AddEnvArgs),
     /// Delete Enclave environment variable
@@ -37,48 +37,48 @@ pub enum EnvCommands {
 
 /// Add secret to Enclave env
 #[derive(Debug, Parser)]
-#[clap(name = "env", about)]
+#[command(name = "env", about)]
 pub struct AddEnvArgs {
     /// Name of environment variable
-    #[clap(long = "key")]
+    #[arg(long = "key")]
     pub name: String,
 
     /// Environment variable value
-    #[clap(long = "value")]
+    #[arg(long = "value")]
     pub value: String,
 
     /// Is the env var is a secret, it will be encrypted
-    #[clap(long = "secret")]
+    #[arg(long = "secret")]
     pub is_secret: bool,
 
     /// Curve to use, options are Secp256r1 (alias nist) or Secp256k1 (alias koblitz)
-    #[clap(arg_enum, default_value = "nist")]
+    #[arg(value_enum)]
     pub curve: CurveName,
 
     /// Path to enclave.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 }
 
 /// Add delete secret from Enclave env
 #[derive(Debug, Parser)]
-#[clap(name = "env", about)]
+#[command(name = "env", about)]
 pub struct DeleteEnvArgs {
     /// Name of environment variable
-    #[clap(long = "key")]
+    #[arg(long = "key")]
     pub name: String,
 
     /// Path to enclave.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 }
 
 /// Get secrets from Enclave env
 #[derive(Debug, Parser)]
-#[clap(name = "env", about)]
+#[command(name = "env", about)]
 pub struct GetEnvArgs {
     /// Path to enclave.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 }
 

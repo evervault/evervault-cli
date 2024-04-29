@@ -34,22 +34,22 @@ impl CliError for ScaleError {
 
 /// Update your Enclave's Scaling config
 #[derive(Debug, Parser)]
-#[clap(name = "scale", about)]
+#[command(name = "scale", about)]
 pub struct ScaleArgs {
     /// Path to enclave.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 
     /// Uuid of the Enclave to scale
-    #[clap(long = "enclave-uuid")]
+    #[arg(long = "enclave-uuid")]
     pub enclave_uuid: Option<String>,
 
     /// Number of replicas to run for this Enclave. If unset, the command will read the current scaling config from the Evervault API.
-    #[clap(long = "desired-replicas")]
+    #[arg(long = "desired-replicas")]
     pub desired_replicas: Option<u32>,
 
     /// Sync the local Enclave.toml with the latest scaling config for an Enclave if they differ.
-    #[clap(long = "sync")]
+    #[arg(long = "sync")]
     pub sync: bool,
 }
 

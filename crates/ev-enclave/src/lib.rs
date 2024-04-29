@@ -21,7 +21,6 @@ pub mod logs;
 pub mod migrate;
 pub mod progress;
 pub mod restart;
-mod version;
-
 #[cfg(test)]
 pub mod test_utils;
+mod version;

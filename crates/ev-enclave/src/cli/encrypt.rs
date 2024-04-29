@@ -3,9 +3,9 @@ use crate::{
     config::EnclaveConfig,
     encrypt::{self, EncryptError},
 };
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 
-#[derive(Clone, Debug, clap::ArgEnum)]
+#[derive(Clone, Debug, ValueEnum)]
 pub enum CurveName {
     Koblitz,
     Nist,
@@ -13,25 +13,31 @@ pub enum CurveName {
     Secp256k1,
 }
 
+impl Default for CurveName {
+    fn default() -> Self {
+        CurveName::Nist
+    }
+}
+
 /// Encrypt a string
 #[derive(Debug, Parser, Clone)]
-#[clap(name = "encrypt", about)]
+#[command(name = "encrypt", about)]
 pub struct EncryptArgs {
     /// Plaintext value to encrypt
     pub value: String,
 
     /// Curve to use, options are Secp256r1 (alias nist) or Secp256k1 (alias koblitz)
-    #[clap(arg_enum, default_value = "nist", long = "curve")]
+    #[arg(long = "curve", value_enum)]
     pub curve: CurveName,
 
-    #[clap(long = "team-uuid")]
+    #[arg(long = "team-uuid")]
     pub team_uuid: Option<String>,
 
-    #[clap(long = "app-uuid")]
+    #[arg(long = "app-uuid")]
     pub app_uuid: Option<String>,
 
     /// Path to enclave.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 }
 

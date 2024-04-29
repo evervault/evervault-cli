@@ -6,7 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "3.2.22", features = ["derive"] }
 tokio = { version = "1.18.2", features = ["rt","rt-multi-thread","macros","fs"] }
 tokio-util = { version = "0.7.4", features = ["full"] }
 bytes = "1"
@@ -49,6 +48,7 @@ semver = "1.0.20"
 pcr-sign = { path = "../pcr-sign", optional=true }
 elliptic-curve = { version = "0.13.8", features = ["pkcs8"] }
 attestation-doc-validation = "0.7.4"
+clap = { version = "4.5.4", features = ["derive"] }
 
 [dev-dependencies]
 tokio-test = "0.4.2"
