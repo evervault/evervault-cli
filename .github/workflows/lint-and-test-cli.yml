@@ -15,6 +15,7 @@ jobs:
           SKIP_LOGIN: true
       - uses: actions-rs/toolchain@v1
         with:
+          toolchain: stable
           components: rustfmt, clippy
       - name: Compile project
         run: cargo build --features internal_dependency -Z registry-auth
