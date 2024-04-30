@@ -1,6 +1,8 @@
 use clap::{Parser, Subcommand};
 use ev_enclave::cli;
 
+mod enclave;
+
 #[derive(Parser, Debug)]
 pub enum Command {
     Enclave(EnclaveArgs),
@@ -22,7 +24,8 @@ pub enum EnclaveCommand {
     Deploy(ev_enclave::cli::deploy::DeployArgs),
     Describe(ev_enclave::cli::describe::DescribeArgs),
     Init(ev_enclave::cli::init::InitArgs),
-    List(ev_enclave::cli::list::List),
+    // List(ev_enclave::cli::list::List),
+    List(enclave::list::List),
     Logs(ev_enclave::cli::logs::LogArgs),
     Update(ev_enclave::cli::update::UpdateArgs),
     #[cfg(not(target_os = "windows"))]
@@ -40,7 +43,7 @@ pub async fn run_enclave(args: EnclaveArgs) -> i32 {
         EnclaveCommand::Deploy(deploy_args) => cli::deploy::run(deploy_args).await,
         EnclaveCommand::Describe(describe_args) => cli::describe::run(describe_args).await,
         EnclaveCommand::Init(init_args) => cli::init::run(init_args).await,
-        EnclaveCommand::List(list_args) => cli::list::run(list_args).await,
+        EnclaveCommand::List(list_args) => enclave::list::run(list_args).await,
         EnclaveCommand::Logs(log_args) => cli::logs::run(log_args).await,
         EnclaveCommand::Update(update_args) => cli::update::run(update_args).await,
         #[cfg(not(target_os = "windows"))]

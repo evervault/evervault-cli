@@ -1,6 +1,7 @@
-use super::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
-use crate::api::client::ApiError;
-use crate::api::client::ApiErrorKind;
+use common::api::client::{
+    ApiClient, ApiClientError, ApiError, ApiErrorKind, ApiResult, GenericApiClient, HandleResponse,
+};
+use common::api::AuthMode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -43,11 +44,11 @@ impl ApiClient for AssetsClient {
         format!("https://enclave-build-assets.{}", domain)
     }
 
-    fn auth(&self) -> &super::AuthMode {
+    fn auth(&self) -> &AuthMode {
         self.inner.auth()
     }
 
-    fn update_auth(&mut self, _: super::AuthMode) -> Result<(), ApiClientError> {
+    fn update_auth(&mut self, _: AuthMode) -> Result<(), ApiClientError> {
         Err(ApiClientError::AuthModeNotSupported)
     }
 }
