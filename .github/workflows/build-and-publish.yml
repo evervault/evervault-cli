@@ -4,27 +4,27 @@ on:
     inputs:
       stage:
         required: true
-        default: "staging"
+        default: 'staging'
         type: string
       major-version:
         required: true
         type: string
       full-version:
         required: true
-        type: string
+        type: string 
       ev-domain:
         required: true
-        type: string
-    secrets:
+        type: string   
+    secrets:    
       aws-cloudfront-distribution-id:
         required: true
       aws-access-key-id:
         required: true
-      aws-secret-access-key:
+      aws-secret-access-key: 
         required: true
       evervault-rust-lib-index:
         required: true
-      evervault-rust-lib-token:
+      evervault-rust-lib-token: 
         required: true
 
 env:
@@ -35,7 +35,7 @@ env:
 
   # Directories to target during release
   BIN_DIR: bin
-  RELEASE_DIR: release
+  RELEASE_DIR: release                               
 
 jobs:
   compile-ubuntu:
@@ -57,7 +57,7 @@ jobs:
       - name: Download cached dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "linux-cross-builds"
+            shared-key: "linux-cross-builds"
 
       - name: Install cross
         run: cargo install cross
@@ -100,11 +100,11 @@ jobs:
           toolchain: stable
           target: ${{ env.MACOS_TARGET }}
           override: true
-
+      
       - name: Download cached dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "macos-cross-builds"
+            shared-key: "macos-cross-builds"
 
       - name: Build CLI MacOs Target
         run: |
@@ -157,7 +157,7 @@ jobs:
       - name: Download cached dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "windows-cross-builds"
+            shared-key: "windows-cross-builds"
 
       - name: Fetch dependencies
         run: cargo fetch
@@ -191,8 +191,9 @@ jobs:
           name: windows
           path: ./${{ env.RELEASE_DIR }}
 
+          
   upload-artifacts-to-s3:
-    needs: [compile-ubuntu, compile-macos, compile-windows]
+    needs: [ compile-ubuntu, compile-macos, compile-windows ]
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -241,3 +242,5 @@ jobs:
           aws s3 cp scripts/version s3://cage-build-assets-${{ inputs.stage }}/cli/version
           aws s3 cp scripts/versions s3://cage-build-assets-${{ inputs.stage }}/cli/versions
           aws cloudfront create-invalidation --distribution-id ${{ secrets.aws-cloudfront-distribution-id }} --paths "/cli/install" "/cli/version" "/cli/versions"
+
+

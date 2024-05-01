@@ -6,7 +6,6 @@ use env_logger::{Builder, Env};
 use human_panic::setup_panic;
 use log::Record;
 use std::io::Write;
-mod commands;
 
 mod api;
 mod commands;
