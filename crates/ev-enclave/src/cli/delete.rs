@@ -6,26 +6,26 @@ use clap::Parser;
 
 /// Delete an Enclave from a toml file.
 #[derive(Debug, Parser)]
-#[clap(name = "delete", about)]
+#[command(name = "delete", about)]
 pub struct DeleteArgs {
     /// Path to enclave.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 
     /// Uuid of the Enclave to delete
-    #[clap(long = "enclave-uuid")]
+    #[arg(long = "enclave-uuid")]
     pub enclave_uuid: Option<String>,
 
     /// Disable verbose output
-    #[clap(long)]
+    #[arg(long)]
     pub quiet: bool,
 
     /// Perform the Enclave deletion in the background
-    #[clap(long)]
+    #[arg(long)]
     pub background: bool,
 
     /// Prevent confirmation dialogue and proceed with deletion. Use with caution.
-    #[clap(long)]
+    #[arg(long)]
     pub force: bool,
 }
 

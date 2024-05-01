@@ -14,80 +14,80 @@ use clap::{ArgGroup, Parser};
 
 /// Initialize an Enclave.toml in the current directory
 #[derive(Debug, Parser)]
-#[clap(name = "init", about)]
-#[clap(group(
+#[command(name = "init", about)]
+#[command(group(
   ArgGroup::new("signing-cert")
     .arg("cert-path")
     .requires("key-path")
 ))]
-#[clap(group(
+#[command(group(
   ArgGroup::new("signing-key")
     .arg("key-path")
     .requires("cert-path")
 ))]
 pub struct InitArgs {
     /// Directory to write the Enclave toml to. Defaults to the current directory.
-    #[clap(short = 'o', long = "output", default_value = ".")]
+    #[arg(short = 'o', long = "output", default_value = ".")]
     pub output_dir: String,
 
     /// Name of Enclave to deploy
-    #[clap(long = "name")]
+    #[arg(long = "name")]
     pub enclave_name: String,
 
     /// Debug setting for the Enclave
-    #[clap(long = "debug")]
+    #[arg(long = "debug")]
     pub debug: bool,
 
     /// Flag to enable egress on your Enclave
-    #[clap(long = "egress")]
+    #[arg(long = "egress")]
     pub egress: bool,
 
     /// Dockerfile to build the Enclave
-    #[clap(short = 'f', long = "file")]
+    #[arg(short = 'f', long = "file")]
     pub dockerfile: Option<String>,
 
     /// Path to the signing cert to use for the Enclave. If provided, the private-key must also be set.
-    #[clap(long = "signing-cert")]
+    #[arg(long = "signing-cert")]
     pub cert_path: Option<String>,
 
     /// Path to the signing key to use for the Enclave. If provided, the signing-cert must also be set.
-    #[clap(long = "private-key")]
+    #[arg(long = "private-key")]
     pub key_path: Option<String>,
 
     /// Flag to disable tls termination. This will pass the raw TCP streams directly to your service.
-    #[clap(long = "disable-tls-termination")]
+    #[arg(long = "disable-tls-termination")]
     pub disable_tls_termination: bool,
 
     /// Disable API key auth for your Enclave
-    #[clap(long = "disable-api-key-auth")]
+    #[arg(long = "disable-api-key-auth")]
     pub disable_api_key_auth: bool,
 
     /// Disable transaction logging in your Enclave
-    #[clap(long = "disable-trx-logging")]
+    #[arg(long = "disable-trx-logging")]
     pub trx_logging_disabled: bool,
 
     /// Flag to make your Enclave delete after 6 hours
-    #[clap(long = "self-destruct")]
+    #[arg(long = "self-destruct")]
     pub is_time_bound: bool,
 
     /// Comma separated list of destinations to allow traffic to from the Enclave e.g api.evervault.com, default is allow all
-    #[clap(long = "egress-destinations")]
+    #[arg(long = "egress-destinations")]
     pub egress_destinations: Option<String>,
 
     /// Enables forwarding proxy protocol when TLS Termination is disabled
-    #[clap(long = "forward-proxy-protocol")]
+    #[arg(long = "forward-proxy-protocol")]
     pub forward_proxy_protocol: bool,
 
     /// Trusted headers sent into the Enclave will be persisted without redaction in the Enclave's transaction logs
-    #[clap(long = "trusted-headers")]
+    #[arg(long = "trusted-headers")]
     pub trusted_headers: Option<String>,
 
     /// The healthcheck endpoint exposed by your service
-    #[clap(long = "healthcheck")]
+    #[arg(long = "healthcheck")]
     pub healthcheck: Option<String>,
 
     /// The desired number of instances for your Enclave to use. Default is 2.
-    #[clap(long = "desired-replicas")]
+    #[arg(long = "desired-replicas")]
     pub desired_replicas: Option<u32>,
 }
 

@@ -7,33 +7,33 @@ use clap::Parser;
 
 /// List your Enclaves and Deployments
 #[derive(Debug, Parser)]
-#[clap(name = "list", about)]
+#[command(name = "list", about)]
 pub struct List {
     /// The resource to list
-    #[clap(subcommand)]
+    #[command(subcommand)]
     resource: ListCommands,
 }
 
 /// The supported list commands
 #[derive(Debug, Parser)]
-#[clap(name = "list", about)]
+#[command(name = "list", about)]
 pub enum ListCommands {
     /// List Enclaves
-    #[clap()]
+    #[command()]
     Enclaves,
     /// List Enclave Deployments
-    #[clap()]
+    #[command()]
     Deployments(DeploymentArgs),
 }
 
 #[derive(Debug, Parser)]
 pub struct DeploymentArgs {
     /// The Enclave uuid to get deployments for
-    #[clap(long = "enclave-uuid")]
+    #[arg(long = "enclave-uuid")]
     enclave_uuid: Option<String>,
 
     /// The file containing the Enclave config
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     config: String,
 }
 impl BuildTimeConfig for DeploymentArgs {}

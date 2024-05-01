@@ -11,18 +11,18 @@ use clap::Parser;
 
 /// Restart the Enclave deployment
 #[derive(Debug, Parser)]
-#[clap(name = "restart", about)]
+#[command(name = "restart", about)]
 pub struct RestartArgs {
     /// Path to enclave.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 
     /// Uuid of the Enclave who's deployment to restart
-    #[clap(long = "enclave-uuid")]
+    #[arg(long = "enclave-uuid")]
     pub enclave_uuid: Option<String>,
 
     /// Perform the Enclave restart in the background
-    #[clap(long)]
+    #[arg(long)]
     pub background: bool,
 }
 

@@ -17,54 +17,54 @@ use exitcode::ExitCode;
 
 /// Deploy an Enclave from a toml file.
 #[derive(Debug, Parser)]
-#[clap(name = "deploy", about)]
+#[command(name = "deploy", about)]
 pub struct DeployArgs {
     /// Path to enclave.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 
     /// Path to Dockerfile for Enclave. Will override any dockerfile specified in the .toml file.
-    #[clap(short = 'f', long = "file")]
+    #[arg(short = 'f', long = "file")]
     pub dockerfile: Option<String>,
 
     /// Path to EIF for Enclave. Will not build if EIF is provided.
-    #[clap(long = "eif-path")]
+    #[arg(long = "eif-path")]
     pub eif_path: Option<String>,
 
     /// Path to use for docker context
-    #[clap(default_value = ".")]
+    #[arg(default_value = ".")]
     pub context_path: String,
 
     /// Certificate used to sign the Enclave image file
-    #[clap(long = "signing-cert")]
+    #[arg(long = "signing-cert")]
     pub certificate: Option<String>,
 
     /// Private key used to sign the Enclave image file
-    #[clap(long = "private-key")]
+    #[arg(long = "private-key")]
     pub private_key: Option<String>,
 
     /// Disable verbose output
-    #[clap(long)]
+    #[arg(long)]
     pub quiet: bool,
 
     /// Build time arguments to provide to docker
-    #[clap(long = "build-arg")]
+    #[arg(long = "build-arg")]
     pub docker_build_args: Vec<String>,
 
     /// Path to an Enclave dockerfile to build from existing
-    #[clap(long = "from-existing")]
+    #[arg(long = "from-existing")]
     pub from_existing: Option<String>,
 
     /// Deterministic builds
-    #[clap(long = "reproducible")]
+    #[arg(long = "reproducible")]
     pub reproducible: bool,
 
     /// Healthcheck path exposed by your service
-    #[clap(long = "healthcheck")]
+    #[arg(long = "healthcheck")]
     pub healthcheck: Option<String>,
 
     /// Disables the use of cache during the image builds
-    #[clap(long = "no-cache")]
+    #[arg(long = "no-cache")]
     pub no_cache: bool,
 }
 

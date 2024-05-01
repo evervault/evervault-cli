@@ -10,22 +10,22 @@ use clap::Parser;
 
 /// Pull the logs for an Enclave
 #[derive(Debug, Parser)]
-#[clap(name = "logs", about)]
+#[command(name = "logs", about)]
 pub struct LogArgs {
     /// Uuid of the Enclave show logs for. If not supplied, the CLI will look for a local enclave.toml
-    #[clap(long = "enclave-uuid")]
+    #[arg(long = "enclave-uuid")]
     pub enclave_uuid: Option<String>,
 
     /// Path to the toml file containing the Enclave's config
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 
     /// The start time in epoch milliseconds
-    #[clap(long = "start-time")]
+    #[arg(long = "start-time")]
     pub start_time: Option<String>,
 
     /// The end time in epoch milliseconds
-    #[clap(long = "end-time")]
+    #[arg(long = "end-time")]
     pub end_time: Option<String>,
 }
 

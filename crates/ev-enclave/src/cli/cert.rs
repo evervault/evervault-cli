@@ -9,58 +9,58 @@ use exitcode::DATAERR;
 
 /// Manage Enclave signing certificates
 #[derive(Debug, Parser)]
-#[clap(name = "cert", about)]
+#[command(name = "cert", about)]
 pub struct CertArgs {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     action: CertCommands,
 }
 
 #[derive(Debug, Subcommand)]
 pub enum CertCommands {
     /// Create a new Enclave signing certificate
-    #[clap()]
+    #[command()]
     New(NewCertArgs),
     /// Upload a Enclave signing certificate's metadata to Evervault
-    #[clap()]
+    #[command()]
     Upload(UploadCertArgs),
     /// Lock a Enclave to specific signing certificate. Enclave deployment will fail if the signing certificate is not the one specified.
-    #[clap()]
+    #[command()]
     Lock(LockCertArgs),
 }
 
 #[derive(Parser, Debug)]
-#[clap(name = "new", about)]
+#[command(name = "new", about)]
 pub struct NewCertArgs {
     /// Path to directory where the signing cert will be saved
-    #[clap(short = 'o', long = "output", default_value = ".")]
+    #[arg(short = 'o', long = "output", default_value = ".")]
     pub output_dir: String,
 
     /// Defining the certificate distinguished name e.g. "/CN=EV/C=IE/ST=LEI/L=DUB/O=Evervault/OU=Eng". If not given, a generic Enclaves subject will be used.
-    #[clap(long = "subj")]
+    #[arg(long = "subj")]
     pub subject: Option<String>,
 }
 
 #[derive(Parser, Debug)]
-#[clap(name = "upload", about)]
+#[command(name = "upload", about)]
 pub struct UploadCertArgs {
     /// Path to directory where the signing cert will be saved
-    #[clap(short = 'p', long = "cert_path")]
+    #[arg(short = 'p', long = "cert_path")]
     pub cert_path: Option<String>,
 
     /// Name to attach to cert reference
-    #[clap(long = "name")]
+    #[arg(long = "name")]
     pub name: String,
 
     /// Path to enclave.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 }
 
 #[derive(Parser, Debug)]
-#[clap(name = "lock", about)]
+#[command(name = "lock", about)]
 pub struct LockCertArgs {
     /// Path to enclave.toml config file
-    #[clap(short = 'c', long = "config", default_value = "./enclave.toml")]
+    #[arg(short = 'c', long = "config", default_value = "./enclave.toml")]
     pub config: String,
 }
 

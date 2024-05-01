@@ -13,11 +13,11 @@ jobs:
           SKIP_LOGIN: true
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2023-09-13
+          toolchain: stable
           override: true
           components: rustfmt, clippy
       - name: Compile project
-        run: cargo build --features internal_dependency -p ev-enclave -Z registry-auth
+        run: cargo build -p ev-enclave
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}

@@ -5,9 +5,9 @@ use dialoguer::Confirm;
 
 /// Check for new versions of the CLI and install them
 #[derive(Debug, Parser)]
-#[clap(name = "update", about)]
+#[command(name = "update", about)]
 pub struct UpdateArgs {
-    #[clap(short = 'f', long = "force")]
+    #[arg(short = 'f', long = "force")]
     force: bool,
 }
 
