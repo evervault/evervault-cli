@@ -1,6 +1,6 @@
+use crate::version::check_version;
 use clap::Parser;
-use ev_enclave::{migrate::migrate_toml, version::check_version};
-
+use ev_enclave::migrate::migrate_toml;
 /// Migrate an Enclave toml from v0 to v1
 #[derive(Parser, Debug)]
 #[command(name = "migrate", about)]
