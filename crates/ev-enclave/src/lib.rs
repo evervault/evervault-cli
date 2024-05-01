@@ -3,7 +3,6 @@ pub mod api;
 pub mod attest;
 pub mod build;
 pub mod cert;
-pub mod cli;
 pub mod common;
 pub mod config;
 pub mod delete;
@@ -17,4 +16,4 @@ pub mod progress;
 pub mod restart;
 #[cfg(test)]
 pub mod test_utils;
-mod version;
+pub mod version;

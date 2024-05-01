@@ -1,5 +1,5 @@
-use crate::common::CliError;
 use crate::docker::error::CommandError;
+use common::CliError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]

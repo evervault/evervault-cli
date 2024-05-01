@@ -2,10 +2,8 @@ use chrono::TimeZone;
 use std::fmt::Write;
 use thiserror::Error;
 
-use crate::{
-    api::enclave::{EnclaveApi, EnclaveClient},
-    common::CliError,
-};
+use crate::api::enclave::{EnclaveApi, EnclaveClient};
+use common::CliError;
 
 #[derive(Debug, Error)]
 pub enum LogsError {
@@ -14,7 +12,7 @@ pub enum LogsError {
     #[error("Failed to compute start time")]
     TimeError,
     #[error("Error retrieving logs - {0}")]
-    ApiError(#[from] crate::api::client::ApiError),
+    ApiError(#[from] common::api::client::ApiError),
     #[error("Couldn't parse time as millisecond - {0}")]
     ParseIntError(#[from] std::num::ParseIntError),
     #[error("Failed to parse timestamps")]

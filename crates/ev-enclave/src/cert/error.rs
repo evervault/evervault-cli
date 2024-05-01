@@ -1,4 +1,4 @@
-use crate::common::CliError;
+use common::CliError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -24,7 +24,7 @@ pub enum CertError {
     #[error("The specificied cert path does not exist: {0:?}")]
     CertPathDoesNotExist(std::path::PathBuf),
     #[error("An error occurred contacting the API — {0}")]
-    ApiError(#[from] crate::api::client::ApiError),
+    ApiError(#[from] common::api::client::ApiError),
     #[error("An error occurred calculating the hash of the cert — {0}")]
     HashError(String),
     #[error("Failed to parse timestamp")]

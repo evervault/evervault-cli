@@ -1,4 +1,3 @@
-use crate::api::assets::AssetsClient;
 use crate::api::enclave::{
     BuildStatus, DeployStatus, DeploymentsForGetEnclave, Enclave, EnclaveDeployment,
     EnclaveRegionalDeployment, EnclaveSigningCert, EnclaveState, EnclaveVersion,
@@ -9,6 +8,7 @@ use crate::build::error::BuildError;
 use crate::common::OutputPath;
 use crate::config::{read_and_validate_config, ValidatedEnclaveBuildConfig};
 use crate::enclave::BuiltEnclave;
+use common::api::assets::AssetsClient;
 
 pub async fn build_test_enclave(
     output_dir: Option<&str>,

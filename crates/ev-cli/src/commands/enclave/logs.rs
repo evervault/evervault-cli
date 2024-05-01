@@ -1,12 +1,8 @@
-use crate::api;
-use crate::api::AuthMode;
-use crate::common::CliError;
-use crate::config::EnclaveConfig;
 use crate::get_api_key;
-use crate::logs::get_logs;
 use crate::version::check_version;
-
 use clap::Parser;
+use common::{api::AuthMode, CliError};
+use ev_enclave::{api::enclave::EnclaveClient, config::EnclaveConfig, logs::get_logs};
 
 /// Pull the logs for an Enclave
 #[derive(Debug, Parser)]
@@ -37,7 +33,7 @@ pub async fn run(log_args: LogArgs) -> i32 {
     };
 
     let api_key = get_api_key!();
-    let enclave_client = api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key));
+    let enclave_client = EnclaveClient::new(AuthMode::ApiKey(api_key));
 
     let enclave_uuid = match log_args.enclave_uuid.clone() {
         Some(enclave_uuid) => enclave_uuid,

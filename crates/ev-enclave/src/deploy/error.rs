@@ -1,6 +1,6 @@
+use crate::common::OutputPathError;
+use common::CliError;
 use thiserror::Error;
-
-use crate::common::{CliError, OutputPathError};
 
 #[derive(Debug, Error)]
 pub enum DeployError {
@@ -19,7 +19,7 @@ pub enum DeployError {
     #[error("An error occurred while uploading to S3 — {0}")]
     RequestError(#[from] reqwest::Error),
     #[error("An error occured contacting the API — {0}")]
-    ApiError(#[from] crate::api::client::ApiError),
+    ApiError(#[from] common::api::client::ApiError),
     #[error("Enclave failed to upload - {0}")]
     UploadError(String),
     #[error("Could not read the size of the Enclave EIF file {0}")]

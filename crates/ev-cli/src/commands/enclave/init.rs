@@ -1,16 +1,11 @@
-use crate::api;
-use crate::api::enclave::CreateEnclaveRequest;
-use crate::api::{
-    enclave::{Enclave, EnclaveApi},
-    AuthMode,
-};
-use crate::common::CliError;
-use crate::config::{
-    default_dockerfile, EgressSettings, EnclaveConfig, ScalingSettings, SigningInfo,
-};
 use crate::get_api_key;
 use crate::version::check_version;
 use clap::{ArgGroup, Parser};
+use common::{api::AuthMode, CliError};
+use ev_enclave::api::enclave::{Enclave, EnclaveApi};
+use ev_enclave::config::{
+    default_dockerfile, EgressSettings, EnclaveConfig, ScalingSettings, SigningInfo,
+};
 
 /// Initialize an Enclave.toml in the current directory
 #[derive(Debug, Parser)]
@@ -138,10 +133,13 @@ pub async fn run(init_args: InitArgs) -> exitcode::ExitCode {
     };
 
     let api_key = get_api_key!();
-    let enclave_client = api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key.clone()));
+    let enclave_client =
+        ev_enclave::api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key.clone()));
 
-    let create_enclave_request =
-        CreateEnclaveRequest::new(init_args.enclave_name.clone(), init_args.is_time_bound);
+    let create_enclave_request = ev_enclave::api::enclave::CreateEnclaveRequest::new(
+        init_args.enclave_name.clone(),
+        init_args.is_time_bound,
+    );
     let created_enclave = match enclave_client.create_enclave(create_enclave_request).await {
         Ok(enclave_ref) => enclave_ref,
         Err(e) => {
@@ -163,7 +161,10 @@ async fn init_local_config(init_args: InitArgs, created_enclave: Enclave) -> exi
 
     if initial_config.signing.is_none() {
         log::info!("Generating signing credentials for enclave");
-        match crate::cert::create_new_cert(output_path, crate::cert::DistinguishedName::default()) {
+        match ev_enclave::cert::create_new_cert(
+            output_path,
+            ev_enclave::cert::DistinguishedName::default(),
+        ) {
             Ok((cert_path, key_path)) => {
                 initial_config.set_cert(format!("{}", cert_path.display()));
                 initial_config.set_key(format!("{}", key_path.display()));
@@ -195,7 +196,7 @@ async fn init_local_config(init_args: InitArgs, created_enclave: Enclave) -> exi
 #[cfg(test)]
 mod init_tests {
     use super::*;
-    use crate::api::enclave::EnclaveState;
+    use ev_enclave::api::enclave::EnclaveState;
 
     use std::fs::read;
     use tempfile::TempDir;

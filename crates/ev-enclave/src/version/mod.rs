@@ -1,7 +1,7 @@
-use crate::api::assets::AssetsClient;
-use crate::api::client::ApiError;
-use crate::common::CliError;
 use chrono::Utc;
+use common::api::assets::AssetsClient;
+use common::api::client::ApiError;
+use common::CliError;
 use regex::Regex;
 use semver::Version;
 use std::env;

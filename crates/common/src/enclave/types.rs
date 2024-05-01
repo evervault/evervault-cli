@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 // Tracking which FS elements have been created during signing
 #[derive(Debug, PartialEq)]
-pub(super) enum CleanUpMode {
+pub enum CleanUpMode {
     Directory,
     AllContents,
     Cert,
@@ -12,11 +12,11 @@ pub(super) enum CleanUpMode {
 }
 
 impl CleanUpMode {
-    pub(super) fn enable_directory(&mut self) {
+    pub fn enable_directory(&mut self) {
         *self = Self::Directory;
     }
 
-    pub(super) fn enable_cert(&mut self) {
+    pub fn enable_cert(&mut self) {
         if !self.is_directory() {
             if self.is_key() {
                 *self = Self::AllContents;
@@ -26,7 +26,7 @@ impl CleanUpMode {
         }
     }
 
-    pub(super) fn enable_key(&mut self) {
+    pub fn enable_key(&mut self) {
         if !self.is_directory() {
             if self.is_cert() {
                 *self = Self::AllContents;
@@ -36,15 +36,15 @@ impl CleanUpMode {
         }
     }
 
-    pub(super) fn is_directory(&self) -> bool {
+    pub fn is_directory(&self) -> bool {
         matches!(self, Self::Directory)
     }
 
-    pub(super) fn is_key(&self) -> bool {
+    pub fn is_key(&self) -> bool {
         matches!(self, Self::Key)
     }
 
-    pub(super) fn is_cert(&self) -> bool {
+    pub fn is_cert(&self) -> bool {
         matches!(self, Self::Cert)
     }
 }

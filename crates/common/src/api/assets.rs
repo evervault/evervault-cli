@@ -1,7 +1,10 @@
-use common::api::client::{
-    ApiClient, ApiClientError, ApiError, ApiErrorKind, ApiResult, GenericApiClient, HandleResponse,
+use super::{
+    client::{
+        ApiClient, ApiClientError, ApiError, ApiErrorKind, ApiResult, GenericApiClient,
+        HandleResponse,
+    },
+    AuthMode,
 };
-use common::api::AuthMode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

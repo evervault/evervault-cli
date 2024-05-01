@@ -183,6 +183,19 @@ impl std::fmt::Display for ApiErrorKind {
     }
 }
 
+impl crate::CliError for ApiError {
+    fn exitcode(&self) -> exitcode::ExitCode {
+        match self.kind {
+            ApiErrorKind::BadRequest | ApiErrorKind::NotFound => exitcode::DATAERR,
+            ApiErrorKind::Unauthorized => exitcode::NOUSER,
+            ApiErrorKind::Internal | ApiErrorKind::ParsingError(_) => exitcode::SOFTWARE,
+            ApiErrorKind::Forbidden => exitcode::NOPERM,
+            ApiErrorKind::Conflict => exitcode::DATAERR,
+            ApiErrorKind::Unknown(_) => exitcode::UNAVAILABLE,
+        }
+    }
+}
+
 impl ApiErrorKind {
     pub fn to_msg(&self) -> String {
         match self {

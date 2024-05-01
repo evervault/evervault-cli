@@ -1,5 +1,5 @@
-use crate::{migrate::migrate_toml, version::check_version};
 use clap::Parser;
+use ev_enclave::{migrate::migrate_toml, version::check_version};
 
 /// Migrate an Enclave toml from v0 to v1
 #[derive(Parser, Debug)]
@@ -47,7 +47,7 @@ mod migrate_tests {
     use std::fs::read;
     use tempfile::TempDir;
 
-    use crate::cli::migrate::{run, MigrateArgs};
+    use crate::commands::enclave::migrate::{run, MigrateArgs};
 
     #[tokio::test]
     async fn test_migrate_v0_to_v1() {

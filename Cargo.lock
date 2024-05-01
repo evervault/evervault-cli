@@ -569,11 +569,15 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "elliptic-curve 0.13.8",
  "exitcode",
+ "mockall",
+ "pcr-sign",
  "reqwest",
  "serde",
  "serde_json",
  "thiserror",
+ "toml 0.5.11",
 ]
 
 [[package]]
@@ -1014,17 +1018,24 @@ dependencies = [
 name = "ev-cli"
 version = "0.1.0"
 dependencies = [
+ "attestation-doc-validation",
  "atty",
+ "chrono",
  "clap 4.5.4",
+ "common",
+ "dialoguer",
  "env_logger",
  "ev-enclave",
  "exitcode",
  "human-panic",
  "log",
+ "semver",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
  "tokio",
+ "toml 0.5.11",
 ]
 
 [[package]]

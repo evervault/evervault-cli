@@ -1,18 +1,20 @@
-use crate::api::client::ApiErrorKind;
-use crate::api::{self, assets::AssetsClient, enclave::EnclaveApi, AuthMode};
-use crate::build::build_enclave_image_file;
-use crate::common::prepare_build_args;
-use crate::docker::command::get_source_date_epoch;
 use crate::get_api_key;
 use crate::version::check_version;
-use crate::{
-    common::{CliError, OutputPath},
-    config::{read_and_validate_config, BuildTimeConfig, ValidatedEnclaveBuildConfig},
-    deploy::{deploy_eif, get_eif},
-    enclave::EIFMeasurements,
-};
 use atty::Stream;
 use clap::Parser;
+use common::api::client::ApiErrorKind;
+use common::api::{assets::AssetsClient, AuthMode};
+use common::CliError;
+use ev_enclave::{
+    api::enclave::EnclaveApi,
+    build::build_enclave_image_file,
+    common::prepare_build_args,
+    common::OutputPath,
+    config::{read_and_validate_config, BuildTimeConfig, ValidatedEnclaveBuildConfig},
+    deploy::{deploy_eif, get_eif},
+    docker::command::get_source_date_epoch,
+    enclave::EIFMeasurements,
+};
 use exitcode::ExitCode;
 
 /// Deploy an Enclave from a toml file.
@@ -97,7 +99,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
             }
         };
 
-    let enclave_api = api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key));
+    let enclave_api = ev_enclave::api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key));
 
     let enclave = match enclave_api
         .get_enclave(validated_config.enclave_uuid())
@@ -185,7 +187,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     };
 
     if enclave_config.debug {
-        crate::common::log_debug_mode_attestation_warning();
+        ev_enclave::common::log_debug_mode_attestation_warning();
     }
 
     log::info!(
@@ -195,7 +197,7 @@ pub async fn run(deploy_args: DeployArgs) -> exitcode::ExitCode {
     );
 
     enclave_config.set_attestation(&eif_measurements);
-    crate::common::save_enclave_config(&enclave_config, &deploy_args.config);
+    ev_enclave::common::save_enclave_config(&enclave_config, &deploy_args.config);
 
     if let Err(e) = deploy_eif(
         &validated_config,
