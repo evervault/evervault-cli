@@ -1,5 +1,5 @@
-use common::api::assets::AssetsClient;
 use chrono::Utc;
+use common::api::assets::AssetsClient;
 use common::api::client::ApiError;
 use common::CliError;
 use semver::Version;

@@ -2,8 +2,8 @@ use std::path::Path;
 
 use crate::cert::{get_cert_validity_period, CertValidityPeriod};
 
-use common::CliError;
 use super::enclave::{EIFMeasurements, EnclaveSigningInfo};
+use common::CliError;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 

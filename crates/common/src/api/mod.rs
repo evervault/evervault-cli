@@ -1,5 +1,5 @@
-pub mod client;
 pub mod assets;
+pub mod client;
 
 pub use reqwest::Client;
 

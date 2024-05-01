@@ -1,7 +1,7 @@
 use crate::config::ValidatedEnclaveBuildConfig;
 
-use common::api::AuthMode;
 use common::api::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
+use common::api::AuthMode;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 

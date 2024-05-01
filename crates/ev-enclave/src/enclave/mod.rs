@@ -5,11 +5,11 @@ use std::path::PathBuf;
 pub mod error;
 use error::EnclaveError;
 
+use common::enclave::types::CleanUpMode;
 pub use common::enclave::types::{
     BuiltEnclave, DescribeEif, EIFMeasurements, EnclaveBuildOutput, EnclaveMetadata,
     EnclaveSigningCertificate, EnclaveSigningCertificateIssuer, PCRs,
 };
-use common::enclave::types::CleanUpMode;
 
 const IN_CONTAINER_VOLUME_DIR: &str = "/output";
 const EV_USER_IMAGE_NAME: &str = "ev-user-enclave-image";
