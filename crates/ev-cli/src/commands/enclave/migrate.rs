@@ -16,6 +16,7 @@ pub struct MigrateArgs {
 
 pub async fn run(args: MigrateArgs) -> exitcode::ExitCode {
     if let Err(e) = check_version().await {
+        println!("{}", e);
         log::error!("{}", e);
         return exitcode::SOFTWARE;
     };
@@ -23,6 +24,7 @@ pub async fn run(args: MigrateArgs) -> exitcode::ExitCode {
     let serialized_config = match migrate_toml(&args.config) {
         Ok(bytes) => bytes,
         Err(e) => {
+            println!("{}", e);
             log::error!("{}", e);
             return exitcode::SOFTWARE;
         }
@@ -33,6 +35,7 @@ pub async fn run(args: MigrateArgs) -> exitcode::ExitCode {
         None => args.config.clone(),
     };
     if let Err(e) = std::fs::write(&output_path, serialized_config) {
+        println!("Error writing enclave.toml — {}", e);
         log::error!("Error writing enclave.toml — {}", e);
         exitcode::IOERR
     } else {
@@ -57,7 +60,8 @@ mod migrate_tests {
             config: "v0.cage.toml".into(),
             output: Some(output_file.to_str().unwrap().to_string()),
         };
-        run(args).await;
+        let res = run(args).await;
+        println!("{:?}", res);
         assert!(output_file.exists());
         let config_content = String::from_utf8(read(output_file).unwrap()).unwrap();
         let expected_config_content = r#"version = 1
