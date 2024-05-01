@@ -27,7 +27,7 @@ jobs:
           cd crates/pcr-sign
           sh ./scripts/generate-test-signature.sh
       - name: Test project
-        run: cargo test
+        run: cargo test -- --nocapture
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
       - name: Format project
