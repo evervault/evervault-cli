@@ -17,7 +17,6 @@ pub struct EnclaveArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum EnclaveCommand {
-    #[command()]
     Build(enclave::build::BuildArgs),
     Cert(enclave::cert::CertArgs),
     Delete(enclave::delete::DeleteArgs),
