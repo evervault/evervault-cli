@@ -1,15 +1,12 @@
-use crate::config::{self, ScalingSettings};
 use crate::version::check_version;
-use crate::{
-    api::{
-        enclave::{EnclaveApi, EnclaveClient},
-        AuthMode,
-    },
-    common::CliError,
+use clap::Parser;
+use common::{api::AuthMode, CliError};
+use ev_enclave::{
+    api::enclave::{EnclaveApi, EnclaveClient},
     config::EnclaveConfig,
+    config::{self, ScalingSettings},
     get_api_key,
 };
-use clap::Parser;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -19,7 +16,7 @@ pub enum ScaleError {
     #[error("An error occurred parsing the Enclave config - {0}")]
     ConfigError(#[from] config::EnclaveConfigError),
     #[error("An error occurred contacting the API — {0}")]
-    ApiError(#[from] crate::api::client::ApiError),
+    ApiError(#[from] common::api::client::ApiError),
 }
 
 impl CliError for ScaleError {
@@ -125,7 +122,7 @@ pub async fn run(args: ScaleArgs) -> i32 {
             config.set_scaling_config(ScalingSettings {
                 desired_replicas: scaling_config.desired_replicas(),
             });
-            crate::common::save_enclave_config(&config, &args.config);
+            ev_enclave::common::save_enclave_config(&config, &args.config);
         }
     }
 

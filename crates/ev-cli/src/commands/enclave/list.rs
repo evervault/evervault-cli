@@ -1,9 +1,9 @@
-use crate::api::{enclave::EnclaveApi, AuthMode};
-use crate::common::CliError;
-use crate::config::{read_and_validate_config, BuildTimeConfig};
 use crate::version::check_version;
-use crate::{api, get_api_key};
 use clap::Parser;
+use common::{api::AuthMode, CliError};
+use ev_enclave::api::enclave::EnclaveApi;
+use ev_enclave::config::{read_and_validate_config, BuildTimeConfig};
+use ev_enclave::{api, get_api_key};
 
 /// List your Enclaves and Deployments
 #[derive(Debug, Parser)]

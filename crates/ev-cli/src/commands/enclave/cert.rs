@@ -1,10 +1,10 @@
-use crate::cert::{self, DistinguishedName};
-use crate::common::CliError;
-use crate::config::EnclaveConfig;
 use crate::get_api_key;
 use crate::version::check_version;
 use atty::Stream;
 use clap::{Parser, Subcommand};
+use common::CliError;
+use ev_enclave::cert::{self, DistinguishedName};
+use ev_enclave::config::EnclaveConfig;
 use exitcode::DATAERR;
 
 /// Manage Enclave signing certificates

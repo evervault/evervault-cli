@@ -1,10 +1,11 @@
-use crate::build::build_enclave_image_file;
-use crate::common::{prepare_build_args, CliError};
-use crate::config::{read_and_validate_config, BuildTimeConfig};
-use crate::docker::command::get_source_date_epoch;
 use crate::version::check_version;
-use crate::version::get_runtime_and_installer_version;
 use clap::Parser;
+use common::CliError;
+use ev_enclave::build::build_enclave_image_file;
+use ev_enclave::common::prepare_build_args;
+use ev_enclave::config::{read_and_validate_config, BuildTimeConfig};
+use ev_enclave::docker::command::get_source_date_epoch;
+use ev_enclave::version::get_runtime_and_installer_version;
 
 /// Build an Enclave from a Dockerfile
 #[derive(Parser, Debug)]
@@ -135,10 +136,10 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
     };
 
     enclave_config.set_attestation(built_enclave.measurements());
-    crate::common::save_enclave_config(&enclave_config, &build_args.config);
+    ev_enclave::common::save_enclave_config(&enclave_config, &build_args.config);
 
     if enclave_config.debug {
-        crate::common::log_debug_mode_attestation_warning();
+        ev_enclave::common::log_debug_mode_attestation_warning();
     }
 
     // Write Enclave measures to stdout

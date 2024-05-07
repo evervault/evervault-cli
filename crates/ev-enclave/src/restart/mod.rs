@@ -1,7 +1,5 @@
-use crate::{
-    api::enclave::{EnclaveApi, EnclaveClient, EnclaveDeployment},
-    common::CliError,
-};
+use crate::api::enclave::{EnclaveApi, EnclaveClient, EnclaveDeployment};
+use common::CliError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -13,7 +11,7 @@ pub enum RestartError {
     #[error("An IO error occurred {0}")]
     IoError(#[from] std::io::Error),
     #[error("An error occurred contacting the API — {0}")]
-    ApiError(#[from] crate::api::client::ApiError),
+    ApiError(#[from] common::api::client::ApiError),
 }
 
 impl CliError for RestartError {

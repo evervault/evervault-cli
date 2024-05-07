@@ -565,6 +565,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
+name = "common"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "elliptic-curve 0.13.8",
+ "exitcode",
+ "mockall",
+ "pcr-sign",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "toml 0.5.11",
+]
+
+[[package]]
 name = "console"
 version = "0.15.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1002,17 +1018,24 @@ dependencies = [
 name = "ev-cli"
 version = "0.1.0"
 dependencies = [
+ "attestation-doc-validation",
  "atty",
+ "chrono",
  "clap 4.5.4",
+ "common",
+ "dialoguer",
  "env_logger",
  "ev-enclave",
  "exitcode",
  "human-panic",
  "log",
+ "semver",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
  "tokio",
+ "toml 0.5.11",
 ]
 
 [[package]]
@@ -1029,6 +1052,7 @@ dependencies = [
  "bytes",
  "chrono",
  "clap 4.5.4",
+ "common",
  "dialoguer",
  "elliptic-curve 0.13.8",
  "env_logger",

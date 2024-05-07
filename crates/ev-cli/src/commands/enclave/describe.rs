@@ -1,7 +1,7 @@
-use crate::common::CliError;
-use crate::describe::describe_eif;
 use crate::version::check_version;
 use clap::Parser;
+use common::CliError;
+use ev_enclave::describe::describe_eif;
 
 /// Get the PCRs of a built EIF
 #[derive(Debug, Parser)]

@@ -1,5 +1,4 @@
 use super::AuthMode;
-use crate::common::CliError;
 use async_trait::async_trait;
 use reqwest::{Client, RequestBuilder, Response, StatusCode};
 use reqwest::{Error, Result as ReqwestResult};
@@ -184,6 +183,19 @@ impl std::fmt::Display for ApiErrorKind {
     }
 }
 
+impl crate::CliError for ApiError {
+    fn exitcode(&self) -> exitcode::ExitCode {
+        match self.kind {
+            ApiErrorKind::BadRequest | ApiErrorKind::NotFound => exitcode::DATAERR,
+            ApiErrorKind::Unauthorized => exitcode::NOUSER,
+            ApiErrorKind::Internal | ApiErrorKind::ParsingError(_) => exitcode::SOFTWARE,
+            ApiErrorKind::Forbidden => exitcode::NOPERM,
+            ApiErrorKind::Conflict => exitcode::DATAERR,
+            ApiErrorKind::Unknown(_) => exitcode::UNAVAILABLE,
+        }
+    }
+}
+
 impl ApiErrorKind {
     pub fn to_msg(&self) -> String {
         match self {
@@ -201,9 +213,9 @@ impl ApiErrorKind {
     }
 }
 
-impl CliError for ApiError {
-    fn exitcode(&self) -> exitcode::ExitCode {
-        match self.kind {
+impl From<ApiErrorKind> for exitcode::ExitCode {
+    fn from(value: ApiErrorKind) -> Self {
+        match value {
             ApiErrorKind::BadRequest | ApiErrorKind::NotFound => exitcode::DATAERR,
             ApiErrorKind::Unauthorized => exitcode::NOUSER,
             ApiErrorKind::Internal | ApiErrorKind::ParsingError(_) => exitcode::SOFTWARE,

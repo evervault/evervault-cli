@@ -1,4 +1,4 @@
-use crate::common::CliError;
+use common::CliError;
 
 use super::parse::DecodeError;
 use thiserror::Error;

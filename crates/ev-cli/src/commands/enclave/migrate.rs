@@ -1,6 +1,6 @@
-use crate::{migrate::migrate_toml, version::check_version};
+use crate::version::check_version;
 use clap::Parser;
-
+use ev_enclave::migrate::migrate_toml;
 /// Migrate an Enclave toml from v0 to v1
 #[derive(Parser, Debug)]
 #[command(name = "migrate", about)]
@@ -47,10 +47,13 @@ mod migrate_tests {
     use std::fs::read;
     use tempfile::TempDir;
 
-    use crate::cli::migrate::{run, MigrateArgs};
+    use crate::commands::enclave::migrate::{run, MigrateArgs};
 
     #[tokio::test]
     async fn test_migrate_v0_to_v1() {
+        let dn_string = ev_enclave::cert::DistinguishedName::default();
+        ev_enclave::cert::create_new_cert(std::path::Path::new("."), dn_string)
+            .expect("Failed to gen cert in tests");
         let output_dir = TempDir::new().unwrap();
         let output_file = output_dir.path().join("v1.enclave.toml");
         let args = MigrateArgs {

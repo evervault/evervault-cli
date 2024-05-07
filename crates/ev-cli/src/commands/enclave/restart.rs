@@ -1,13 +1,13 @@
 use crate::version::check_version;
-use crate::{
-    api::{enclave::EnclaveClient, AuthMode},
-    common::CliError,
+use clap::Parser;
+use common::{api::AuthMode, CliError};
+use ev_enclave::{
+    api::enclave::EnclaveClient,
     deploy::{timed_operation, watch_deployment, DEPLOY_WATCH_TIMEOUT_SECONDS},
     get_api_key,
     progress::get_tracker,
     restart::restart_enclave,
 };
-use clap::Parser;
 
 /// Restart the Enclave deployment
 #[derive(Debug, Parser)]

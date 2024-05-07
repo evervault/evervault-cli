@@ -1,9 +1,7 @@
-use crate::api::assets::AssetsClient;
-use crate::api::client::ApiError;
-use crate::common::CliError;
-use chrono::Utc;
+use common::api::assets::AssetsClient;
+use common::api::client::ApiError;
+use common::CliError;
 use regex::Regex;
-use semver::Version;
 use std::env;
 use std::fs;
 use thiserror::Error;
@@ -39,51 +37,6 @@ impl CliError for VersionError {
 
 pub fn get_latest_major_version() -> Result<u8, VersionError> {
     Ok(env!("CARGO_PKG_VERSION_MAJOR").parse::<u8>()?)
-}
-
-pub async fn check_version() -> Result<(), VersionError> {
-    if std::env::var("EV_DOMAIN").unwrap_or_else(|_| String::from("evervault.com"))
-        == "evervault.io"
-    {
-        return Ok(());
-    }
-    match alert_on_deprecation().await? {
-        Some(_) => Err(VersionError::DeprecatedVersion),
-        _ => Ok(()),
-    }
-}
-
-async fn alert_on_deprecation() -> Result<Option<i64>, VersionError> {
-    let assets_client = AssetsClient::new();
-    let version_info = assets_client.get_cli_versions().await?;
-    let installed_major_version = get_latest_major_version()?;
-    let installed_semver = Version::parse(env!("CARGO_PKG_VERSION"))?;
-    let current_version = match version_info
-        .versions
-        .get(&installed_major_version.to_string())
-    {
-        Some(version) => version,
-        None => return Err(VersionError::FailedVersionCheck),
-    };
-    let latest_semver = Version::parse(current_version.latest.as_str())?;
-    if let Some(deprecation_date) = &current_version.deprecation_date {
-        let current_time = Utc::now().timestamp();
-        if current_time > deprecation_date.parse::<i64>()? {
-            return Ok(Some(deprecation_date.parse::<i64>()?));
-        } else {
-            log::warn!(
-                "This major version will be deprecated on {}",
-                deprecation_date
-            );
-        }
-    } else if installed_semver < latest_semver {
-        log::warn!(
-            "You are behind the latest version. Installed version: {}, latest version {}",
-            installed_semver,
-            latest_semver
-        );
-    }
-    Ok(None)
 }
 
 pub async fn get_runtime_and_installer_version(

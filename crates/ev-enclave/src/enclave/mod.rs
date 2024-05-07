@@ -5,9 +5,8 @@ use std::path::PathBuf;
 pub mod error;
 use error::EnclaveError;
 
-mod types;
-use types::CleanUpMode;
-pub use types::{
+use common::enclave::types::CleanUpMode;
+pub use common::enclave::types::{
     BuiltEnclave, DescribeEif, EIFMeasurements, EnclaveBuildOutput, EnclaveMetadata,
     EnclaveSigningCertificate, EnclaveSigningCertificateIssuer, PCRs,
 };

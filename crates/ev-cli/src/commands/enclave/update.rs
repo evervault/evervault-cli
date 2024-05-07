@@ -1,6 +1,7 @@
 use crate::version::check_version;
-use crate::{api, common::CliError};
 use clap::Parser;
+use common::{api, CliError};
+
 use dialoguer::Confirm;
 
 /// Check for new versions of the CLI and install them

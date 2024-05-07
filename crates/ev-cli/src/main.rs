@@ -6,7 +6,10 @@ use env_logger::{Builder, Env};
 use human_panic::setup_panic;
 use log::Record;
 use std::io::Write;
+
+mod api;
 mod commands;
+mod version;
 
 #[derive(Debug, Parser)]
 #[clap(name = "Evervault Enclave CLI", version)]
@@ -35,9 +38,7 @@ async fn main() {
 
     let base_args: BaseArgs = BaseArgs::parse();
     setup_logger(base_args.verbose);
-    let exit_code = match base_args.command {
-        Command::Enclave(enclave_args) => commands::run_enclave(enclave_args).await,
-    };
+    let exit_code = commands::run_command(base_args).await;
     std::process::exit(exit_code);
 }
 

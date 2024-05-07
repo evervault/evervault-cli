@@ -1,10 +1,10 @@
-use crate::attest::attest_connection_to_enclave;
-use crate::config::EnclaveConfig;
-use crate::describe::describe_eif;
 use crate::version::check_version;
 use attestation_doc_validation::attestation_doc::PCRs;
 use attestation_doc_validation::PCRProvider;
 use clap::Parser;
+use ev_enclave::attest::attest_connection_to_enclave;
+use ev_enclave::config::EnclaveConfig;
+use ev_enclave::describe::describe_eif;
 
 /// Validate the attestation doc provided by an Enclave
 #[derive(Debug, Parser)]
