@@ -1,9 +1,9 @@
 use crate::version::check_version;
 use clap::Parser;
 use common::{api::AuthMode, CliError};
+use ev_enclave::api;
 use ev_enclave::api::enclave::EnclaveApi;
 use ev_enclave::config::{read_and_validate_config, BuildTimeConfig};
-use ev_enclave::{api, get_api_key};
 
 /// List your Enclaves and Deployments
 #[derive(Debug, Parser)]
@@ -38,13 +38,12 @@ pub struct DeploymentArgs {
 }
 impl BuildTimeConfig for DeploymentArgs {}
 
-pub async fn run(list_action: List) -> exitcode::ExitCode {
+pub async fn run(list_action: List, api_key: String) -> exitcode::ExitCode {
     if let Err(e) = check_version().await {
         log::error!("{}", e);
         return exitcode::SOFTWARE;
     };
 
-    let api_key = get_api_key!();
     let auth = AuthMode::ApiKey(api_key);
 
     let enclave_client = api::enclave::EnclaveClient::new(auth);
