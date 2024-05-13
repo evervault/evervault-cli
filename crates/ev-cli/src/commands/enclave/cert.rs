@@ -1,4 +1,3 @@
-use crate::get_api_key;
 use crate::version::check_version;
 use atty::Stream;
 use clap::{Parser, Subcommand};
@@ -64,7 +63,7 @@ pub struct LockCertArgs {
     pub config: String,
 }
 
-pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
+pub async fn run(cert_args: CertArgs, api_key: String) -> exitcode::ExitCode {
     if let Err(e) = check_version().await {
         log::error!("{e}");
         return exitcode::SOFTWARE;
@@ -106,8 +105,6 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
             };
         }
         CertCommands::Upload(upload_args) => {
-            let api_key = get_api_key!();
-
             let cert_path = match upload_args.cert_path {
                 Some(cert_path) => cert_path,
                 None => match EnclaveConfig::try_from_filepath(&upload_args.config) {
@@ -150,8 +147,6 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
             };
         }
         CertCommands::Lock(lock_cert_args) => {
-            let api_key = get_api_key!();
-
             let (enclave_uuid, enclave_name) =
                 match EnclaveConfig::try_from_filepath(&lock_cert_args.config) {
                     Ok(enclave_config) => match (enclave_config.uuid, enclave_config.name) {

@@ -4,7 +4,6 @@ use common::{api::AuthMode, CliError};
 use ev_enclave::{
     api::enclave::EnclaveClient,
     deploy::{timed_operation, watch_deployment, DEPLOY_WATCH_TIMEOUT_SECONDS},
-    get_api_key,
     progress::get_tracker,
     restart::restart_enclave,
 };
@@ -26,13 +25,11 @@ pub struct RestartArgs {
     pub background: bool,
 }
 
-pub async fn run(restart_args: RestartArgs) -> i32 {
+pub async fn run(restart_args: RestartArgs, api_key: String) -> i32 {
     if let Err(e) = check_version().await {
         log::error!("{}", e);
         return exitcode::SOFTWARE;
     };
-
-    let api_key = get_api_key!();
 
     let enclave_api = EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
 

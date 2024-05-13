@@ -1,4 +1,3 @@
-use crate::get_api_key;
 use crate::version::check_version;
 use clap::Parser;
 use common::{api::AuthMode, CliError};
@@ -25,14 +24,13 @@ pub struct LogArgs {
     pub end_time: Option<String>,
 }
 
-pub async fn run(log_args: LogArgs) -> i32 {
+pub async fn run(log_args: LogArgs, api_key: String) -> i32 {
     log::info!("Note: each query will return a maximum of 500 logs, if logs are missing reduce the time range");
     if let Err(e) = check_version().await {
         log::error!("{}", e);
         return exitcode::SOFTWARE;
     };
 
-    let api_key = get_api_key!();
     let enclave_client = EnclaveClient::new(AuthMode::ApiKey(api_key));
 
     let enclave_uuid = match log_args.enclave_uuid.clone() {

@@ -5,7 +5,6 @@ use ev_enclave::{
     api::enclave::{EnclaveApi, EnclaveClient},
     config::EnclaveConfig,
     config::{self, ScalingSettings},
-    get_api_key,
 };
 use thiserror::Error;
 
@@ -50,13 +49,11 @@ pub struct ScaleArgs {
     pub sync: bool,
 }
 
-pub async fn run(args: ScaleArgs) -> i32 {
+pub async fn run(args: ScaleArgs, api_key: String) -> i32 {
     if let Err(e) = check_version().await {
         log::error!("{}", e);
         return exitcode::SOFTWARE;
     };
-
-    let api_key = get_api_key!();
 
     let enclave_api = EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
 

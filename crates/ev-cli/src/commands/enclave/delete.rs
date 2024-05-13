@@ -1,4 +1,3 @@
-use crate::get_api_key;
 use crate::version::check_version;
 use clap::Parser;
 use common::CliError;
@@ -40,7 +39,7 @@ fn should_continue() -> Result<bool, exitcode::ExitCode> {
         })
 }
 
-pub async fn run(delete_args: DeleteArgs) -> exitcode::ExitCode {
+pub async fn run(delete_args: DeleteArgs, api_key: String) -> exitcode::ExitCode {
     if let Err(e) = check_version().await {
         log::error!("{e}");
         return exitcode::SOFTWARE;
@@ -58,7 +57,6 @@ pub async fn run(delete_args: DeleteArgs) -> exitcode::ExitCode {
         }
     }
 
-    let api_key = get_api_key!();
     match delete_enclave(
         delete_args.config.as_str(),
         delete_args.enclave_uuid.as_deref(),
