@@ -83,7 +83,8 @@ fn impl_enum(
 ///    AlreadyExists(String),
 ///    #[message("Docker service isn't running", exit_code = exitcode::UNAVAILABLE)]
 ///    DockerNotRunning,
-///    #message("Failed to create relay", code = "relay-failed", exit_code = 1)
+///    #[message("Domain name is too long", code = "too-long")]
+///    TooLong
 /// }
 /// ```
 ///
