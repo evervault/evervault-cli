@@ -68,6 +68,25 @@ fn impl_enum(
 }
 
 /// Performs automatic implementation of the CliMessage trait for an enum
+///
+/// Supports magic derive for message codes, so an enum variant `RelayCreate::Success`
+/// will derive a message code of `relay-create-success`.
+/// This is a direct PascalCase -> kebab-case conversion.
+///
+/// ### Example Usage
+/// ```ignore
+/// #[derive(CliMessage)]
+/// pub enum RelayCreate {
+///    #[message("Relay created successfully")]
+///    Success,
+///    #[message("A relay with the domain {} already exists")]
+///    AlreadyExists(String),
+///    #[message("Docker service isn't running", exit_code = exitcode::UNAVAILABLE)]
+///    DockerNotRunning,
+///    #message("Failed to create relay", code = "relay-failed", exit_code = 1)
+/// }
+/// ```
+///
 #[proc_macro_derive(CliMessage, attributes(message, code, status_code))]
 pub fn cli_message_derive(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input);
