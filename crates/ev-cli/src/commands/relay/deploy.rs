@@ -2,9 +2,8 @@ use crate::relay::RelayConfig;
 use crate::CmdOutput;
 use clap::Parser;
 use common::api::{papi::EvApi, BasicAuth};
-use strum::Display;
+use strum::{Display, EnumString};
 use thiserror::Error;
-
 /// Deploy your Evervault Relay
 #[derive(Parser, Debug)]
 #[command(name = "deploy", about)]
@@ -18,7 +17,7 @@ pub struct DeployArgs {
 pub enum DeployError {
     #[error(transparent)]
     RelayConfigError(#[from] crate::relay::RelayConfigError),
-    #[error("An unexpected API error occured when deploying your relay")]
+    #[error("An unexpected API error occured when deploying your relay {0}")]
     ApiError(#[from] common::api::client::ApiError),
 }
 
@@ -39,19 +38,19 @@ impl CmdOutput for DeployError {
     }
 }
 
-#[derive(Display)]
+#[derive(Display, EnumString)]
 pub enum DeployMessage {
-    #[strum(to_string = "Relay successfully deployed with destination {}")]
-    Success(String),
-    #[strum(to_string = "Relay successfully created with destination {}")]
-    NewRelayCreated(String),
+    #[strum(to_string = "Relay successfully deployed with destination {domain}")]
+    Success { domain: String },
+    #[strum(to_string = "Relay successfully created with destination {domain}")]
+    NewRelayCreated { domain: String },
 }
 
 impl CmdOutput for DeployMessage {
     fn code(&self) -> String {
         match self {
-            DeployMessage::Success(_) => "relay-deployed".to_string(),
-            DeployMessage::NewRelayCreated(_) => "relay-created".to_string(),
+            DeployMessage::Success { .. } => "relay-deployed".to_string(),
+            DeployMessage::NewRelayCreated { .. } => "relay-created".to_string(),
         }
     }
 
@@ -63,15 +62,16 @@ impl CmdOutput for DeployMessage {
 pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, DeployError> {
     let relay_config = RelayConfig::try_from(&args.file.clone().into())?;
     let api_client = common::api::papi::EvApiClient::new(auth);
-
     let update = api_client.update_relay(&relay_config.relay).await;
 
     if update.is_err() {
         let relay = api_client.create_relay(&relay_config.relay).await?;
-        return Ok(DeployMessage::NewRelayCreated(relay.destination_domain));
+        return Ok(DeployMessage::NewRelayCreated {
+            domain: relay.destination_domain,
+        });
     } else {
-        return Ok(DeployMessage::Success(
-            update.expect("infallible").destination_domain,
-        ));
+        return Ok(DeployMessage::Success {
+            domain: update.expect("infallible").destination_domain,
+        });
     }
 }

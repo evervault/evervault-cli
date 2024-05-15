@@ -1,5 +1,5 @@
 use self::client::{ApiResult, HandleResponse};
-use crate::relay::Relay;
+use crate::relay::{CreateRelay, Relay};
 
 use super::*;
 use super::{
@@ -56,8 +56,13 @@ impl EvApi for EvApiClient {
             self.base_url(),
             relay.id.clone().expect("Relay ID is required")
         );
-        self.put(&update_relay_url)
-            .json(&relay)
+
+        self.patch(&update_relay_url)
+            .json(&CreateRelay {
+                encrypt_empty_strings: relay.encrypt_empty_strings,
+                authentication: relay.authentication.clone(),
+                routes: relay.routes.clone(),
+            })
             .send()
             .await
             .handle_json_response()
