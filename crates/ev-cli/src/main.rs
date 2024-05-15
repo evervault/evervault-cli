@@ -10,7 +10,44 @@ use std::io::Write;
 mod auth;
 mod commands;
 mod errors;
+mod relay;
+mod theme;
+mod tty;
 mod version;
+
+pub use auth::get_auth;
+
+pub trait CmdOutput: std::fmt::Display {
+    fn code(&self) -> String;
+
+    fn exitcode(&self) -> crate::errors::ExitCode;
+}
+
+pub fn run_cmd(r: Result<impl CmdOutput, impl CmdOutput>) -> ! {
+    match r {
+        Ok(output) => crate::print_and_exit(output, false),
+        // TODO(Mark): do something on error
+        Err(e) => crate::print_and_exit(e, false),
+    }
+}
+
+pub fn print_and_exit<T>(output: T, json: bool) -> !
+where
+    T: CmdOutput,
+{
+    let msg = if json {
+        serde_json::json!({
+            "message": output.to_string(),
+            "code": output.code(),
+        })
+        .to_string()
+    } else {
+        output.to_string()
+    };
+
+    println!("{}", msg);
+    std::process::exit(output.exitcode());
+}
 
 #[derive(Debug, Parser)]
 #[clap(name = "Evervault Enclave CLI", version)]
@@ -39,8 +76,7 @@ async fn main() {
 
     let base_args: BaseArgs = BaseArgs::parse();
     setup_logger(base_args.verbose);
-    let exit_code = commands::run_command(base_args).await;
-    std::process::exit(exit_code);
+    commands::run_command(base_args).await;
 }
 
 fn setup_logger(verbose_logging: bool) {

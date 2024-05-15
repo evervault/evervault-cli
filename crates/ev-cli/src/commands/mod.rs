@@ -1,25 +1,26 @@
+use crate::BaseArgs;
 use clap::Parser;
 
-use crate::BaseArgs;
-
-use self::enclave::EnclaveArgs;
+use self::{enclave::EnclaveArgs, relay::RelayArgs};
 
 mod enclave;
+mod interact;
+mod relay;
 
 #[derive(Parser, Debug)]
 pub enum Command {
     Enclave(EnclaveArgs),
+    Relay(RelayArgs),
 }
 
-pub async fn run_command(base_args: BaseArgs) -> i32 {
+pub async fn run_command(base_args: BaseArgs) {
     if let Err(e) = crate::version::check_version().await {
         log::error!("{}", e);
-        return exitcode::SOFTWARE;
+        std::process::exit(exitcode::SOFTWARE);
     };
 
-    let exit_code = match base_args.command {
+    match base_args.command {
         Command::Enclave(enclave_args) => enclave::run(enclave_args).await,
-    };
-
-    exit_code
+        Command::Relay(relay_args) => relay::run(relay_args).await,
+    }
 }

@@ -114,6 +114,9 @@ pub trait ApiClient {
             AuthMode::NoAuth => request_builder,
             AuthMode::ApiKey(api_key) => request_builder.header("api-key", api_key),
             AuthMode::BearerAuth(token) => request_builder.bearer_auth(token),
+            AuthMode::BasicAuth((api_key, app_uuid)) => {
+                request_builder.basic_auth(app_uuid, Some(api_key))
+            }
         }
     }
 }
