@@ -25,17 +25,19 @@ pub trait CmdOutput: std::fmt::Display {
 
 pub fn run_cmd(r: Result<impl CmdOutput, impl CmdOutput>) -> ! {
     match r {
-        Ok(output) => crate::print_and_exit(output, false),
+        Ok(output) => crate::print_and_exit(output),
         // TODO(Mark): do something on error
-        Err(e) => crate::print_and_exit(e, false),
+        Err(e) => crate::print_and_exit(e),
     }
 }
 
-pub fn print_and_exit<T>(output: T, json: bool) -> !
+pub fn print_and_exit<T>(output: T) -> !
 where
     T: CmdOutput,
 {
-    let msg = if json {
+    let base_args = BaseArgs::parse();
+
+    let msg = if base_args.json {
         serde_json::json!({
             "message": output.to_string(),
             "code": output.code(),
@@ -116,4 +118,16 @@ fn setup_logger(verbose_logging: bool) {
         builder.filter(Some("ev-enclave"), log::LevelFilter::Info);
     }
     builder.format(log_formatter).init();
+}
+
+pub fn setup_sentry() {
+    if cfg!(not(debug_assertions)) {
+        let _ = sentry::init((
+            "https://7930c2e61c1642bca8518bdadf37b78b@o359326.ingest.sentry.io/5799012",
+            sentry::ClientOptions {
+                release: sentry::release_name!(),
+                ..Default::default()
+            },
+        ));
+    }
 }
