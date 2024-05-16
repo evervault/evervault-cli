@@ -10,7 +10,46 @@ use std::io::Write;
 mod auth;
 mod commands;
 mod errors;
+mod relay;
+mod theme;
+mod tty;
 mod version;
+
+pub use auth::get_auth;
+
+pub trait CmdOutput: std::fmt::Display {
+    fn code(&self) -> String;
+
+    fn exitcode(&self) -> crate::errors::ExitCode;
+}
+
+pub fn run_cmd(r: Result<impl CmdOutput, impl CmdOutput>) -> ! {
+    match r {
+        Ok(output) => crate::print_and_exit(output),
+        // TODO(Mark): do something on error
+        Err(e) => crate::print_and_exit(e),
+    }
+}
+
+pub fn print_and_exit<T>(output: T) -> !
+where
+    T: CmdOutput,
+{
+    let base_args = BaseArgs::parse();
+
+    let msg = if base_args.json {
+        serde_json::json!({
+            "message": output.to_string(),
+            "code": output.code(),
+        })
+        .to_string()
+    } else {
+        output.to_string()
+    };
+
+    println!("{}", msg);
+    std::process::exit(output.exitcode());
+}
 
 #[derive(Debug, Parser)]
 #[clap(name = "Evervault Enclave CLI", version)]
@@ -39,8 +78,8 @@ async fn main() {
 
     let base_args: BaseArgs = BaseArgs::parse();
     setup_logger(base_args.verbose);
-    let exit_code = commands::run_command(base_args).await;
-    std::process::exit(exit_code);
+    setup_sentry();
+    commands::run_command(base_args).await;
 }
 
 fn setup_logger(verbose_logging: bool) {
@@ -80,4 +119,16 @@ fn setup_logger(verbose_logging: bool) {
         builder.filter(Some("ev-enclave"), log::LevelFilter::Info);
     }
     builder.format(log_formatter).init();
+}
+
+fn setup_sentry() {
+    if cfg!(not(debug_assertions)) {
+        let _ = sentry::init((
+            "https://7930c2e61c1642bca8518bdadf37b78b@o359326.ingest.sentry.io/5799012",
+            sentry::ClientOptions {
+                release: sentry::release_name!(),
+                ..Default::default()
+            },
+        ));
+    }
 }

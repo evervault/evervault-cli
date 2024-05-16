@@ -6,6 +6,9 @@ pub type ExitCode = i32;
 /// Successful exit
 pub const OK: ExitCode = 0;
 
+/// Catchall for general errors
+pub const GENERAL: ExitCode = 1;
+
 /// The command was used incorrectly, e.g., with the
 /// wrong number of arguments, a bad flag, a bad syntax
 /// in a parameter, etc.

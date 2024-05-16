@@ -22,7 +22,6 @@ pub struct EnclaveArgs {
 }
 
 #[derive(Parser, Debug)]
-#[command(name = "enclave")]
 pub enum EnclaveCommand {
     #[cfg(not(target_os = "windows"))]
     Attest(attest::AttestArgs),
@@ -46,8 +45,8 @@ pub enum AuthenticatedEnclaveCommand {
     Scale(scale::ScaleArgs),
 }
 
-pub async fn run(enclave_args: EnclaveArgs) -> i32 {
-    match enclave_args.action {
+pub async fn run(enclave_args: EnclaveArgs) {
+    let exitcode = match enclave_args.action {
         EnclaveCommand::Build(build_args) => build::run(build_args).await,
         EnclaveCommand::Describe(describe_args) => describe::run(describe_args).await,
         EnclaveCommand::Migrate(migrate_args) => migrate::run(migrate_args).await,
@@ -55,7 +54,7 @@ pub async fn run(enclave_args: EnclaveArgs) -> i32 {
         EnclaveCommand::Attest(attest_args) => attest::run(attest_args).await,
         EnclaveCommand::Update(update_args) => update::run(update_args).await,
         EnclaveCommand::Authenticated(authenticated_command) => {
-            let (api_key, _) = crate::get_auth!();
+            let (api_key, _) = crate::get_auth();
 
             match authenticated_command {
                 AuthenticatedEnclaveCommand::Cert(cert_args) => cert::run(cert_args, api_key).await,
@@ -76,5 +75,7 @@ pub async fn run(enclave_args: EnclaveArgs) -> i32 {
                 }
             }
         }
-    }
+    };
+
+    std::process::exit(exitcode);
 }
