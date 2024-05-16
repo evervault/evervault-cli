@@ -30,18 +30,3 @@ impl Default for AttyReport {
         }
     }
 }
-
-// pub fn get_sentry_client() -> Option<sentry::ClientInitGuard> {
-//     if cfg!(not(debug_assertions)) {
-//         let sentry_client = sentry::init((
-//             "https://7930c2e61c1642bca8518bdadf37b78b@o359326.ingest.sentry.io/5799012",
-//             sentry::ClientOptions {
-//                 release: sentry::release_name!(),
-//                 ..Default::default()
-//             },
-//         ));
-//         Some(sentry_client)
-//     } else {
-//         None
-//     }
-// }
