@@ -78,6 +78,7 @@ async fn main() {
 
     let base_args: BaseArgs = BaseArgs::parse();
     setup_logger(base_args.verbose);
+    setup_sentry();
     commands::run_command(base_args).await;
 }
 
@@ -120,7 +121,7 @@ fn setup_logger(verbose_logging: bool) {
     builder.format(log_formatter).init();
 }
 
-pub fn setup_sentry() {
+fn setup_sentry() {
     if cfg!(not(debug_assertions)) {
         let _ = sentry::init((
             "https://7930c2e61c1642bca8518bdadf37b78b@o359326.ingest.sentry.io/5799012",
