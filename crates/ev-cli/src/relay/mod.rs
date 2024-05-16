@@ -5,7 +5,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum RelayConfigError {
     #[error(
-        "No relay.json file found in this directory, specify a relay config file \
+        "Relay configuration could not be found at {0}, specify a relay config file \
         with the --file flag. Or create a relay with ev relay create."
     )]
     ConfigNotFound(String),

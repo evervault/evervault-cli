@@ -29,15 +29,15 @@ pub enum CreateError {
         "A Relay configuration file already exists at the path: {0}, use the --force parameter to overwrite the existing file"
     )]
     FileAlreadyExists(String),
-    #[error("An error occured while writing the Relay configuration file:\n{0}]")]
+    #[error("An error occured while writing the Relay configuration file: {0}]")]
     WriteError(#[from] std::io::Error),
     #[error(
         "A domain must be chosen to create a Relay. Use the --domain flag to provide one ahead of time."
     )]
     NoDomain,
-    #[error("An error occurred while creating the relay:\n{0}")]
+    #[error("An error occurred while creating the relay: {0}")]
     ApiError(#[from] ApiError),
-    #[error("An error occured while parsing the relay configuration:\n{0}")]
+    #[error("An error occured while parsing the relay configuration: {0}")]
     ParseError(#[from] serde_json::Error),
 }
 
@@ -63,14 +63,14 @@ impl CmdOutput for CreateError {
 
 #[derive(strum_macros::Display, Debug)]
 pub enum CreateMessage {
-    #[strum(to_string = "Relay configuration saved to file")]
-    FileWritten,
+    #[strum(to_string = "Relay configuration saved to file {0}")]
+    FileWritten(String),
 }
 
 impl CmdOutput for CreateMessage {
     fn code(&self) -> String {
         match self {
-            CreateMessage::FileWritten => "relay-file-written".to_string(),
+            CreateMessage::FileWritten(_) => "relay-file-written".to_string(),
         }
     }
 
@@ -120,5 +120,5 @@ pub async fn run(args: CreateArgs, auth: BasicAuth) -> Result<CreateMessage, Cre
 
     std::fs::write(&path, config_to_write)?;
 
-    Ok(CreateMessage::FileWritten)
+    Ok(CreateMessage::FileWritten(args.out))
 }

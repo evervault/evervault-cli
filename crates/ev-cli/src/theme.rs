@@ -8,8 +8,8 @@ use std::fmt;
 /// - TERM is set to `dumb`
 fn has_color_env_vars() -> bool {
     std::env::var("NO_COLOR").is_ok()
-        | std::env::var("EV_NO_COLOR").is_ok()
-        | std::env::var("TERM")
+        || std::env::var("EV_NO_COLOR").is_ok()
+        || std::env::var("TERM")
             .ok()
             .map(|term_mode| term_mode == "dumb".to_string())
             .unwrap_or(false)
@@ -59,7 +59,7 @@ pub struct CliTheme {
 impl Default for CliTheme {
     fn default() -> CliTheme {
         let report = crate::tty::AttyReport::default();
-        if !report.stdout | has_color_env_vars() {
+        if !report.stdout || has_color_env_vars() {
             CliTheme {
                 defaults_style: Style::new().for_stderr(),
                 prompt_style: Style::new().for_stderr(),
@@ -137,7 +137,7 @@ impl Theme for CliTheme {
         &self,
         f: &mut dyn fmt::Write,
         prompt: &str,
-        default: Option<&str>,
+        default_val: Option<&str>,
     ) -> fmt::Result {
         if !prompt.is_empty() {
             write!(
@@ -148,11 +148,11 @@ impl Theme for CliTheme {
             )?;
         }
 
-        match default {
-            Some(default) => write!(
+        match default_val {
+            Some(default_val) => write!(
                 f,
                 "{} {} ",
-                self.hint_style.apply_to(&format!("({})", default)),
+                self.hint_style.apply_to(&format!("({})", default_val)),
                 &self.prompt_suffix
             ),
             None => write!(f, "{} ", &self.prompt_suffix),
@@ -323,26 +323,39 @@ impl Theme for CliTheme {
         checked: bool,
         active: bool,
     ) -> fmt::Result {
-        let details = match (checked, active) {
-            (true, true) => (
-                &self.checked_item_prefix,
-                self.active_item_style.apply_to(text),
-            ),
-            (true, false) => (
-                &self.checked_item_prefix,
-                self.inactive_item_style.apply_to(text),
-            ),
-            (false, true) => (
-                &self.unchecked_item_prefix,
-                self.active_item_style.apply_to(text),
-            ),
-            (false, false) => (
-                &self.unchecked_item_prefix,
-                self.inactive_item_style.apply_to(text),
-            ),
-        };
+        if active {
+            if checked {
+                return write!(
+                    f,
+                    "{} {}",
+                    self.checked_item_prefix,
+                    self.active_item_style.apply_to(text)
+                );
+            } else {
+                return write!(
+                    f,
+                    "{} {}",
+                    self.unchecked_item_prefix,
+                    self.active_item_style.apply_to(text)
+                );
+            }
+        }
 
-        write!(f, "{} {}", details.0, details.1)
+        if checked {
+            return write!(
+                f,
+                "{} {}",
+                self.checked_item_prefix,
+                self.inactive_item_style.apply_to(text)
+            );
+        } else {
+            return write!(
+                f,
+                "{} {}",
+                self.unchecked_item_prefix,
+                self.inactive_item_style.apply_to(text)
+            );
+        }
     }
 
     /// Formats a sort prompt item.
@@ -353,21 +366,29 @@ impl Theme for CliTheme {
         picked: bool,
         active: bool,
     ) -> fmt::Result {
-        let details = match (picked, active) {
-            (true, true) => (
-                &self.picked_item_prefix,
-                self.active_item_style.apply_to(text),
-            ),
-            (false, true) => (
-                &self.unpicked_item_prefix,
-                self.active_item_style.apply_to(text),
-            ),
-            (_, false) => (
-                &self.unpicked_item_prefix,
-                self.inactive_item_style.apply_to(text),
-            ),
-        };
+        if !active {
+            return write!(
+                f,
+                "{} {}",
+                self.unpicked_item_prefix,
+                self.inactive_item_style.apply_to(text)
+            );
+        }
 
-        write!(f, "{} {}", details.0, details.1)
+        if picked {
+            return write!(
+                f,
+                "{} {}",
+                self.picked_item_prefix,
+                self.active_item_style.apply_to(text)
+            );
+        }
+
+        write!(
+            f,
+            "{} {}",
+            self.unpicked_item_prefix,
+            self.active_item_style.apply_to(text)
+        )
     }
 }
