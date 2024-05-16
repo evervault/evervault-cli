@@ -1,4 +1,6 @@
-use self::client::{ApiResult, HandleResponse};
+use std::fs::File;
+
+use self::client::{ApiError, ApiErrorKind, ApiResult, HandleResponse};
 use crate::relay::{CreateRelay, Relay};
 
 use super::*;
@@ -6,6 +8,7 @@ use super::{
     client::{ApiClient, ApiClientError, GenericApiClient},
     AuthMode, BasicAuth,
 };
+use std::io::Write;
 
 /// Client for Evervault API
 pub struct EvApiClient {
@@ -44,6 +47,7 @@ impl EvApiClient {
 pub trait EvApi {
     async fn update_relay(&self, relay: &Relay) -> ApiResult<crate::relay::Relay>;
     async fn create_relay(&self, relay: &Relay) -> ApiResult<crate::relay::Relay>;
+    async fn get_hello_function_template(&self, lang: String) -> ApiResult<File>;
 }
 
 #[async_trait::async_trait]
@@ -75,5 +79,31 @@ impl EvApi for EvApiClient {
             .await
             .handle_json_response()
             .await
+    }
+
+    async fn get_hello_function_template(&self, lang: String) -> ApiResult<File> {
+        let url = format!(
+            "https://github.com/evervault/template-{}-hello-function/archive/master.zip",
+            lang
+        );
+        match self.client().get(&url).send().await {
+            Ok(res) if res.status().is_success() => {
+                let mut tmpfile = tempfile::tempfile().unwrap();
+                let bytes = res
+                    .bytes()
+                    .await
+                    .map_err(|e| ApiError::new(ApiErrorKind::Unknown(Some(e))))?;
+
+                tmpfile
+                    .write(&bytes)
+                    .map_err(|_| ApiError::new(ApiErrorKind::Unknown(None)))?;
+
+                Ok(tmpfile)
+            }
+            Ok(res) => Err(ApiError::new(ApiError::get_error_from_status(
+                res.status().as_u16(),
+            ))),
+            Err(e) => Err(ApiError::new(ApiErrorKind::Unknown(Some(e)))),
+        }
     }
 }

@@ -1,4 +1,4 @@
-use dialoguer::Input;
+use dialoguer::{Input, Select};
 
 use crate::theme::CliTheme;
 
@@ -72,30 +72,50 @@ pub mod validators {
     }
 }
 
-pub fn input(prompt: Option<String>, allow_empty: bool) -> Option<String> {
+pub fn input<T>(prompt: T, allow_empty: bool) -> String
+where
+    T: std::fmt::Display,
+{
     let theme = CliTheme::default();
     let mut input: Input<String> = Input::with_theme(&theme);
-    if let Some(prompt) = prompt {
-        input.with_prompt(prompt);
-    }
 
-    input.allow_empty(allow_empty).interact().ok()
+    match input
+        .with_prompt(prompt.to_string())
+        .allow_empty(allow_empty)
+        .interact()
+    {
+        Ok(input) => input,
+        Err(e) => {
+            eprintln!("Error reading user input : {}", e);
+            std::process::exit(1);
+        }
+    }
 }
 
-pub fn validated_input(
-    prompt: Option<String>,
+pub fn validated_input<T>(
+    prompt: T,
     allow_empty: bool,
     validator: Box<validators::GenericValidator>,
-) -> Option<String> {
+) -> Option<String>
+where
+    T: std::fmt::Display,
+{
     let theme = CliTheme::default();
     let mut input: Input<String> = Input::with_theme(&theme);
-    if let Some(prompt) = prompt {
-        input.with_prompt(prompt);
-    }
 
     input
+        .with_prompt(prompt.to_string())
         .allow_empty(allow_empty)
         .validate_with(validator)
         .interact()
         .ok()
+}
+
+pub fn select(options: &Vec<String>, default: usize, prompt: Option<String>) -> Option<usize> {
+    let theme = CliTheme::default();
+    let mut select_obj = Select::with_theme(&theme);
+    if let Some(prompt) = prompt {
+        select_obj.with_prompt(prompt);
+    }
+    select_obj.items(options).default(default).interact().ok()
 }
