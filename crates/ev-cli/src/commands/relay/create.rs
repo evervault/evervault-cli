@@ -97,7 +97,7 @@ pub async fn run(args: CreateArgs, auth: BasicAuth) -> Result<CreateMessage, Cre
     }
 
     let domain = validated_input(
-        Some(CreatePrompt::WhichDomain.to_string()),
+        CreatePrompt::WhichDomain,
         false,
         Box::new(interact::validators::is_valid_destination_domain),
     )

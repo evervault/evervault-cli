@@ -10,6 +10,7 @@ use std::io::Write;
 mod auth;
 mod commands;
 mod errors;
+mod fs;
 mod relay;
 mod theme;
 mod tty;

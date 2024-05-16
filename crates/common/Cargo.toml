@@ -15,6 +15,7 @@ exitcode = "1.1.2"
 toml = "0.5.9"
 elliptic-curve = { version = "0.13.8", features = ["pkcs8"] }
 pcr-sign = { path = "../pcr-sign", optional=true }
+tempfile = "3.10.1"
 
 [dev-dependencies]
 mockall = "0.11.4"
