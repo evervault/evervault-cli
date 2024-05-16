@@ -1,9 +1,0 @@
-{
-  "id": "relay_destination_276983895e61",
-  "destinationDomain": "newest.com",
-  "evervaultDomain": "newest-com-app-cddc16b61172.relay.evervault.dev",
-  "encryptEmptyStrings": true,
-  "authentication": null,
-  "routes": [],
-  "app": "app_cddc16b61172"
-}
