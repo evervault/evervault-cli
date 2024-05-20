@@ -1,4 +1,3 @@
-use crate::version::check_version;
 use clap::{ArgGroup, Parser};
 use common::{api::AuthMode, CliError};
 use ev_enclave::api::enclave::{Enclave, EnclaveApi};
@@ -126,11 +125,6 @@ fn convert_comma_list(maybe_str: Option<String>) -> Option<Vec<String>> {
 }
 
 pub async fn run(init_args: InitArgs, api_key: String) -> exitcode::ExitCode {
-    if let Err(e) = check_version().await {
-        log::error!("{e}");
-        return exitcode::SOFTWARE;
-    };
-
     let enclave_client =
         ev_enclave::api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key.clone()));
 

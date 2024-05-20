@@ -1,4 +1,3 @@
-use crate::version::check_version;
 use atty::Stream;
 use clap::Parser;
 use common::api::client::ApiErrorKind;
@@ -84,10 +83,6 @@ impl BuildTimeConfig for DeployArgs {
 }
 
 pub async fn run(deploy_args: DeployArgs, api_key: String) -> exitcode::ExitCode {
-    if let Err(e) = check_version().await {
-        log::error!("{e}");
-        return exitcode::SOFTWARE;
-    };
     let (mut enclave_config, validated_config) =
         match read_and_validate_config(&deploy_args.config, &deploy_args) {
             Ok(configs) => configs,

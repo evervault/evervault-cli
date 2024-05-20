@@ -1,4 +1,3 @@
-use crate::version::check_version;
 use clap::Parser;
 use common::{api::AuthMode, CliError};
 use ev_enclave::{
@@ -26,11 +25,6 @@ pub struct RestartArgs {
 }
 
 pub async fn run(restart_args: RestartArgs, api_key: String) -> i32 {
-    if let Err(e) = check_version().await {
-        log::error!("{}", e);
-        return exitcode::SOFTWARE;
-    };
-
     let enclave_api = EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
 
     let new_deployment = match restart_enclave(

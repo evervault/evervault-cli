@@ -1,4 +1,3 @@
-use crate::version::check_version;
 use clap::Parser;
 use ev_enclave::migrate::migrate_toml;
 /// Migrate an Enclave toml from v0 to v1
@@ -15,11 +14,6 @@ pub struct MigrateArgs {
 }
 
 pub async fn run(args: MigrateArgs) -> exitcode::ExitCode {
-    if let Err(e) = check_version().await {
-        log::error!("{}", e);
-        return exitcode::SOFTWARE;
-    };
-
     let serialized_config = match migrate_toml(&args.config) {
         Ok(bytes) => bytes,
         Err(e) => {

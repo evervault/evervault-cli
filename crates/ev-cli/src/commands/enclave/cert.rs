@@ -1,4 +1,3 @@
-use crate::version::check_version;
 use atty::Stream;
 use clap::{Parser, Subcommand};
 use common::CliError;
@@ -64,11 +63,6 @@ pub struct LockCertArgs {
 }
 
 pub async fn run(cert_args: CertArgs, api_key: String) -> exitcode::ExitCode {
-    if let Err(e) = check_version().await {
-        log::error!("{e}");
-        return exitcode::SOFTWARE;
-    };
-
     match cert_args.action {
         CertCommands::New(new_args) => {
             let distinguished_name =
