@@ -1,6 +1,6 @@
 pub fn get_auth() -> (String, String) {
-    match (std::env::var("EV_API_KEY"), std::env::var("EV_APP_UUID")) {
-        (Ok(api_key), Ok(app_uuid)) => (api_key, app_uuid),
+    match (std::env::var("EV_APP_UUID"), std::env::var("EV_API_KEY")) {
+        (Ok(app_uuid), Ok(api_key)) => (app_uuid, api_key),
         (Err(_), Err(_)) => {
             log::error!(
                 "No App UUID or API key found. Make sure you have correctly set the \

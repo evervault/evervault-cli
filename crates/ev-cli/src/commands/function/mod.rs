@@ -1,7 +1,7 @@
+use crate::run_cmd;
 use clap::Parser;
 
-use crate::run_cmd;
-
+mod deploy;
 mod init;
 
 #[derive(Parser, Debug)]
@@ -15,6 +15,7 @@ pub struct FunctionArgs {
 #[command(name = "function")]
 pub enum FunctionCommand {
     Init(init::InitArgs),
+    Deploy(deploy::DeployArgs),
 }
 
 pub async fn run(args: FunctionArgs) {
@@ -22,5 +23,6 @@ pub async fn run(args: FunctionArgs) {
 
     match args.action {
         FunctionCommand::Init(init_args) => run_cmd(init::run(init_args, auth).await),
+        FunctionCommand::Deploy(deploy_args) => run_cmd(deploy::run(deploy_args, auth).await),
     }
 }
