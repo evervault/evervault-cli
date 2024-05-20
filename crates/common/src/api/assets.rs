@@ -1,15 +1,12 @@
 use super::{
-    client::{
-        ApiClient, ApiClientError, ApiError, ApiErrorKind, ApiResult, GenericApiClient,
-        HandleResponse,
-    },
+    client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse},
     AuthMode,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct CLIVersion {
+pub struct CLIVersions {
     pub latest: String,
     pub versions: HashMap<String, CLIMajorVersion>,
 }
@@ -19,18 +16,6 @@ pub struct CLIMajorVersion {
     pub latest: String,
     #[serde(rename = "deprecationDate")]
     pub deprecation_date: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct RuntimeVersion {
-    pub latest: String,
-    pub versions: HashMap<String, RuntimeMajorVersion>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct RuntimeMajorVersion {
-    pub latest: String,
-    pub installer: String,
 }
 
 pub struct AssetsClient {
@@ -88,39 +73,12 @@ impl AssetsClient {
             .await
     }
 
-    pub async fn get_data_plane_version(&self) -> ApiResult<String> {
-        self.get_runtime_versions()
-            .await
-            .map(|version| version.latest)
-    }
-
-    pub async fn get_installer_version(&self) -> ApiResult<String> {
-        self.get_runtime_versions()
-            .await
-            .map(|version| version.installer)
-    }
-
-    pub async fn get_runtime_versions(&self) -> ApiResult<RuntimeMajorVersion> {
-        let installed_major_version = env!("CARGO_PKG_VERSION_MAJOR");
-        let data_plane_version = format!("{}/runtime/versions", self.base_url());
-        let result = self
-            .get(&data_plane_version)
-            .send()
-            .await
-            .handle_json_response::<RuntimeVersion>()
-            .await?;
-        match result.versions.get(installed_major_version) {
-            Some(versions) => Ok(versions.clone()),
-            None => Err(ApiError::new(ApiErrorKind::NotFound)),
-        }
-    }
-
-    pub async fn get_cli_versions(&self) -> ApiResult<CLIVersion> {
+    pub async fn get_cli_versions(&self) -> ApiResult<CLIVersions> {
         let data_plane_version = format!("{}/cli/versions", self.base_url());
         self.get(&data_plane_version)
             .send()
             .await
-            .handle_json_response::<CLIVersion>()
+            .handle_json_response::<CLIVersions>()
             .await
     }
 }

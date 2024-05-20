@@ -1,5 +1,5 @@
-use common::api::assets::AssetsClient;
 use common::api::client::ApiError;
+use common::api::enclave_assets::EnclaveAssetsClient;
 use common::CliError;
 use regex::Regex;
 use std::env;
@@ -36,6 +36,7 @@ impl CliError for VersionError {
 }
 
 pub fn get_latest_major_version() -> Result<u8, VersionError> {
+    println!("ev-enclave major: {}", env!("CARGO_PKG_VERSION_MAJOR"));
     Ok(env!("CARGO_PKG_VERSION_MAJOR").parse::<u8>()?)
 }
 
@@ -45,9 +46,11 @@ pub async fn get_runtime_and_installer_version(
     match from_existing {
         Some(existing) => parse_version_from_existing_dockerfile(existing),
         None => {
-            let enclave_build_assets_client = AssetsClient::new();
+            let enclave_build_assets_client = EnclaveAssetsClient::new();
             let data_plane_version = enclave_build_assets_client.get_data_plane_version().await?;
-            let installer_version = enclave_build_assets_client.get_installer_version().await?;
+            let installer_version = enclave_build_assets_client
+                .get_runtime_installer_version()
+                .await?;
             Ok((data_plane_version, installer_version))
         }
     }

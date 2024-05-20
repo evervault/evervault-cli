@@ -1,7 +1,8 @@
 use atty::Stream;
 use clap::Parser;
 use common::api::client::ApiErrorKind;
-use common::api::{assets::AssetsClient, AuthMode};
+use common::api::enclave_assets::EnclaveAssetsClient;
+use common::api::AuthMode;
 use common::CliError;
 use ev_enclave::{
     api::enclave::EnclaveApi,
@@ -296,7 +297,7 @@ async fn resolve_eif(
 }
 
 async fn get_data_plane_and_installer_version() -> Result<(String, String), ExitCode> {
-    let enclave_build_assets_client = AssetsClient::new();
+    let enclave_build_assets_client = EnclaveAssetsClient::new();
     let data_plane_version = match enclave_build_assets_client.get_data_plane_version().await {
         Ok(version) => version,
         Err(e) => {
@@ -304,7 +305,10 @@ async fn get_data_plane_and_installer_version() -> Result<(String, String), Exit
             return Err(e.exitcode());
         }
     };
-    let installer_version = match enclave_build_assets_client.get_installer_version().await {
+    let installer_version = match enclave_build_assets_client
+        .get_runtime_installer_version()
+        .await
+    {
         Ok(version) => version,
         Err(e) => {
             log::error!("Failed to retrieve the latest installer version - {e:?}");
