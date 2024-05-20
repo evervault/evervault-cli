@@ -2,7 +2,6 @@ use common::api::client::ApiError;
 use common::api::enclave_assets::EnclaveAssetsClient;
 use common::CliError;
 use regex::Regex;
-use std::env;
 use std::fs;
 use thiserror::Error;
 
@@ -33,11 +32,6 @@ impl CliError for VersionError {
             _ => exitcode::SOFTWARE,
         }
     }
-}
-
-pub fn get_latest_major_version() -> Result<u8, VersionError> {
-    println!("ev-enclave major: {}", env!("CARGO_PKG_VERSION_MAJOR"));
-    Ok(env!("CARGO_PKG_VERSION_MAJOR").parse::<u8>()?)
 }
 
 pub async fn get_runtime_and_installer_version(
