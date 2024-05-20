@@ -1,7 +1,7 @@
 use crate::BaseArgs;
 use clap::Parser;
 
-use self::{enclave::EnclaveArgs, relay::RelayArgs, function::FunctionArgs};
+use self::{enclave::EnclaveArgs, function::FunctionArgs, relay::RelayArgs};
 
 mod enclave;
 mod function;
@@ -12,7 +12,7 @@ mod relay;
 pub enum Command {
     Enclave(EnclaveArgs),
     Relay(RelayArgs),
-    Function(FunctionArgs)
+    Function(FunctionArgs),
 }
 
 pub async fn run_command(base_args: BaseArgs) {
