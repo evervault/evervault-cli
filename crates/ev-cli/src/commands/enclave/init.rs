@@ -8,15 +8,15 @@ use ev_enclave::config::{
 /// Initialize an Enclave.toml in the current directory
 #[derive(Debug, Parser)]
 #[command(name = "init", about)]
-#[command(group(
+#[clap(group(
   ArgGroup::new("signing-cert")
-    .arg("cert-path")
-    .requires("key-path")
+    .arg("cert_path")
+    .requires("key_path")
 ))]
-#[command(group(
+#[clap(group(
   ArgGroup::new("signing-key")
-    .arg("key-path")
-    .requires("cert-path")
+    .arg("key_path")
+    .requires("cert_path")
 ))]
 pub struct InitArgs {
     /// Directory to write the Enclave toml to. Defaults to the current directory.
