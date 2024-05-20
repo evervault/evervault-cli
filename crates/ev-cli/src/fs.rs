@@ -33,10 +33,10 @@ pub fn get_current_dir() -> Result<path::PathBuf, FsError> {
 pub enum FsError {
     #[error("There was an error reading the function toml file")]
     MalfordFunctionToml,
+    #[error("A function.toml file was not found in the current directory")]
+    FunctionTomlNotFound,
     #[error("An IO error occurred: {0}")]
     Io(std::io::Error),
-    #[error("An error occurred while serializing the file")]
-    SerializationError,
 }
 
 impl From<std::io::Error> for FsError {
@@ -168,12 +168,16 @@ fn copy_files(
     Ok(())
 }
 
-pub fn validate_function_directory_structure() -> Result<bool, FsError> {
+pub fn validate_function_directory_structure() -> Result<(), FsError> {
     let dir = get_current_dir()?;
 
     let toml = dir.clone().join("function.toml");
 
-    Ok(toml.is_file())
+    if !toml.is_file() {
+        return Err(FsError::FunctionTomlNotFound);
+    }
+
+    Ok(())
 }
 
 pub fn zip_current_directory(name: &str, tmp_dir: &Path) -> Result<PathBuf, FsError> {

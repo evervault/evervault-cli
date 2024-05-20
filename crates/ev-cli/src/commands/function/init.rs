@@ -1,9 +1,9 @@
-use std::{fs::File, path::PathBuf};
+use std::path::PathBuf;
 
+use crate::commands::interact::validators;
 use crate::fs::{copy_folder, get_current_dir, set_function_name};
 use crate::CmdOutput;
 use crate::{commands::interact, fs::extract_zip};
-use atty::Stream;
 use clap::Parser;
 use common::api::{
     client::ApiError,
@@ -24,23 +24,30 @@ pub struct InitArgs {
 
 #[derive(Error, Debug)]
 pub enum InitError {
-    #[error("An error occurred while reading input")]
-    InputError,
     #[error("An error occurred while fetching the function template: {0}")]
     TemplateFetch(#[from] ApiError),
     #[error("An error occurred trying to unzip the function template: {0}")]
     Unzip(#[from] ZipError),
-    #[error("An error occured during a file system operation: {0}")]
-    FsError(#[from] crate::fs::FsError),
     #[error("Something already exists in the target directory ({0}), use --force if you want to overwrite it")]
     TargetExists(PathBuf),
     #[error("An occurred updating the function name in the function toml")]
     TomlUpdate,
+    #[error(transparent)]
+    ValidationError(#[from] validators::ValidationError),
+    #[error(transparent)]
+    FsError(#[from] crate::fs::FsError),
 }
 
 impl CmdOutput for InitError {
     fn code(&self) -> String {
-        "init-error".to_string()
+        match self {
+            InitError::TemplateFetch(_) => "function-template-fetch-error".to_string(),
+            InitError::Unzip(_) => "function-template-unzip-error".to_string(),
+            InitError::FsError(_) => "function-fs-error".to_string(),
+            InitError::TargetExists(_) => "function-target-exists-error".to_string(),
+            InitError::TomlUpdate => "function-toml-update-error".to_string(),
+            InitError::ValidationError(_) => "function-validation-error".to_string(),
+        }
     }
 
     fn exitcode(&self) -> crate::errors::ExitCode {
@@ -50,15 +57,15 @@ impl CmdOutput for InitError {
 
 #[derive(strum_macros::Display, Debug)]
 pub enum InitMessage {
-    #[strum(to_string = "Creating function: {name}")]
-    Created { name: String },
     #[strum(to_string = "Function: {name}, initialized at {dir}")]
     Initialized { name: String, dir: String },
 }
 
 impl CmdOutput for InitMessage {
     fn code(&self) -> String {
-        "init-created".to_string()
+        match self {
+            InitMessage::Initialized { .. } => "function-initialized".to_string(),
+        }
     }
 
     fn exitcode(&self) -> crate::errors::ExitCode {
@@ -76,6 +83,8 @@ pub async fn run(args: InitArgs, auth: BasicAuth) -> Result<InitMessage, InitErr
     let api_client = papi::EvApiClient::new(auth);
     let valid_languages: [&str; 2] = ["node", "python"];
     let name = interact::input(InitPrompt::Name, false);
+
+    validators::validate_function_name(&name)?;
 
     let langs = valid_languages
         .iter()

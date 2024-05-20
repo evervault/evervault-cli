@@ -1,39 +1,29 @@
-use dialoguer::{Input, Select};
-
 use crate::theme::CliTheme;
+use dialoguer::{Input, Select};
+use indicatif::{ProgressBar, ProgressStyle};
 
 pub mod validators {
     use lazy_static;
     use regex::Regex;
-    use std::fmt::{Debug, Display};
+    use std::fmt::Debug;
+    use thiserror::Error;
 
-    #[derive(Debug)]
+    #[derive(Debug, Error)]
     pub enum ValidationError {
+        #[error("Value must be a valid HTTPS domain")]
         InvalidHostname,
+        #[error("Invalid custom domain. You should not use a top-level domain name, or include a protocol or path")]
         InvalidCustomDomain,
+        #[error("Destination Domain must be a valid hostname and not contain a protocol or path.")]
         InvalidDestinationDomain,
-    }
-    impl Display for ValidationError {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            #[allow(unreachable_patterns)]
-            match self {
-                Self::InvalidHostname => write!(f, "Value must be a valid HTTPS domain"),
-                Self::InvalidCustomDomain => write!(
-                    f,
-                    "Invalid custom domain. You should not use a \
-                 top-level domain name, or include a protocol or path"
-                ),
-                Self::InvalidDestinationDomain => write!(
-                    f,
-                    "Destination Domain must be a valid hostname and not contain a protocol or path."
-                ),
-                _ => write!(f, "{:?}", self),
-            }
-        }
+        #[error("Invalid function name. Must be between 2 and 40 characters, and contain only alphanumeric characters, dashes, and underscores")]
+        InvalidFunctionName,
+        #[error("Invalid function language. Must be one of: node@18, node@20, python@3.9, python@3.10, python@3.11")]
+        InvalidFunctionLanguage,
     }
 
     pub type GenericValidator = dyn Fn(&String) -> Result<(), ValidationError>;
-    pub fn is_valid_hostname(input: &String) -> Result<(), ValidationError> {
+    pub fn validate_hostname(input: &String) -> Result<(), ValidationError> {
         lazy_static::lazy_static!(
             static ref VALID_HOST_REGEX: Regex = Regex::new(
                 r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^(https://)?(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)+([A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9])$"
@@ -45,7 +35,7 @@ pub mod validators {
         }
     }
 
-    pub fn is_valid_custom_domain(input: &String) -> Result<(), ValidationError> {
+    pub fn validate_custom_domain(input: &String) -> Result<(), ValidationError> {
         lazy_static::lazy_static!(
             static ref VALID_CUSTOM_DOMAIN_REGEX: Regex = Regex::new(
                 // top-level domains not supported
@@ -58,7 +48,7 @@ pub mod validators {
         }
     }
 
-    pub fn is_valid_destination_domain(input: &String) -> Result<(), ValidationError> {
+    pub fn validate_destination_domain(input: &String) -> Result<(), ValidationError> {
         lazy_static::lazy_static!(
             static ref VALID_DESTINATION_DOMAIN_REGEX: Regex = Regex::new(
               r"/^(?:(?:\*?(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|\*\*?)\.){3}(?:\*?(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|\*\*?)$|^(?:(?:\*?(?:[a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])|\*\*?)\.)+(?:\*?(?:[a-z]|[a-z][a-z0-9\-]*[a-z0-9])|\*\*?)$|^\*\*?$/i"
@@ -69,6 +59,30 @@ pub mod validators {
             true => Ok(()),
             _ => Err(ValidationError::InvalidDestinationDomain),
         }
+    }
+
+    pub fn validate_function_name(name: &str) -> Result<(), ValidationError> {
+        lazy_static::lazy_static!(
+            static ref NAME_REGEX: Regex = Regex::new(r"^[A-Za-z0-9]([-_]?[A-Za-z0-9])*$").unwrap();
+        );
+        let length = name.len();
+        let regex_result = NAME_REGEX.is_match(name);
+        if !((length >= 2) & (length <= 40) & regex_result) {
+            return Err(ValidationError::InvalidFunctionName);
+        }
+        Ok(())
+    }
+
+    pub fn validate_function_language(language: &str) -> Result<(), ValidationError> {
+        lazy_static::lazy_static!(
+            static ref LANGUAGE_REGEX: Regex = Regex::new(r"^node@18|node@20|python@3\.9|python@3\.10|python@3\.11$").unwrap();
+        );
+        let regex_result = LANGUAGE_REGEX.is_match(language);
+        if !regex_result {
+            return Err(ValidationError::InvalidFunctionLanguage);
+        }
+
+        Ok(())
     }
 }
 
@@ -118,4 +132,70 @@ pub fn select(options: &Vec<String>, default: usize, prompt: Option<String>) -> 
         select_obj.with_prompt(prompt);
     }
     select_obj.items(options).default(default).interact().ok()
+}
+
+/// To make quiet mode integration more simple
+/// OptionalProgressBar can be used - all functions called
+/// as normal, but will result in No-Ops during quiet mode
+///
+/// There may be an argument for implementing this using Deref
+/// To coerce OptPB to a PB silently, but unsure
+pub struct OptionalProgressBar {
+    bar: Option<ProgressBar>,
+}
+
+impl OptionalProgressBar {
+    pub fn new_spinner(quiet: bool) -> Self {
+        Self {
+            bar: if quiet {
+                None
+            } else {
+                Some(ProgressBar::new_spinner())
+            },
+        }
+    }
+
+    pub fn enable_steady_tick(&self, ms: core::time::Duration) {
+        if let Some(pb) = self.bar.as_ref() {
+            pb.enable_steady_tick(ms)
+        }
+    }
+
+    pub fn finish_with_message(&self, msg: String) {
+        if let Some(pb) = self.bar.as_ref() {
+            pb.finish_with_message(msg);
+        }
+    }
+
+    pub fn set_style(&self, style: ProgressStyle) {
+        if let Some(pb) = self.bar.as_ref() {
+            pb.set_style(style)
+        }
+    }
+
+    pub fn set_message(&self, msg: String) {
+        if let Some(pb) = self.bar.as_ref() {
+            pb.set_message(msg)
+        }
+    }
+
+    pub fn finish(&self) {
+        if let Some(pb) = self.bar.as_ref() {
+            pb.finish()
+        }
+    }
+}
+
+pub fn start_spinner(msg: &str, quiet: bool) -> OptionalProgressBar {
+    let pb = OptionalProgressBar::new_spinner(quiet);
+    pb.enable_steady_tick(core::time::Duration::from_millis(200));
+
+    pb.set_style(
+        ProgressStyle::default_spinner()
+            .tick_strings(&["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷", "✔"])
+            .template("{spinner:.green} {msg}")
+            .expect("infallible"),
+    );
+    pb.set_message(msg.into());
+    pb
 }

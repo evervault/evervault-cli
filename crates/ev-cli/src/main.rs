@@ -26,13 +26,12 @@ pub trait CmdOutput: std::fmt::Display {
 
 pub fn run_cmd(r: Result<impl CmdOutput, impl CmdOutput>) -> ! {
     match r {
-        Ok(output) => crate::print_and_exit(output),
-        // TODO(Mark): do something on error
-        Err(e) => crate::print_and_exit(e),
+        Ok(output) => crate::print_and_exit(output, false),
+        Err(e) => crate::print_and_exit(e, true),
     }
 }
 
-pub fn print_and_exit<T>(output: T) -> !
+pub fn print_and_exit<T>(output: T, is_error: bool) -> !
 where
     T: CmdOutput,
 {
@@ -42,6 +41,7 @@ where
         serde_json::json!({
             "message": output.to_string(),
             "code": output.code(),
+            "is_error": is_error
         })
         .to_string()
     } else {
@@ -56,7 +56,7 @@ where
 #[clap(name = "Evervault Enclave CLI", version)]
 pub struct BaseArgs {
     /// Toggle verbose output
-    #[clap(short, long, global = true)]
+    #[clap(short, long, global = true, default_value_t = true)]
     pub verbose: bool,
 
     /// Toggle JSON output for stdout
