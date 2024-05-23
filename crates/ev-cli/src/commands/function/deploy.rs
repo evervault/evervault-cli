@@ -88,7 +88,7 @@ pub enum DeployMessage {
     #[strum(to_string = "Function ({uuid}) Deployed Succesfully")]
     Deployed { uuid: String },
     #[strum(
-        to_string = "Function deployment initiated successfully. Deployment will continue in the background."
+        to_string = "Function deployment initiated successfully. Deployment will continue in the background. You can check the status of your Function deployment in the Evervault Dashboard"
     )]
     BackgroundDeployment,
 }
@@ -126,11 +126,15 @@ pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, Dep
     let current_date: NaiveDate = Utc::now().date_naive();
 
     if let Some(&deprecation_date) = LANGUAGE_DEPRECATION_DATE_MAP.get(&language) {
-        return Err(if current_date > deprecation_date {
-            DeployError::VersionDeprecated(deprecation_date, language)
-        } else {
-            DeployError::VersionWillBeDeprecated(deprecation_date, language)
-        });
+        if current_date > deprecation_date {
+            return Err(DeployError::VersionDeprecated(deprecation_date, language));
+        }
+        if !base_args.json {
+            println!(
+                "{}",
+                DeployError::VersionWillBeDeprecated(deprecation_date, language)
+            );
+        }
     }
 
     let tmp_dir = TempDir::new().unwrap();

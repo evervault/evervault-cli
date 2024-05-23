@@ -147,11 +147,7 @@ pub struct OptionalProgressBar {
 impl OptionalProgressBar {
     pub fn new_spinner(quiet: bool) -> Self {
         Self {
-            bar: if quiet {
-                None
-            } else {
-                Some(ProgressBar::new_spinner())
-            },
+            bar: quiet.then(ProgressBar::new_spinner),
         }
     }
 
