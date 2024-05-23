@@ -74,8 +74,8 @@ impl AssetsClient {
     }
 
     pub async fn get_cli_versions(&self) -> ApiResult<CLIVersions> {
-        let data_plane_version = format!("{}/cli/versions", self.base_url());
-        self.get(&data_plane_version)
+        let cli_versions = format!("{}/cli/versions", self.base_url());
+        self.get(&cli_versions)
             .send()
             .await
             .handle_json_response::<CLIVersions>()

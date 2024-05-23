@@ -1,16 +1,12 @@
 use crate::{errors, version::VersionError, CmdOutput};
 use clap::Parser;
 use common::api::{self, client::ApiError};
-use dialoguer::Confirm;
 use thiserror::Error;
 
 /// Check for new versions of the CLI and install them
 #[derive(Debug, Parser)]
 #[command(name = "update", about)]
-pub struct UpdateArgs {
-    #[arg(short = 'f', long = "force")]
-    force: bool,
-}
+pub struct UpdateArgs {}
 
 #[derive(Error, Debug)]
 pub enum UpdateError {
@@ -57,8 +53,6 @@ pub enum UpdateMessage {
     AlreadyUpToDate(String),
     #[strum(to_string = "The CLI has been updated to the latest version")]
     Updated,
-    #[strum(to_string = "The update was aborted")]
-    Aborted,
 }
 
 impl CmdOutput for UpdateMessage {
@@ -70,12 +64,11 @@ impl CmdOutput for UpdateMessage {
         match self {
             Self::AlreadyUpToDate(_) => "update-already-up-to-date".to_string(),
             Self::Updated => "update-complete".to_string(),
-            Self::Aborted => "update-aborted".to_string(),
         }
     }
 }
 
-pub async fn run(args: UpdateArgs) -> Result<UpdateMessage, UpdateError> {
+pub async fn run(_: UpdateArgs) -> Result<UpdateMessage, UpdateError> {
     let assets_client = api::assets::AssetsClient::new();
     let new_version = assets_client
         .get_latest_cli_version()
@@ -92,15 +85,6 @@ pub async fn run(args: UpdateArgs) -> Result<UpdateMessage, UpdateError> {
         current_version,
         new_version.as_str()
     );
-    if !args.force
-        && !Confirm::new()
-            .with_prompt("Would you like to update?")
-            .default(true)
-            .interact()
-            .unwrap_or(false)
-    {
-        return Ok(UpdateMessage::Aborted);
-    }
 
     let install_script = assets_client
         .get_cli_install_script()
