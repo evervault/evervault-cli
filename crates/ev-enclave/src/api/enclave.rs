@@ -30,6 +30,13 @@ impl ApiClient for EnclaveClient {
         let api_base = self.inner.base_url();
         format!("{}/enclaves", api_base)
     }
+
+    fn accept(&self) -> String {
+        format!(
+            "application/json;version={}",
+            env!("ENCLAVE_RUNTIME_VERSION")
+        )
+    }
 }
 
 #[async_trait::async_trait]

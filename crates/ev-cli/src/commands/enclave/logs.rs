@@ -1,4 +1,3 @@
-use crate::version::check_version;
 use clap::Parser;
 use common::{api::AuthMode, CliError};
 use ev_enclave::{api::enclave::EnclaveClient, config::EnclaveConfig, logs::get_logs};
@@ -26,10 +25,6 @@ pub struct LogArgs {
 
 pub async fn run(log_args: LogArgs, api_key: String) -> i32 {
     log::info!("Note: each query will return a maximum of 500 logs, if logs are missing reduce the time range");
-    if let Err(e) = check_version().await {
-        log::error!("{}", e);
-        return exitcode::SOFTWARE;
-    };
 
     let enclave_client = EnclaveClient::new(AuthMode::ApiKey(api_key));
 
