@@ -110,7 +110,6 @@ impl CmdOutput for DeployMessage {
 pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, DeployError> {
     let api_client = papi::EvApiClient::new(auth);
     let base_args = BaseArgs::parse();
-    let is_quiet = !base_args.verbose || base_args.json;
 
     crate::fs::validate_function_directory_structure()?;
     crate::fs::validate_function_toml()?;
@@ -139,7 +138,7 @@ pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, Dep
 
     let tmp_dir = TempDir::new().unwrap();
 
-    let progress = interact::start_spinner("Zipping current direction...", is_quiet);
+    let progress = interact::start_spinner("Zipping current direction...", !base_args.json);
 
     let destination = match zip_current_directory(&name, tmp_dir.path()) {
         Ok(destination) => destination,
@@ -153,7 +152,7 @@ pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, Dep
 
     progress.finish_with_message("Directory zipped succesfully".into());
 
-    let progress = interact::start_spinner("Beginning Function deployment...", is_quiet);
+    let progress = interact::start_spinner("Beginning Function deployment...", !base_args.json);
 
     let apps_functions = api_client
         .get_all_functions_for_app()
@@ -185,7 +184,7 @@ pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, Dep
         progress.finish_with_message("Function deployment initiated.".into());
     }
 
-    let progress = interact::start_spinner("Uploading Function source...", is_quiet);
+    let progress = interact::start_spinner("Uploading Function source...", !base_args.json);
 
     let zip_file = if !destination.is_file() {
         return Err(DeployError::ZipNotFound);
@@ -210,8 +209,10 @@ pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, Dep
         return Ok(DeployMessage::BackgroundDeployment);
     }
 
-    let progress =
-        interact::start_spinner("Checking your Function deployment's status...", is_quiet);
+    let progress = interact::start_spinner(
+        "Checking your Function deployment's status...",
+        !base_args.json,
+    );
 
     loop {
         let status = api_client

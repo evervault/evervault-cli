@@ -56,7 +56,7 @@ where
 #[clap(name = "Evervault Enclave CLI", version)]
 pub struct BaseArgs {
     /// Toggle verbose output
-    #[clap(short, long, global = true, default_value_t = true)]
+    #[clap(short, long, global = true, default_value_t = false)]
     pub verbose: bool,
 
     /// Toggle JSON output for stdout

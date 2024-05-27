@@ -18,7 +18,7 @@ pub mod validators {
         InvalidDestinationDomain,
         #[error("Invalid function name. Must be between 2 and 40 characters, and contain only alphanumeric characters, dashes, and underscores")]
         InvalidFunctionName,
-        #[error("Invalid function language. Must be one of: node@18, node@20, python@3.9, python@3.10, python@3.11")]
+        #[error("Invalid function language. Must be one of: (node|python)@version. eg node@18, python@3.11. See https://docs.evervault.com/primitives/functions#function.toml for supported language versions.")]
         InvalidFunctionLanguage,
     }
 
