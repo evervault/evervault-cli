@@ -1,4 +1,3 @@
-use crate::version::check_version;
 use clap::Parser;
 use common::CliError;
 use ev_enclave::describe::describe_eif;
@@ -21,11 +20,6 @@ pub struct DescribeArgs {
 }
 
 pub async fn run(describe_args: DescribeArgs) -> exitcode::ExitCode {
-    if let Err(e) = check_version().await {
-        log::error!("{e}");
-        return exitcode::SOFTWARE;
-    };
-
     let description = match describe_eif(
         &describe_args.eif_path,
         !describe_args.quiet,

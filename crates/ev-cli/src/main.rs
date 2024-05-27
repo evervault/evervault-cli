@@ -80,7 +80,7 @@ async fn main() {
     let base_args: BaseArgs = BaseArgs::parse();
     setup_logger(base_args.verbose);
     setup_sentry();
-    commands::run_command(base_args).await;
+    commands::run(base_args).await;
 }
 
 fn setup_logger(verbose_logging: bool) {

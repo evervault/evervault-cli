@@ -1,4 +1,3 @@
-use crate::version::check_version;
 use clap::Parser;
 use common::{api::AuthMode, CliError};
 use ev_enclave::{
@@ -50,11 +49,6 @@ pub struct ScaleArgs {
 }
 
 pub async fn run(args: ScaleArgs, api_key: String) -> i32 {
-    if let Err(e) = check_version().await {
-        log::error!("{}", e);
-        return exitcode::SOFTWARE;
-    };
-
     let enclave_api = EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
 
     let enclave_config = EnclaveConfig::try_from_filepath(&args.config);

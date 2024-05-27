@@ -1,4 +1,3 @@
-use crate::version::check_version;
 use clap::Parser;
 use common::CliError;
 use ev_enclave::delete::delete_enclave;
@@ -40,11 +39,6 @@ fn should_continue() -> Result<bool, exitcode::ExitCode> {
 }
 
 pub async fn run(delete_args: DeleteArgs, api_key: String) -> exitcode::ExitCode {
-    if let Err(e) = check_version().await {
-        log::error!("{e}");
-        return exitcode::SOFTWARE;
-    };
-
     if !delete_args.force {
         let should_delete = match should_continue() {
             Ok(should_delete) => should_delete,

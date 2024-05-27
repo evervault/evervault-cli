@@ -12,7 +12,6 @@ pub mod logs;
 pub mod migrate;
 pub mod restart;
 pub mod scale;
-pub mod update;
 
 #[derive(Parser, Debug)]
 #[command(name = "enclave")]
@@ -28,7 +27,6 @@ pub enum EnclaveCommand {
     Build(build::BuildArgs),
     Describe(describe::DescribeArgs),
     Migrate(migrate::MigrateArgs),
-    Update(update::UpdateArgs),
     #[command(flatten)]
     Authenticated(AuthenticatedEnclaveCommand),
 }
@@ -52,7 +50,6 @@ pub async fn run(enclave_args: EnclaveArgs) {
         EnclaveCommand::Migrate(migrate_args) => migrate::run(migrate_args).await,
         #[cfg(not(target_os = "windows"))]
         EnclaveCommand::Attest(attest_args) => attest::run(attest_args).await,
-        EnclaveCommand::Update(update_args) => update::run(update_args).await,
         EnclaveCommand::Authenticated(authenticated_command) => {
             let (api_key, _) = crate::get_auth();
 
