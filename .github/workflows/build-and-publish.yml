@@ -50,7 +50,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-09-13
+          toolchain: stable
           override: true
           target: ${{ env.LINUX_TARGET }}
 
@@ -71,7 +71,7 @@ jobs:
         run: |
           mkdir ${{ env.BIN_DIR }}
           mkdir ${{ env.RELEASE_DIR }}
-          cross build -p ev-enclave --release --features internal_dependency --target ${{ env.LINUX_TARGET }} -Z registry-auth
+          cross build -p ev-enclave --release --features internal_dependency --target ${{ env.LINUX_TARGET }}
           mv ./target/${{ env.LINUX_TARGET }}/release/ev-enclave ./${{ env.BIN_DIR }}/ev-enclave
           7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-enclave-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz
         env:
@@ -97,7 +97,7 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2023-09-13
+          toolchain: stable
           target: ${{ env.MACOS_TARGET }}
           override: true
       
@@ -109,7 +109,7 @@ jobs:
       - name: Build CLI MacOs Target
         run: |
           cargo install cross
-          cross build --release --features internal_dependency --target ${{ env.MACOS_TARGET }} -Z registry-auth
+          cross build --release --features internal_dependency --target ${{ env.MACOS_TARGET }}
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.evervault-rust-lib-index }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.evervault-rust-lib-token }}
@@ -145,7 +145,7 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2023-09-13
+          toolchain: stable
           target: ${{ env.WINDOWS_TARGET }}
           override: true
 
@@ -160,7 +160,7 @@ jobs:
             shared-key: "windows-cross-builds"
 
       - name: Fetch dependencies
-        run: cargo fetch -Z registry-auth
+        run: cargo fetch
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.evervault-rust-lib-index }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.evervault-rust-lib-token }}
@@ -168,7 +168,7 @@ jobs:
       - name: Build CLI for Windows
         run: |
           cargo install cross
-          cross build --release --features internal_dependency --target ${{ env.WINDOWS_TARGET }} -Z registry-auth
+          cross build --release --features internal_dependency --target ${{ env.WINDOWS_TARGET }}
         env:
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.evervault-rust-lib-index }}
           CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.evervault-rust-lib-token }}
