@@ -1,4 +1,5 @@
 use crate::common::CliError;
+use chrono::Utc;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -31,6 +32,8 @@ pub enum CertError {
     TimstampParseError(#[from] chrono::ParseError),
     #[error("No certs found for the current Enclave.")]
     NoCertsFound,
+    #[error("Provided cert expiry is in the past: {0}")]
+    CertExpiryIsInThePast(chrono::DateTime<Utc>),
 }
 
 impl CliError for CertError {
@@ -48,7 +51,7 @@ impl CliError for CertError {
             | Self::CertPathDoesNotExist(_)
             | Self::TimstampParseError(_) => exitcode::DATAERR,
             Self::ApiError(inner) => inner.exitcode(),
-            Self::NoCertsFound => exitcode::USAGE,
+            Self::NoCertsFound | Self::CertExpiryIsInThePast(_) => exitcode::USAGE,
         }
     }
 }
