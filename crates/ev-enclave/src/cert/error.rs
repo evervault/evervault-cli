@@ -33,7 +33,7 @@ pub enum CertError {
     #[error("No certs found for the current Enclave.")]
     NoCertsFound,
     #[error("Provided cert expiry is in the past: {0}")]
-    CertExpiryIsInThePast(chrono::DateTime<Utc>)
+    CertExpiryIsInThePast(chrono::DateTime<Utc>),
 }
 
 impl CliError for CertError {

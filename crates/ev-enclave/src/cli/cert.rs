@@ -42,7 +42,7 @@ pub struct NewCertArgs {
     /// Number of days that the certificate will be valid for. Can be composed with the --weeks and --years options. If days, weeks, and years are not provided, the cert will be valid for 1 year.
     #[clap(long = "days")]
     pub days: Option<i64>,
-    
+
     /// Number of weeks that the certificate will be valid for. Can be composed with the --days and --years options. If days, weeks, and years are not provided, the cert will be valid for 1 year.
     #[clap(long = "weeks")]
     pub weeks: Option<i64>,
@@ -94,16 +94,17 @@ pub async fn run(cert_args: CertArgs) -> exitcode::ExitCode {
                 };
             let output_path = std::path::Path::new(&new_args.output_dir);
 
-            let desired_lifetime = cert::DesiredLifetime::new(new_args.days, new_args.weeks, new_args.years);
+            let desired_lifetime =
+                cert::DesiredLifetime::new(new_args.days, new_args.weeks, new_args.years);
 
-            let (cert_path, key_path) = match cert::create_new_cert(output_path, distinguished_name, desired_lifetime)
-            {
-                Ok(paths) => paths,
-                Err(e) => {
-                    log::error!("An error occurred while generating your cert - {e}");
-                    return e.exitcode();
-                }
-            };
+            let (cert_path, key_path) =
+                match cert::create_new_cert(output_path, distinguished_name, desired_lifetime) {
+                    Ok(paths) => paths,
+                    Err(e) => {
+                        log::error!("An error occurred while generating your cert - {e}");
+                        return e.exitcode();
+                    }
+                };
 
             if atty::is(Stream::Stdout) {
                 log::info!("Signing cert successfully generated...");

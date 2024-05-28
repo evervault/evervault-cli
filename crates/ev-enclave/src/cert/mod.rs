@@ -86,7 +86,7 @@ pub fn create_new_cert(
         .add(chrono::Duration::weeks(desired_lifetime.years * 52));
 
     if expiry_time.cmp(&now) != Ordering::Greater {
-      return Err(CertError::CertExpiryIsInThePast(expiry_time));
+        return Err(CertError::CertExpiryIsInThePast(expiry_time));
     }
 
     cert_params.not_after = rcgen::date_time_ymd(
