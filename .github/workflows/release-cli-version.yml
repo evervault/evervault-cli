@@ -49,8 +49,8 @@ jobs:
       full-version: ${{ needs.get-version.outputs.full_version }}
       ev-domain: 'evervault.com'
     secrets:
-      aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      aws-access-key-id: ${{ secrets.PUBLIC_REPO_AWS_ACCESS_KEY_ID }}
+      aws-secret-access-key: ${{ secrets.PUBLIC_REPO_AWS_SECRET_ACCESS_KEY }}
       aws-cloudfront-distribution-id: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
       evervault-rust-lib-index: ${{ secrets.RUST_CRYPTO_REGISTRY }}
       evervault-rust-lib-token: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
