@@ -125,13 +125,22 @@ where
         .ok()
 }
 
-pub fn select(options: &Vec<String>, default: usize, prompt: Option<String>) -> Option<usize> {
+pub fn select<T>(options: &Vec<String>, default: usize, prompt: T) -> Option<usize>
+where
+    T: std::fmt::Display,
+{
     let theme = CliTheme::default();
     let mut select_obj = Select::with_theme(&theme);
-    if let Some(prompt) = prompt {
-        select_obj.with_prompt(prompt);
-    }
+    select_obj.with_prompt(prompt.to_string());
     select_obj.items(options).default(default).interact().ok()
+}
+
+pub fn preset_input(prompt: String, preset: String) -> Option<String> {
+    let theme = CliTheme::default();
+    let mut input: Input<String> = Input::with_theme(&theme);
+
+    input.with_prompt(prompt);
+    input.with_initial_text(preset).interact().ok()
 }
 
 /// To make quiet mode integration more simple
