@@ -65,11 +65,11 @@ pub trait EvApi {
         function_name: String,
     ) -> ApiResult<FunctionDeploymentCredentials>;
     async fn upload_function(&self, url: &str, function: tokio::fs::File) -> ApiResult<()>;
-    async fn get_function_deployment_status(
+    async fn get_function_deployment(
         &self,
         function_uuid: String,
         deployment_id: u64,
-    ) -> ApiResult<FunctionDeploymentStatus>;
+    ) -> ApiResult<FunctionDeployment>;
 }
 
 #[async_trait::async_trait]
@@ -196,11 +196,11 @@ impl EvApi for EvApiClient {
             .handle_no_op_response()
     }
 
-    async fn get_function_deployment_status(
+    async fn get_function_deployment(
         &self,
         function_uuid: String,
         deployment_id: u64,
-    ) -> ApiResult<FunctionDeploymentStatus> {
+    ) -> ApiResult<FunctionDeployment> {
         let url = format!(
             "{}/v2/functions/{}/deployments/{}",
             self.base_url(),
@@ -214,6 +214,5 @@ impl EvApi for EvApiClient {
             .await
             .handle_json_response::<FunctionDeployment>()
             .await
-            .map(|res| res.status)
     }
 }

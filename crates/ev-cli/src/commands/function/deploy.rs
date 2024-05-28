@@ -48,8 +48,8 @@ pub enum DeployError {
     ZipNotFound,
     #[error("An error occurred uploading the zipped Function source: {0}")]
     FunctionUpload(ApiError),
-    #[error("An error occured deploying your Function")]
-    DeploymentFailed,
+    #[error("An error occured deploying your Function - {0}")]
+    DeploymentFailed(String),
     #[error("An error occurred fetching the deployment status of your Function")]
     DeploymentStatusFetch(ApiError),
     #[error("An error occured deploying your Function. The deployment was found to be in a cancelled state.")]
@@ -70,7 +70,7 @@ impl CmdOutput for DeployError {
             DeployError::RecordCreate(_) => "function-record-create-error",
             DeployError::ZipNotFound => "function-zip-not-found-error",
             DeployError::FunctionUpload(_) => "function-upload-error",
-            DeployError::DeploymentFailed | DeployError::DeploymentCancelled => {
+            DeployError::DeploymentFailed(_) | DeployError::DeploymentCancelled => {
                 "function-deployment-error"
             }
             DeployError::DeploymentStatusFetch(_) => "function-deployment-status-fetch-error",
@@ -215,21 +215,27 @@ pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, Dep
     );
 
     loop {
-        let status = api_client
-            .get_function_deployment_status(creds.uuid.clone(), creds.deployment_id.clone())
+        let deployment = api_client
+            .get_function_deployment(creds.uuid.clone(), creds.deployment_id.clone())
             .await
             .map_err(DeployError::DeploymentStatusFetch)?;
 
-        if status.is_in_terminal_state() {
+        if deployment.status.is_in_terminal_state() {
             progress.finish();
         }
 
-        match status {
+        match deployment.status {
             FunctionDeploymentStatus::Deployed => {
                 progress.finish_with_message("Function deployed successfully.".into());
                 return Ok(DeployMessage::Deployed { uuid: creds.uuid });
             }
-            FunctionDeploymentStatus::Failed => return Err(DeployError::DeploymentFailed),
+            FunctionDeploymentStatus::Failed => {
+                return Err(DeployError::DeploymentFailed(
+                    deployment
+                        .failure_reason
+                        .unwrap_or("Unknown Error occurred".into()),
+                ))
+            }
             FunctionDeploymentStatus::Cancelled => return Err(DeployError::DeploymentCancelled),
             status => progress.set_message(format!(
                 "Function deployment status: {}",

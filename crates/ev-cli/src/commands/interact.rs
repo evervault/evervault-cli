@@ -75,7 +75,7 @@ pub mod validators {
 
     pub fn validate_function_language(language: &str) -> Result<(), ValidationError> {
         lazy_static::lazy_static!(
-            static ref LANGUAGE_REGEX: Regex = Regex::new(r"^node@18|node@20|python@3\.9|python@3\.10|python@3\.11$").unwrap();
+            static ref LANGUAGE_REGEX: Regex = Regex::new(r"\b(?:node|python)@\d+(\.\d+)?\b").unwrap();
         );
         let regex_result = LANGUAGE_REGEX.is_match(language);
         if !regex_result {

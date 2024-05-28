@@ -108,6 +108,6 @@ pub struct FunctionDeployment {
     #[serde(rename = "type")]
     deployment_type: Option<String>,
     commit_hash: Option<String>,
-    failure_reason: Option<String>,
+    pub failure_reason: Option<String>,
     published: bool,
 }
