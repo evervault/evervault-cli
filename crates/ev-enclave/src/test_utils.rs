@@ -16,7 +16,7 @@ pub async fn build_test_enclave(
     reproducible: bool,
 ) -> Result<(BuiltEnclave, OutputPath), BuildError> {
     let dn_string = crate::cert::DistinguishedName::default();
-    crate::cert::create_new_cert(std::path::Path::new("."), dn_string)
+    crate::cert::create_new_cert(std::path::Path::new("."), dn_string, crate::cert::DesiredLifetime::default())
         .expect("Failed to gen cert in tests");
     let build_args = get_test_build_args();
     let assets_client = AssetsClient::new();
