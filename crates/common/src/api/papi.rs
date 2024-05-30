@@ -3,7 +3,7 @@ use std::fs::File;
 use self::client::{ApiError, ApiErrorKind, ApiResult, HandleResponse};
 use crate::function::{
     CreateFunctionResponse, Function, FunctionDeployment, FunctionDeploymentCredentials,
-    FunctionDeploymentStatus, GetFunctionResponse,
+    GetFunctionResponse,
 };
 use crate::relay::{CreateRelay, Relay};
 use serde_json::json;
