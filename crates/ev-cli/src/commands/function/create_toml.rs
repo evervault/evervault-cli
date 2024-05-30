@@ -37,6 +37,7 @@ pub enum CreateTomlPrompt {
 
 #[derive(strum_macros::Display, Debug)]
 pub enum CreateTomlMessage {
+    #[strum(to_string = "Function configuration saved to function.toml.")]
     Success,
 }
 
