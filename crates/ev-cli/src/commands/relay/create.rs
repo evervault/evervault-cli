@@ -29,33 +29,33 @@ pub enum CreateError {
         "A Relay configuration file already exists at the path: {0}, use the --force parameter to overwrite the existing file"
     )]
     FileAlreadyExists(String),
-    #[error("An error occured while writing the Relay configuration file: {0}]")]
-    WriteError(#[from] std::io::Error),
+    #[error("An IO error occurred: {0}")]
+    Io(#[from] std::io::Error),
     #[error(
         "A domain must be chosen to create a Relay. Use the --domain flag to provide one ahead of time."
     )]
     NoDomain,
     #[error("An error occurred while creating the relay: {0}")]
-    ApiError(#[from] ApiError),
+    Api(#[from] ApiError),
     #[error("An error occured while parsing the relay configuration: {0}")]
-    ParseError(#[from] serde_json::Error),
+    Parse(#[from] serde_json::Error),
 }
 
 impl CmdOutput for CreateError {
     fn code(&self) -> String {
         match self {
             CreateError::FileAlreadyExists(_) => "relay-file-already-exists",
-            CreateError::WriteError(_) => "relay-write-error",
+            CreateError::Io(_) => "relay-write-error",
             CreateError::NoDomain => "relay-no-domain",
-            CreateError::ApiError(_) => "relay-api-error",
-            CreateError::ParseError(_) => "relay-parse-error",
+            CreateError::Api(_) => "relay-api-error",
+            CreateError::Parse(_) => "relay-parse-error",
         }
         .to_string()
     }
 
     fn exitcode(&self) -> crate::errors::ExitCode {
         match self {
-            CreateError::WriteError(_) => crate::errors::CANTCREAT,
+            CreateError::Io(_) => crate::errors::IOERR,
             _ => crate::errors::GENERAL,
         }
     }
@@ -100,8 +100,7 @@ pub async fn run(args: CreateArgs, auth: BasicAuth) -> Result<CreateMessage, Cre
         CreatePrompt::WhichDomain,
         false,
         Box::new(interact::validators::validate_destination_domain),
-    )
-    .ok_or(CreateError::NoDomain)?;
+    )?;
 
     let relay_req_body = Relay {
         id: None,

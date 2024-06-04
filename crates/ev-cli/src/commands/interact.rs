@@ -2,6 +2,8 @@ use crate::theme::CliTheme;
 use dialoguer::{Input, Select};
 use indicatif::{ProgressBar, ProgressStyle};
 
+use self::validators::ValidationError;
+
 pub mod validators {
     use lazy_static;
     use regex::Regex;
@@ -61,7 +63,7 @@ pub mod validators {
         }
     }
 
-    pub fn validate_function_name(name: &str) -> Result<(), ValidationError> {
+    pub fn validate_function_name(name: &String) -> Result<(), ValidationError> {
         lazy_static::lazy_static!(
             static ref NAME_REGEX: Regex = Regex::new(r"^[A-Za-z0-9]([-_]?[A-Za-z0-9])*$").unwrap();
         );
@@ -73,7 +75,7 @@ pub mod validators {
         Ok(())
     }
 
-    pub fn validate_function_language(language: &str) -> Result<(), ValidationError> {
+    pub fn validate_function_language(language: &String) -> Result<(), ValidationError> {
         lazy_static::lazy_static!(
             static ref LANGUAGE_REGEX: Regex = Regex::new(r"\b(?:node|python)@\d+(\.\d+)?\b").unwrap();
         );
@@ -110,7 +112,7 @@ pub fn validated_input<T>(
     prompt: T,
     allow_empty: bool,
     validator: Box<validators::GenericValidator>,
-) -> Option<String>
+) -> Result<String, std::io::Error>
 where
     T: std::fmt::Display,
 {
@@ -122,16 +124,31 @@ where
         .allow_empty(allow_empty)
         .validate_with(validator)
         .interact()
-        .ok()
 }
 
-pub fn select(options: &Vec<String>, default: usize, prompt: Option<String>) -> Option<usize> {
+pub fn select<T>(options: &Vec<String>, default: usize, prompt: T) -> Option<usize>
+where
+    T: std::fmt::Display,
+{
     let theme = CliTheme::default();
     let mut select_obj = Select::with_theme(&theme);
-    if let Some(prompt) = prompt {
-        select_obj.with_prompt(prompt);
-    }
+    select_obj.with_prompt(prompt.to_string());
     select_obj.items(options).default(default).interact().ok()
+}
+
+pub fn preset_input<S, T>(prompt: S, preset: T) -> Option<String>
+where
+    S: std::fmt::Display,
+    T: std::fmt::Display,
+{
+    let theme = CliTheme::default();
+    let mut input: Input<String> = Input::with_theme(&theme);
+
+    input
+        .with_prompt(prompt.to_string())
+        .default(preset.to_string())
+        .interact()
+        .ok()
 }
 
 /// To make quiet mode integration more simple

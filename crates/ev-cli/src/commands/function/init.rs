@@ -77,6 +77,8 @@ impl CmdOutput for InitMessage {
 pub enum InitPrompt {
     #[strum(to_string = "Give your function a name:")]
     Name,
+    #[strum(to_string = "Select your function's language:")]
+    Language,
 }
 
 pub async fn run(args: InitArgs, auth: BasicAuth) -> Result<InitMessage, InitError> {
@@ -90,12 +92,7 @@ pub async fn run(args: InitArgs, auth: BasicAuth) -> Result<InitMessage, InitErr
         .iter()
         .map(|lang| lang.to_string())
         .collect::<Vec<String>>();
-    let language = interact::select(
-        &langs,
-        0,
-        Some("Select your Function's language:".to_string()),
-    )
-    .unwrap();
+    let language = interact::select(&langs, 0, InitPrompt::Language).unwrap();
     let lang = valid_languages[language].to_string();
 
     let file = api_client.get_hello_function_template(lang.clone()).await?;

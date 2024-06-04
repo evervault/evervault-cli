@@ -11,6 +11,7 @@ mod auth;
 mod commands;
 mod errors;
 mod fs;
+mod function;
 mod relay;
 mod theme;
 mod tty;
