@@ -245,7 +245,7 @@ impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.details {
             Some(details) => {
-                write!(f, "{}", details.message)
+                write!(f, "{}", details.title)
             }
             None => self.kind.fmt(f),
         }
@@ -263,8 +263,9 @@ impl std::error::Error for ApiError {}
 #[derive(serde::Deserialize, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct ApiErrorDetails {
-    pub status_code: Option<u16>,
-    pub message: String,
+    pub status: Option<u16>,
+    pub title: String,
+    pub detail: String,
     pub code: Option<String>,
 }
 
@@ -290,12 +291,7 @@ impl ApiError {
 
     pub async fn get_error_detais_from_res(res: Response) -> ApiError {
         let mut api_error: ApiError = res.status().into();
-
-        let details = res.json::<ApiErrorDetails>().await;
-
-        if let Ok(details) = details {
-            api_error.details = Some(details);
-        }
+        api_error.details = res.json::<ApiErrorDetails>().await.ok();
 
         api_error
     }
