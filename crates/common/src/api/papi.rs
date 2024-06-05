@@ -275,6 +275,7 @@ impl EvApi for EvApiClient {
             .await
             .map(|res| res.environment)
     }
+
     async fn set_function_environment_variable(
         &self,
         function: &Function,
