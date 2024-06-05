@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use crate::function::{resolve_function_by_name_or_pwd, ResolveFunctionError};
 
-/// Deploy a function
+/// Get Function environment variables or a specific environment variable
 #[derive(Parser, Debug)]
 pub struct GetEnvArgs {
     #[arg(short, long)]

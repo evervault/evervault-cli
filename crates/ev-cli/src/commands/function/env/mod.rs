@@ -7,7 +7,7 @@ use get::GetEnvArgs;
 
 use crate::run_cmd;
 
-/// Manage Enclave signing certificates
+/// Manage Function environment variables
 #[derive(Debug, Parser)]
 #[command(name = "cert", about)]
 pub struct EnvArgs {
@@ -17,7 +17,7 @@ pub struct EnvArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum EnvCommands {
-    /// Create a new Enclave signing certificate
+    /// Get Function environment variables
     #[command()]
     Get(GetEnvArgs),
 }
