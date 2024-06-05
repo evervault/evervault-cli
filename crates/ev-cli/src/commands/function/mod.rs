@@ -2,6 +2,7 @@ use crate::run_cmd;
 use clap::Parser;
 
 mod create_toml;
+mod delete;
 mod deploy;
 mod init;
 
@@ -18,6 +19,7 @@ pub enum FunctionCommand {
     Init(init::InitArgs),
     Deploy(deploy::DeployArgs),
     CreateToml(create_toml::CreateTomlArgs),
+    Delete(delete::DeleteArgs),
 }
 
 pub async fn run(args: FunctionArgs) {
@@ -29,5 +31,6 @@ pub async fn run(args: FunctionArgs) {
         FunctionCommand::CreateToml(create_toml_args) => {
             run_cmd(create_toml::run(create_toml_args).await)
         }
+        FunctionCommand::Delete(delete_args) => run_cmd(delete::run(delete_args, auth).await),
     }
 }

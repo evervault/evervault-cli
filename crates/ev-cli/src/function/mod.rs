@@ -19,16 +19,16 @@ pub enum FunctionTomlError {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct FunctionToml {
-    function: FunctionProps,
+pub struct FunctionToml {
+    pub function: FunctionProps,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct FunctionProps {
-    name: String,
-    language: String,
+pub struct FunctionProps {
+    pub name: String,
+    pub language: String,
     #[serde(default = "default_handler")]
-    handler: String,
+    pub handler: String,
 }
 
 fn default_handler() -> String {
