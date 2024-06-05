@@ -77,6 +77,13 @@ pub trait EvApi {
         key: String,
     ) -> ApiResult<Map<String, Value>>;
     async fn get_function_environment(&self, function: &Function) -> ApiResult<Map<String, Value>>;
+    async fn set_function_environment_variable(
+        &self,
+        function: &Function,
+        key: String,
+        value: String,
+        is_secret: bool,
+    ) -> ApiResult<Function>;
 }
 
 #[async_trait::async_trait]
@@ -249,20 +256,48 @@ impl EvApi for EvApiClient {
             .header("api-key", &self.api_key)
             .send()
             .await
-            .handle_json_response::<GetFunctionEnvironmentResponse>()
+            .handle_json_response()
             .await
-            .map(|res| res.environment)
     }
 
     async fn get_function_environment(&self, function: &Function) -> ApiResult<Map<String, Value>> {
         let url = format!(
-            "{}/v2/functions/{}/environment",
+            "{}/v2/functions/{}/environment/",
             self.base_url(),
             function.name
         );
 
         self.get(&url)
             .header("api-key", &self.api_key)
+            .send()
+            .await
+            .handle_json_response::<GetFunctionEnvironmentResponse>()
+            .await
+            .map(|res| res.environment)
+    }
+
+    async fn set_function_environment_variable(
+        &self,
+        function: &Function,
+        key: String,
+        value: String,
+        is_secret: bool,
+    ) -> ApiResult<Function> {
+        let url = format!(
+            "{}/v2/functions/{}/environment",
+            self.base_url(),
+            function.uuid,
+        );
+
+        let body = json!({
+            "environmentVariableKey": key,
+            "environmentVariableValue": value,
+            "isSecret": is_secret,
+        });
+
+        self.put(&url)
+            .header("api-key", &self.api_key)
+            .json(&body)
             .send()
             .await
             .handle_json_response()
