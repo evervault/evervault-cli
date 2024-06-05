@@ -3,10 +3,10 @@ use std::fs::File;
 use self::client::{ApiError, ApiErrorKind, ApiResult, HandleResponse};
 use crate::function::{
     CreateFunctionResponse, Function, FunctionDeployment, FunctionDeploymentCredentials,
-    GetFunctionResponse,
+    GetFunctionEnvironmentResponse, GetFunctionResponse,
 };
 use crate::relay::{CreateRelay, Relay};
-use serde_json::json;
+use serde_json::{json, Map, Value};
 
 use super::*;
 use super::{
@@ -71,6 +71,12 @@ pub trait EvApi {
         deployment_id: u64,
     ) -> ApiResult<FunctionDeployment>;
     async fn delete_function(&self, function: &Function) -> ApiResult<()>;
+    async fn get_function_environment_variable(
+        &self,
+        function: &Function,
+        key: String,
+    ) -> ApiResult<Map<String, Value>>;
+    async fn get_function_environment(&self, function: &Function) -> ApiResult<Map<String, Value>>;
 }
 
 #[async_trait::async_trait]
@@ -225,5 +231,41 @@ impl EvApi for EvApiClient {
             .send()
             .await
             .handle_no_op_response()
+    }
+
+    async fn get_function_environment_variable(
+        &self,
+        function: &Function,
+        var_name: String,
+    ) -> ApiResult<Map<String, Value>> {
+        let url = format!(
+            "{}/v2/functions/{}/environment/{}",
+            self.base_url(),
+            function.name,
+            var_name
+        );
+
+        self.get(&url)
+            .header("api-key", &self.api_key)
+            .send()
+            .await
+            .handle_json_response::<GetFunctionEnvironmentResponse>()
+            .await
+            .map(|res| res.environment)
+    }
+
+    async fn get_function_environment(&self, function: &Function) -> ApiResult<Map<String, Value>> {
+        let url = format!(
+            "{}/v2/functions/{}/environment",
+            self.base_url(),
+            function.name
+        );
+
+        self.get(&url)
+            .header("api-key", &self.api_key)
+            .send()
+            .await
+            .handle_json_response()
+            .await
     }
 }

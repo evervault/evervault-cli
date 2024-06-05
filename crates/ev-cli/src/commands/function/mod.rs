@@ -4,6 +4,7 @@ use clap::Parser;
 mod create_toml;
 mod delete;
 mod deploy;
+mod env;
 mod init;
 
 #[derive(Parser, Debug)]
@@ -20,6 +21,7 @@ pub enum FunctionCommand {
     Deploy(deploy::DeployArgs),
     CreateToml(create_toml::CreateTomlArgs),
     Delete(delete::DeleteArgs),
+    Env(env::EnvArgs),
 }
 
 pub async fn run(args: FunctionArgs) {
@@ -32,5 +34,6 @@ pub async fn run(args: FunctionArgs) {
             run_cmd(create_toml::run(create_toml_args).await)
         }
         FunctionCommand::Delete(delete_args) => run_cmd(delete::run(delete_args, auth).await),
+        FunctionCommand::Env(env_args) => env::run(env_args, auth).await,
     }
 }
