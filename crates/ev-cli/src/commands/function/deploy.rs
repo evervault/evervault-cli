@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
 use crate::commands::interact;
-use crate::commands::interact::validators::{self, validate_function_language};
-use crate::fs::{get_current_function_language, get_current_function_name, zip_current_directory};
+use crate::commands::interact::validators::{
+    self, validate_function_language, validate_function_name,
+};
+use crate::fs::zip_current_directory;
+use crate::function::get_toml_from_pwd;
 use crate::{BaseArgs, CmdOutput};
 use chrono::{NaiveDate, Utc};
 use clap::Parser;
@@ -30,14 +33,16 @@ pub struct DeployArgs {
 
 #[derive(Error, Debug)]
 pub enum DeployError {
+    #[error(transparent)]
+    Toml(#[from] crate::function::FunctionTomlError),
     #[error("An error occurred while fetching the Functions for your app: {0}")]
     FetchAppFunctions(ApiError),
     #[error("No name field found in function.toml. Make sure the function.toml in the current directory contains a name field.")]
     MissingNameField,
     #[error(transparent)]
-    ValidationError(#[from] validators::ValidationError),
-    #[error(transparent)]
-    FsError(#[from] crate::fs::FsError),
+    Validation(#[from] validators::ValidationError),
+    #[error("An IO error occurred: {0}")]
+    Io(#[from] std::io::Error),
     #[error("{1} was deprecated on {0}. ")]
     VersionDeprecated(NaiveDate, String),
     #[error("{1} will be deprecated on {0}.")]
@@ -59,10 +64,11 @@ pub enum DeployError {
 impl CmdOutput for DeployError {
     fn code(&self) -> String {
         match self {
+            DeployError::Toml(_) => "function-toml-error",
             DeployError::FetchAppFunctions(_) => "function-fetch-functions-error",
             DeployError::MissingNameField => "function-missing-name-error",
-            DeployError::ValidationError(_) => "function-validation-error",
-            DeployError::FsError(_) => "function-fs-error",
+            DeployError::Validation(_) => "function-validation-error",
+            DeployError::Io(_) => "function-deploy-io-error",
             DeployError::VersionDeprecated(_, _) => "function-version-deprecated-error",
             DeployError::VersionWillBeDeprecated(_, _) => {
                 "function-version-will-be-deprecated-error"
@@ -79,7 +85,7 @@ impl CmdOutput for DeployError {
     }
 
     fn exitcode(&self) -> crate::errors::ExitCode {
-        crate::errors::GENERAL
+        crate::errors::SOFTWARE
     }
 }
 
@@ -111,15 +117,11 @@ pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, Dep
     let api_client = papi::EvApiClient::new(auth);
     let base_args = BaseArgs::parse();
 
-    crate::fs::validate_function_directory_structure()?;
-    crate::fs::validate_function_toml()?;
+    let function_toml = get_toml_from_pwd()?;
 
-    let name = get_current_function_name().map_err(|_| DeployError::MissingNameField)?;
-
-    validators::validate_function_name(&name)?;
-
-    let language = get_current_function_language()?;
-
+    let name = function_toml.function.name;
+    validate_function_name(&name)?;
+    let language = function_toml.function.language;
     validate_function_language(&language)?;
 
     let current_date: NaiveDate = Utc::now().date_naive();
@@ -146,7 +148,7 @@ pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, Dep
             progress.finish_with_message(
                 "An error occurred while zipping your Function source.".into(),
             );
-            return Err(DeployError::FsError(e));
+            return Err(e.into());
         }
     };
 
@@ -189,9 +191,7 @@ pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, Dep
     let zip_file = if !destination.is_file() {
         return Err(DeployError::ZipNotFound);
     } else {
-        tokio::fs::File::open(destination)
-            .await
-            .map_err(|e| crate::fs::FsError::Io(e))?
+        tokio::fs::File::open(destination).await?
     };
 
     function::upload_function_s3(&creds.signed_url, zip_file)

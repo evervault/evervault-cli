@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use crate::commands::interact::validators;
-use crate::fs::{copy_folder, get_current_dir, set_function_name};
+use crate::fs::copy_folder;
+use crate::function::{write_toml, FunctionProps, FunctionToml};
 use crate::CmdOutput;
 use crate::{commands::interact, fs::extract_zip};
 use clap::Parser;
@@ -33,21 +34,25 @@ pub enum InitError {
     #[error("An occurred updating the function name in the function toml")]
     TomlUpdate,
     #[error(transparent)]
-    ValidationError(#[from] validators::ValidationError),
+    Validation(#[from] validators::ValidationError),
+    #[error("An IO error occurred: {0}")]
+    Io(#[from] std::io::Error),
     #[error(transparent)]
-    FsError(#[from] crate::fs::FsError),
+    Toml(#[from] crate::function::FunctionTomlError),
 }
 
 impl CmdOutput for InitError {
     fn code(&self) -> String {
         match self {
-            InitError::TemplateFetch(_) => "function-template-fetch-error".to_string(),
-            InitError::Unzip(_) => "function-template-unzip-error".to_string(),
-            InitError::FsError(_) => "function-fs-error".to_string(),
-            InitError::TargetExists(_) => "function-target-exists-error".to_string(),
-            InitError::TomlUpdate => "function-toml-update-error".to_string(),
-            InitError::ValidationError(_) => "function-validation-error".to_string(),
+            InitError::TemplateFetch(_) => "function-template-fetch-error",
+            InitError::Unzip(_) => "function-template-unzip-error",
+            InitError::Io(_) => "function-io-error",
+            InitError::TargetExists(_) => "function-target-exists-error",
+            InitError::TomlUpdate => "function-toml-update-error",
+            InitError::Validation(_) => "function-validation-error",
+            InitError::Toml(_) => "function-toml-error",
         }
+        .to_string()
     }
 
     fn exitcode(&self) -> crate::errors::ExitCode {
@@ -83,6 +88,8 @@ pub enum InitPrompt {
 
 pub async fn run(args: InitArgs, auth: BasicAuth) -> Result<InitMessage, InitError> {
     let api_client = papi::EvApiClient::new(auth);
+    let base_args = crate::commands::BaseArgs::parse();
+
     let valid_languages: [&str; 2] = ["node", "python"];
     let name = interact::input(InitPrompt::Name, false);
 
@@ -95,31 +102,36 @@ pub async fn run(args: InitArgs, auth: BasicAuth) -> Result<InitMessage, InitErr
     let language = interact::select(&langs, 0, InitPrompt::Language).unwrap();
     let lang = valid_languages[language].to_string();
 
+    let progress = interact::start_spinner("Downloading function template...", !base_args.json);
     let file = api_client.get_hello_function_template(lang.clone()).await?;
+    progress.finish();
 
-    let target_dir = PathBuf::from("/tmp/hello-function-template".to_string());
+    let tmp_target_dir = PathBuf::from("/tmp/hello-function-template");
+    extract_zip(file, &tmp_target_dir)?;
 
-    extract_zip(file, target_dir)?;
+    let current_dir = std::env::current_dir()?;
+    let target_dir: PathBuf = args
+        .directory
+        .map(|dir| PathBuf::from(dir))
+        .unwrap_or_else(|| current_dir.join(&name));
 
-    let current_dir = get_current_dir()?;
-
-    let target = match args.directory {
-        Some(dir) => PathBuf::from(dir),
-        None => current_dir.join(&name),
-    };
-
-    if target.exists() && !args.force {
-        return Err(InitError::TargetExists(target));
+    if target_dir.exists() && !args.force {
+        return Err(InitError::TargetExists(target_dir));
     }
 
-    let folder = format!(
-        "/tmp/hello-function-template/template-{}-hello-function-master",
-        lang
-    );
+    let tmp_src_dir = tmp_target_dir.join(format!("template-{}-hello-function-master", lang));
 
-    let location = copy_folder(folder.as_str(), target)?;
+    let toml: FunctionToml = tmp_src_dir.join("function.toml").try_into()?;
 
-    set_function_name(&name, Some(&location)).map_err(|_| InitError::TomlUpdate)?;
+    let updated_toml = FunctionToml {
+        function: FunctionProps {
+            name: name.clone(),
+            ..toml.function
+        },
+    };
+    write_toml(&updated_toml, Some(tmp_src_dir.join("function.toml")))?;
+
+    let location = copy_folder(&tmp_src_dir, &target_dir)?;
 
     Ok(InitMessage::Initialized {
         name,
