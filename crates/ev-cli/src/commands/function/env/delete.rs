@@ -13,7 +13,7 @@ use crate::{
     function::{resolve_function_by_name_or_pwd, ResolveFunctionError},
 };
 
-/// Set an environment variable for a Function
+/// Delete an environment variable for a Function
 #[derive(Parser, Debug)]
 pub struct DeleteEnvArgs {
     #[arg(short, long)]
