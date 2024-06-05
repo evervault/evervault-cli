@@ -5,6 +5,7 @@ use env_logger::fmt::Formatter;
 use env_logger::{Builder, Env};
 use human_panic::setup_panic;
 use log::Record;
+use serde_json::Value;
 use std::io::Write;
 
 mod auth;
@@ -23,6 +24,8 @@ pub trait CmdOutput: std::fmt::Display {
     fn code(&self) -> String;
 
     fn exitcode(&self) -> crate::errors::ExitCode;
+
+    fn data(&self) -> Option<Value>;
 }
 
 pub fn run_cmd(r: Result<impl CmdOutput, impl CmdOutput>) -> ! {
@@ -39,12 +42,19 @@ where
     let base_args = BaseArgs::parse();
 
     let msg = if base_args.json {
-        serde_json::json!({
+        let mut json = serde_json::json!({
             "message": output.to_string(),
             "code": output.code(),
             "is_error": is_error
-        })
-        .to_string()
+        });
+
+        if let Some(data) = output.data() {
+            json.as_object_mut()
+                .expect("infallible")
+                .insert("data".into(), data);
+        }
+
+        json.to_string()
     } else {
         output.to_string()
     };

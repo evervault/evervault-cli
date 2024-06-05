@@ -59,6 +59,10 @@ impl CmdOutput for CreateError {
             _ => crate::errors::GENERAL,
         }
     }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
+    }
 }
 
 #[derive(strum_macros::Display, Debug)]
@@ -76,6 +80,10 @@ impl CmdOutput for CreateMessage {
 
     fn exitcode(&self) -> crate::errors::ExitCode {
         crate::errors::OK
+    }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
     }
 }
 

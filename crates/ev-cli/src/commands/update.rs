@@ -45,6 +45,10 @@ impl CmdOutput for UpdateError {
             Self::ScriptExec(_) => "update-script-exec-error".to_string(),
         }
     }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
+    }
 }
 
 #[derive(strum_macros::Display)]
@@ -65,6 +69,10 @@ impl CmdOutput for UpdateMessage {
             Self::AlreadyUpToDate(_) => "update-already-up-to-date".to_string(),
             Self::Updated => "update-complete".to_string(),
         }
+    }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
     }
 }
 

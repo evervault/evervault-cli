@@ -58,6 +58,10 @@ impl CmdOutput for InitError {
     fn exitcode(&self) -> crate::errors::ExitCode {
         crate::errors::GENERAL
     }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
+    }
 }
 
 #[derive(strum_macros::Display, Debug)]
@@ -75,6 +79,10 @@ impl CmdOutput for InitMessage {
 
     fn exitcode(&self) -> crate::errors::ExitCode {
         crate::errors::OK
+    }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
     }
 }
 

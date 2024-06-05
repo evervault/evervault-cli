@@ -42,6 +42,10 @@ impl CmdOutput for VersionError {
         }
         .to_string()
     }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
+    }
 }
 #[derive(strum_macros::Display, Debug)]
 pub enum VersionMessage {
@@ -67,6 +71,10 @@ impl CmdOutput for VersionMessage {
             VersionMessage::Outdated(_, _) => "version-outdated",
         }
         .to_string()
+    }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
     }
 }
 
