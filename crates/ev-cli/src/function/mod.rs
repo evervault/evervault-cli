@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
     io::{self, BufReader, Read},
-    ops::Deref,
     path::PathBuf,
 };
 use thiserror::Error;
@@ -20,10 +19,8 @@ pub enum FunctionTomlError {
     ConfigNotFound(String),
     #[error("Error reading function.toml file: {0}")]
     Io(#[from] io::Error),
-    #[error("Couldn't find a function.toml file in the current directory.")]
-    NotFoundHere,
     #[error("Error parsing function.toml file: {0}")]
-    Parse(#[from] toml::de::Error),
+    De(#[from] toml::de::Error),
     #[error("Error serializing function.toml file: {0}")]
     Ser(#[from] toml::ser::Error),
 }
@@ -79,12 +76,12 @@ pub enum ResolveFunctionError {
     #[error(transparent)]
     FunctionTomlError(#[from] FunctionTomlError),
     #[error(
-        "The specified Function could not be found. Please check the Function name and try again."
+        "The specified Function could not be found. Please check the Function name and try again"
     )]
     NamedNotFound,
-    #[error("The Function \"{0}\" specificed in the function.toml doesn't exist. Please make sure the Function exists in your app. Function that have been initialized locally must be deployed before you can manage them using the Evervault CLI.")]
+    #[error("The Function \"{0}\" specificed in the function.toml doesn't exist. Please make sure the Function exists in your app. Function that have been initialized locally must be deployed before you can manage them using the Evervault CLI")]
     Unknown(String),
-    #[error("Function could not be resolved. Either specify a Function with the --name flag, or run the command from the directory containing your function.toml file.")]
+    #[error("Function could not be resolved. Either specify a Function with the --name flag, or run the command from the directory containing your function.toml file")]
     NoToml,
     #[error("An IO error occurred: {0}")]
     Io(#[from] std::io::Error),
