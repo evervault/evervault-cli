@@ -1,5 +1,5 @@
 use crate::theme::CliTheme;
-use dialoguer::{Input, Select};
+use dialoguer::{Confirm, Input, Select};
 use indicatif::{ProgressBar, ProgressStyle};
 
 use self::validators::ValidationError;
@@ -149,6 +149,19 @@ where
         .default(preset.to_string())
         .interact()
         .ok()
+}
+
+pub fn confirm<S>(prompt: S, default: bool) -> bool
+where
+    S: std::fmt::Display,
+{
+    Confirm::with_theme(&CliTheme::default())
+        .with_prompt(prompt.to_string())
+        .wait_for_newline(false)
+        .default(default)
+        .show_default(true)
+        .interact()
+        .unwrap_or(default)
 }
 
 /// To make quiet mode integration more simple

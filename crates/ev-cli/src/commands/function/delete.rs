@@ -1,6 +1,6 @@
-use std::path::PathBuf;
+use std::io::IsTerminal;
 
-use clap::{ArgGroup, Parser};
+use clap::Parser;
 use common::api::{
     client::ApiError,
     papi::{self, EvApi},
@@ -8,34 +8,33 @@ use common::api::{
 };
 use thiserror::Error;
 
-use crate::{
-    commands::interact,
-    function::{FunctionToml, FunctionTomlError},
-    BaseArgs, CmdOutput,
-};
+use crate::{commands::interact, function::FunctionTomlError, CmdOutput};
 
 /// Delete an existing Function
 #[derive(Parser, Debug)]
-#[clap(group(
-  ArgGroup::new("json-path")
-    .arg("json")
-    .requires("path")
-))]
 pub struct DeleteArgs {
+    #[arg(short, long, default_value = "false")]
+    /// Force function deletion without confirmation
+    force: bool,
     #[arg(short, long)]
-    /// The path to the toml of the Function to delete
-    path: Option<String>,
+    /// The name of the Function to delete
+    name: Option<String>,
 }
 
 #[derive(strum_macros::Display, Debug)]
 pub enum DeletePrompt {
     #[strum(to_string = "Select the Function you want to delete:")]
     Name,
+    #[strum(to_string = "Are you sure you want to delete the Function '{function_name}'?")]
+    AreYouSure { function_name: String },
 }
 
 #[derive(strum_macros::Display, Debug)]
 pub enum DeleteMessage {
+    #[strum(to_string = "Function deleted successfully.")]
     Success,
+    #[strum(to_string = "Function deletion was cancelled.")]
+    Cancelled,
 }
 
 impl CmdOutput for DeleteMessage {
@@ -44,7 +43,11 @@ impl CmdOutput for DeleteMessage {
     }
 
     fn code(&self) -> String {
-        "function-delete-success".to_string()
+        match self {
+            DeleteMessage::Success => "function-delete-success",
+            DeleteMessage::Cancelled => "function-delete-cancelled",
+        }
+        .to_string()
     }
 }
 
@@ -60,6 +63,12 @@ pub enum DeleteError {
     FunctionNotFound,
     #[error("An error occurred while deleting the Function: {0}")]
     Api(#[from] ApiError),
+    #[error(
+        "The --force flag must be passed to the delete command when not running interactively."
+    )]
+    MustForce,
+    #[error("You must provide a Function name to delete when not running interactively.")]
+    MustProvideName,
 }
 
 impl CmdOutput for DeleteError {
@@ -73,6 +82,8 @@ impl CmdOutput for DeleteError {
             DeleteError::FunctionToml(_) => "function-delete-toml-error",
             DeleteError::FunctionNotFound => "function-delete-not-found",
             DeleteError::Api(_) => "function-delete-api-error",
+            DeleteError::MustForce => "function-delete-must-force",
+            DeleteError::MustProvideName => "function-delete-must-provide-name",
         }
         .to_string()
     }
@@ -80,18 +91,14 @@ impl CmdOutput for DeleteError {
 
 pub async fn run(args: DeleteArgs, auth: BasicAuth) -> Result<DeleteMessage, DeleteError> {
     let api_client = papi::EvApiClient::new(auth);
-    let base_args = BaseArgs::parse();
 
     let functions = api_client.get_all_functions_for_app().await.unwrap();
 
-    let maybe_target_function = match args.path {
-        Some(p) => {
-            let path = PathBuf::from(p);
-            let func_toml = FunctionToml::try_from(&path)?;
+    let is_terminal = std::io::stdout().is_terminal();
 
-            functions.iter().find(|f| f.name == func_toml.function.name)
-        }
-        None if base_args.json => unreachable!("Infallible over arg group"),
+    let maybe_target_function = match args.name {
+        Some(n) => functions.iter().find(|f| f.name == n),
+        None if !is_terminal => return Err(DeleteError::MustProvideName),
         None => {
             let function_names = functions.iter().map(|f| f.name.clone()).collect::<Vec<_>>();
             let selected =
@@ -101,6 +108,23 @@ pub async fn run(args: DeleteArgs, auth: BasicAuth) -> Result<DeleteMessage, Del
     };
 
     let target_function = maybe_target_function.ok_or_else(|| DeleteError::FunctionNotFound)?;
+
+    if !args.force {
+        if is_terminal {
+            let confirm = interact::confirm(
+                DeletePrompt::AreYouSure {
+                    function_name: target_function.clone().name,
+                },
+                false,
+            );
+
+            if !confirm {
+                return Ok(DeleteMessage::Cancelled);
+            }
+        } else {
+            return Err(DeleteError::MustForce);
+        }
+    }
 
     api_client.delete_function(&target_function).await?;
 

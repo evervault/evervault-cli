@@ -70,6 +70,7 @@ pub trait EvApi {
         function_uuid: String,
         deployment_id: u64,
     ) -> ApiResult<FunctionDeployment>;
+    async fn delete_function(&self, function: &Function) -> ApiResult<()>;
 }
 
 #[async_trait::async_trait]
@@ -214,5 +215,15 @@ impl EvApi for EvApiClient {
             .await
             .handle_json_response::<FunctionDeployment>()
             .await
+    }
+
+    async fn delete_function(&self, function: &Function) -> ApiResult<()> {
+        let url = format!("{}/v2/functions/{}", self.base_url(), function.uuid);
+
+        self.delete(&url)
+            .header("api-key", &self.api_key)
+            .send()
+            .await
+            .handle_no_op_response()
     }
 }
