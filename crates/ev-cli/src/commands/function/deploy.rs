@@ -5,7 +5,7 @@ use crate::commands::interact::validators::{
     self, validate_function_language, validate_function_name,
 };
 use crate::fs::zip_current_directory;
-use crate::function::get_toml_from_pwd;
+use crate::function::{resolve_function_by_name_or_pwd, FunctionToml};
 use crate::{BaseArgs, CmdOutput};
 use chrono::{NaiveDate, Utc};
 use clap::Parser;
@@ -29,6 +29,9 @@ pub struct DeployArgs {
     /// Don't track the Function deployment status
     #[arg(short, long, default_value_t = false)]
     pub background: bool,
+    #[arg(short, long)]
+    /// The name of the Function to deploy
+    pub name: Option<String>,
 }
 
 #[derive(Error, Debug)]
@@ -37,8 +40,6 @@ pub enum DeployError {
     Toml(#[from] crate::function::FunctionTomlError),
     #[error("An error occurred while fetching the Functions for your app: {0}")]
     FetchAppFunctions(ApiError),
-    #[error("No name field found in function.toml. Make sure the function.toml in the current directory contains a name field.")]
-    MissingNameField,
     #[error(transparent)]
     Validation(#[from] validators::ValidationError),
     #[error("An IO error occurred: {0}")]
@@ -66,7 +67,6 @@ impl CmdOutput for DeployError {
         match self {
             DeployError::Toml(_) => "function-toml-error",
             DeployError::FetchAppFunctions(_) => "function-fetch-functions-error",
-            DeployError::MissingNameField => "function-missing-name-error",
             DeployError::Validation(_) => "function-validation-error",
             DeployError::Io(_) => "function-deploy-io-error",
             DeployError::VersionDeprecated(_, _) => "function-version-deprecated-error",
@@ -86,6 +86,10 @@ impl CmdOutput for DeployError {
 
     fn exitcode(&self) -> crate::errors::ExitCode {
         crate::errors::SOFTWARE
+    }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
     }
 }
 
@@ -111,13 +115,21 @@ impl CmdOutput for DeployMessage {
     fn exitcode(&self) -> crate::errors::ExitCode {
         crate::errors::OK
     }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        match self {
+            DeployMessage::Deployed { uuid } => Some(serde_json::json!({ "uuid": uuid })),
+            DeployMessage::BackgroundDeployment => None,
+        }
+    }
 }
 
 pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, DeployError> {
     let api_client = papi::EvApiClient::new(auth);
     let base_args = BaseArgs::parse();
 
-    let function_toml = get_toml_from_pwd()?;
+    let path = std::env::current_dir()?.join("function.toml");
+    let function_toml: FunctionToml = path.try_into()?;
 
     let name = function_toml.function.name;
     validate_function_name(&name)?;

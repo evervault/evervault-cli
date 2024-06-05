@@ -36,6 +36,10 @@ impl CmdOutput for DeployError {
             DeployError::ApiError(_) => crate::errors::GENERAL,
         }
     }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
+    }
 }
 
 #[derive(Display, EnumString)]
@@ -56,6 +60,15 @@ impl CmdOutput for DeployMessage {
 
     fn exitcode(&self) -> crate::errors::ExitCode {
         crate::errors::OK
+    }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        match self {
+            DeployMessage::Success { domain } => Some(serde_json::json!({ "domain": domain })),
+            DeployMessage::NewRelayCreated { domain } => {
+                Some(serde_json::json!({ "domain": domain }))
+            }
+        }
     }
 }
 

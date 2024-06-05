@@ -52,6 +52,10 @@ impl CmdOutput for CreateTomlMessage {
         }
         .to_string()
     }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
+    }
 }
 
 #[derive(Error, Debug)]
@@ -76,6 +80,10 @@ impl CmdOutput for CreateTomlError {
             CreateTomlError::AlreadyExists => "function-create-toml-already-exists",
         }
         .to_string()
+    }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
     }
 }
 
