@@ -8,7 +8,11 @@ use common::api::{
 };
 use thiserror::Error;
 
-use crate::{commands::interact, function::FunctionTomlError, CmdOutput};
+use crate::{
+    commands::interact,
+    function::{resolve_function_by_name_or_pwd, FunctionTomlError, ResolveFunctionError},
+    CmdOutput,
+};
 
 /// Delete an existing Function
 #[derive(Parser, Debug)]
@@ -49,6 +53,10 @@ impl CmdOutput for DeleteMessage {
         }
         .to_string()
     }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
+    }
 }
 
 #[derive(Error, Debug)]
@@ -57,18 +65,14 @@ pub enum DeleteError {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     FunctionToml(#[from] FunctionTomlError),
-    #[error(
-        "The specified Function could not be found. Please check the Function name and try again."
-    )]
-    FunctionNotFound,
+    #[error(transparent)]
+    Resolve(#[from] ResolveFunctionError),
     #[error("An error occurred while deleting the Function: {0}")]
     Api(#[from] ApiError),
     #[error(
         "The --force flag must be passed to the delete command when not running interactively."
     )]
     MustForce,
-    #[error("You must provide a Function name to delete when not running interactively.")]
-    MustProvideName,
 }
 
 impl CmdOutput for DeleteError {
@@ -80,37 +84,25 @@ impl CmdOutput for DeleteError {
         match self {
             DeleteError::Io(_) => "function-delete-io-error",
             DeleteError::FunctionToml(_) => "function-delete-toml-error",
-            DeleteError::FunctionNotFound => "function-delete-not-found",
+            DeleteError::Resolve(_) => "function-delete-resolve-error",
             DeleteError::Api(_) => "function-delete-api-error",
             DeleteError::MustForce => "function-delete-must-force",
-            DeleteError::MustProvideName => "function-delete-must-provide-name",
         }
         .to_string()
+    }
+
+    fn data(&self) -> Option<serde_json::Value> {
+        None
     }
 }
 
 pub async fn run(args: DeleteArgs, auth: BasicAuth) -> Result<DeleteMessage, DeleteError> {
     let api_client = papi::EvApiClient::new(auth);
 
-    let functions = api_client.get_all_functions_for_app().await.unwrap();
-
-    let is_terminal = std::io::stdout().is_terminal();
-
-    let maybe_target_function = match args.name {
-        Some(n) => functions.iter().find(|f| f.name == n),
-        None if !is_terminal => return Err(DeleteError::MustProvideName),
-        None => {
-            let function_names = functions.iter().map(|f| f.name.clone()).collect::<Vec<_>>();
-            let selected =
-                interact::select(&function_names, 0, DeletePrompt::Name).expect("No input given");
-            functions.get(selected)
-        }
-    };
-
-    let target_function = maybe_target_function.ok_or_else(|| DeleteError::FunctionNotFound)?;
+    let target_function = resolve_function_by_name_or_pwd(args.name, &api_client).await?;
 
     if !args.force {
-        if is_terminal {
+        if std::io::stdout().is_terminal() {
             let confirm = interact::confirm(
                 DeletePrompt::AreYouSure {
                     function_name: target_function.clone().name,
