@@ -84,6 +84,11 @@ pub trait EvApi {
         value: String,
         is_secret: bool,
     ) -> ApiResult<Function>;
+    async fn delete_function_environment_variable(
+        &self,
+        function: &Function,
+        key: &String,
+    ) -> ApiResult<Function>;
 }
 
 #[async_trait::async_trait]
@@ -298,6 +303,26 @@ impl EvApi for EvApiClient {
         self.put(&url)
             .header("api-key", &self.api_key)
             .json(&body)
+            .send()
+            .await
+            .handle_json_response()
+            .await
+    }
+
+    async fn delete_function_environment_variable(
+        &self,
+        function: &Function,
+        key: &String,
+    ) -> ApiResult<Function> {
+        let url = format!(
+            "{}/v2/functions/{}/environment/{}",
+            self.base_url(),
+            function.uuid,
+            key
+        );
+
+        self.delete(&url)
+            .header("api-key", &self.api_key)
             .send()
             .await
             .handle_json_response()
