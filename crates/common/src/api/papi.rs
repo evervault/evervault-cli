@@ -89,6 +89,8 @@ pub trait EvApi {
         function: &Function,
         key: &String,
     ) -> ApiResult<Function>;
+    async fn encrypt(&self, value: Value) -> ApiResult<serde_json::Value>;
+    async fn decrypt(&self, value: Value) -> ApiResult<serde_json::Value>;
 }
 
 #[async_trait::async_trait]
@@ -323,6 +325,30 @@ impl EvApi for EvApiClient {
 
         self.delete(&url)
             .header("api-key", &self.api_key)
+            .send()
+            .await
+            .handle_json_response()
+            .await
+    }
+
+    async fn encrypt(&self, value: Value) -> ApiResult<serde_json::Value> {
+        let url = format!("{}/encrypt", self.base_url());
+
+        self.post(&url)
+            .header("content-type", "application/json")
+            .json(&value)
+            .send()
+            .await
+            .handle_json_response()
+            .await
+    }
+
+    async fn decrypt(&self, value: Value) -> ApiResult<serde_json::Value> {
+        let url = format!("{}/decrypt", self.base_url());
+
+        self.post(&url)
+            .header("content-type", "application/json")
+            .json(&value)
             .send()
             .await
             .handle_json_response()
