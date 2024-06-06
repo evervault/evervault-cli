@@ -22,7 +22,7 @@ pub struct RunArgs {
     #[arg(short, long)]
     /// The JSON payload to send to the Function
     data: Option<String>,
-    #[arg(long = "async", short = 'a', action=ArgAction::SetTrue)]
+    #[arg(long = "async", action=ArgAction::SetTrue)]
     /// If the Function should be run asynchronously
     is_async: bool,
 }
