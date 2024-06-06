@@ -6,7 +6,7 @@ mod delete;
 mod deploy;
 mod env;
 mod init;
-mod run;
+
 #[derive(Parser, Debug)]
 #[command(name = "function")]
 pub struct FunctionArgs {
@@ -22,7 +22,6 @@ pub enum FunctionCommand {
     CreateToml(create_toml::CreateTomlArgs),
     Delete(delete::DeleteArgs),
     Env(env::EnvArgs),
-    Run(run::RunArgs),
 }
 
 pub async fn run(args: FunctionArgs) {
@@ -36,6 +35,5 @@ pub async fn run(args: FunctionArgs) {
         }
         FunctionCommand::Delete(delete_args) => run_cmd(delete::run(delete_args, auth).await),
         FunctionCommand::Env(env_args) => env::run(env_args, auth).await,
-        FunctionCommand::Run(run_args) => run_cmd(run::run(run_args, auth).await),
     }
 }
