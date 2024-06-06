@@ -56,7 +56,11 @@ where
 
         json.to_string()
     } else {
-        output.to_string()
+        if let Some(Ok(data)) = output.data().map(|d| serde_json::to_string_pretty(&d)) {
+            format!("{}\n{}", output.to_string(), data)
+        } else {
+            output.to_string()
+        }
     };
 
     println!("{}", msg);
