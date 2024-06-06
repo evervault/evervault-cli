@@ -10,7 +10,7 @@ use thiserror::Error;
 #[derive(Debug, Parser)]
 #[command(name = "encrypt", about)]
 pub struct EncryptArgs {
-    #[arg(long, num_args(0..))]
+    #[arg(short, long, num_args(0..))]
     /// The data to encrypt
     data: String,
 }
