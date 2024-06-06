@@ -6,7 +6,7 @@ use env_logger::{Builder, Env};
 use human_panic::setup_panic;
 use log::Record;
 use serde_json::Value;
-use std::io::Write;
+use std::io::{IsTerminal, Write};
 
 mod auth;
 mod commands;
@@ -54,7 +54,11 @@ where
                 .insert("data".into(), data);
         }
 
-        json.to_string()
+        if std::io::stdout().is_terminal() {
+            serde_json::to_string_pretty(&json).unwrap_or(json.to_string())
+        } else {
+            json.to_string()
+        }
     } else {
         if let Some(Ok(data)) = output.data().map(|d| serde_json::to_string_pretty(&d)) {
             format!("{}\n{}", output.to_string(), data)
