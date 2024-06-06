@@ -1,7 +1,7 @@
 use crate::{errors, CmdOutput};
 use clap::Parser;
+use common::api::BasicAuth;
 use common::api::{client::ApiError, papi::EvApiClient};
-use common::api::{papi::EvApi, BasicAuth};
 use serde_json::Value;
 use std::str::FromStr;
 use thiserror::Error;
@@ -10,7 +10,7 @@ use thiserror::Error;
 #[derive(Debug, Parser)]
 #[command(name = "decrypt", about)]
 pub struct DecryptArgs {
-    #[arg(short, long, num_args(0..))]
+    #[arg(short, long)]
     /// The data to decrypt
     data: String,
 }
