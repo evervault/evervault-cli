@@ -1,7 +1,6 @@
 use crate::{errors, CmdOutput};
 use clap::Parser;
-use common::api::BasicAuth;
-use common::api::{client::ApiError, papi::EvApiClient};
+use common::api::{client::ApiError, papi::EvApi, papi::EvApiClient, BasicAuth};
 use serde_json::Value;
 use std::str::FromStr;
 use thiserror::Error;
