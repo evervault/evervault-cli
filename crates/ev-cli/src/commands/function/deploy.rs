@@ -1,21 +1,25 @@
 use std::collections::HashMap;
 
-use crate::commands::interact;
-use crate::commands::interact::validators::{
-    self, validate_function_language, validate_function_name,
+use crate::{
+    commands::interact::{
+        self,
+        validators::{self, validate_function_language, validate_function_name},
+    },
+    fs::zip_current_directory,
+    function::FunctionToml,
+    BaseArgs, CmdOutput,
 };
-use crate::fs::zip_current_directory;
-use crate::function::{resolve_function_by_name_or_pwd, FunctionToml};
-use crate::{BaseArgs, CmdOutput};
 use chrono::{NaiveDate, Utc};
 use clap::Parser;
-use common::api::{
-    client::ApiError,
-    function,
-    papi::{self, EvApi},
-    BasicAuth,
+use common::{
+    api::{
+        client::ApiError,
+        function,
+        papi::{self, EvApi},
+        BasicAuth,
+    },
+    function::FunctionDeploymentStatus,
 };
-use common::function::FunctionDeploymentStatus;
 use tempfile::TempDir;
 use thiserror::Error;
 

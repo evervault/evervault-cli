@@ -31,10 +31,6 @@ pub enum CreateError {
     FileAlreadyExists(String),
     #[error("An IO error occurred: {0}")]
     Io(#[from] std::io::Error),
-    #[error(
-        "A domain must be chosen to create a Relay. Use the --domain flag to provide one ahead of time."
-    )]
-    NoDomain,
     #[error("An error occurred while creating the relay: {0}")]
     Api(#[from] ApiError),
     #[error("An error occured while parsing the relay configuration: {0}")]
@@ -46,7 +42,6 @@ impl CmdOutput for CreateError {
         match self {
             CreateError::FileAlreadyExists(_) => "relay-file-already-exists",
             CreateError::Io(_) => "relay-write-error",
-            CreateError::NoDomain => "relay-no-domain",
             CreateError::Api(_) => "relay-api-error",
             CreateError::Parse(_) => "relay-parse-error",
         }

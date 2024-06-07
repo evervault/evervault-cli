@@ -27,8 +27,6 @@ pub struct DeleteArgs {
 
 #[derive(strum_macros::Display, Debug)]
 pub enum DeletePrompt {
-    #[strum(to_string = "Select the Function you want to delete:")]
-    Name,
     #[strum(to_string = "Are you sure you want to delete the Function '{function_name}'?")]
     AreYouSure { function_name: String },
 }

@@ -31,8 +31,6 @@ pub enum InitError {
     Unzip(#[from] ZipError),
     #[error("Something already exists in the target directory ({0}), use --force if you want to overwrite it")]
     TargetExists(PathBuf),
-    #[error("An occurred updating the function name in the function toml")]
-    TomlUpdate,
     #[error(transparent)]
     Validation(#[from] validators::ValidationError),
     #[error("An IO error occurred: {0}")]
@@ -48,7 +46,6 @@ impl CmdOutput for InitError {
             InitError::Unzip(_) => "function-template-unzip-error",
             InitError::Io(_) => "function-io-error",
             InitError::TargetExists(_) => "function-target-exists-error",
-            InitError::TomlUpdate => "function-toml-update-error",
             InitError::Validation(_) => "function-validation-error",
             InitError::Toml(_) => "function-toml-error",
         }

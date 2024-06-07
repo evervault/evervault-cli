@@ -5,7 +5,7 @@ use serde::Serialize;
 use thiserror::Error;
 
 use crate::{
-    commands::interact::{input, preset_input, select, validated_input, validators},
+    commands::interact::{preset_input, select, validated_input, validators},
     CmdOutput,
 };
 
