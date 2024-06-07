@@ -70,8 +70,6 @@ jobs:
           mv ./target/${{ env.LINUX_TARGET }}/release/ev-cli ./${{ env.BIN_DIR }}/ev
           7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz
         env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.evervault-rust-lib-index }}
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.evervault-rust-lib-token }}
           CARGO_HOME: ${{ github.workspace }}/.cargo
 
       - name: Upload as artifact
@@ -105,9 +103,6 @@ jobs:
         run: |
           cargo install cross
           cross build --release --target ${{ env.MACOS_TARGET }}
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.evervault-rust-lib-index }}
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.evervault-rust-lib-token }}
 
       - name: Install 7z cli
         run: brew install p7zip
