@@ -15,17 +15,14 @@ pub struct EnvArgs {
 #[derive(Debug, Subcommand)]
 pub enum EnvCommands {
     #[command()]
-    /// Add Enclave environment variable
     Add(AddEnvArgs),
-    /// Delete Enclave environment variable
     #[command()]
     Delete(DeleteEnvArgs),
-    /// Get Enclave environment variables
     #[command()]
     Get(GetEnvArgs),
 }
 
-/// Add secret to Enclave env
+/// Add Enclave environment variable
 #[derive(Debug, Parser)]
 #[clap(name = "env", about)]
 pub struct AddEnvArgs {
@@ -46,7 +43,7 @@ pub struct AddEnvArgs {
     pub config: String,
 }
 
-/// Add delete secret from Enclave env
+/// Delete Enclave environment variable
 #[derive(Debug, Parser)]
 #[clap(name = "env", about)]
 pub struct DeleteEnvArgs {
@@ -59,7 +56,7 @@ pub struct DeleteEnvArgs {
     pub config: String,
 }
 
-/// Get secrets from Enclave env
+/// Get Enclave environment variables
 #[derive(Debug, Parser)]
 #[clap(name = "env", about)]
 pub struct GetEnvArgs {

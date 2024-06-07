@@ -8,7 +8,7 @@ use thiserror::Error;
 pub enum EnvError {
     #[error("An error occurred contacting the API — {0}")]
     ApiError(#[from] ApiError),
-    #[error("App and team uuid need to be provided in enclave.toml or as args")]
+    #[error("App, team and cage uuid need to be provided in enclave.toml or as args")]
     MissingAppInfo,
     #[error("An error occured during encryption — {0}")]
     EncryptError(ApiError),
@@ -78,16 +78,13 @@ pub struct EnclaveInfo {
 fn get_enclave_details(config_path: String) -> Result<EnclaveInfo, EnvError> {
     let enclave_config = EnclaveConfig::try_from_filepath(&config_path)?;
 
-    if enclave_config.app_uuid.is_none()
-        || enclave_config.team_uuid.is_none()
-        || enclave_config.uuid.is_none()
-    {
-        Err(EnvError::MissingAppInfo)
-    } else {
-        Ok(EnclaveInfo {
-            app_uuid: enclave_config.app_uuid.unwrap(),
-            team_uuid: enclave_config.team_uuid.unwrap(),
-            uuid: enclave_config.uuid.unwrap(),
-        })
-    }
+    let app_uuid = enclave_config.app_uuid.ok_or(EnvError::MissingAppInfo)?;
+    let team_uuid = enclave_config.team_uuid.ok_or(EnvError::MissingAppInfo)?;
+    let uuid = enclave_config.uuid.ok_or(EnvError::MissingAppInfo)?;
+
+    Ok(EnclaveInfo {
+        app_uuid,
+        team_uuid,
+        uuid,
+    })
 }
