@@ -56,7 +56,7 @@ impl AssetsClient {
     }
 
     pub async fn get_latest_cli_version(&self) -> ApiResult<String> {
-        let cli_version_url = format!("{}/cli/version", self.base_url());
+        let cli_version_url = format!("{}/version", self.base_url());
         self.get(&cli_version_url)
             .send()
             .await
@@ -65,7 +65,7 @@ impl AssetsClient {
     }
 
     pub async fn get_cli_install_script(&self) -> ApiResult<String> {
-        let cli_install_url = format!("{}/cli/v1/install", self.base_url());
+        let cli_install_url = format!("{}/v4/install", self.base_url());
         self.get(&cli_install_url)
             .send()
             .await
@@ -74,7 +74,7 @@ impl AssetsClient {
     }
 
     pub async fn get_cli_versions(&self) -> ApiResult<CLIVersions> {
-        let cli_versions = format!("{}/cli/versions", self.base_url());
+        let cli_versions = format!("{}/versions", self.base_url());
         self.get(&cli_versions)
             .send()
             .await
