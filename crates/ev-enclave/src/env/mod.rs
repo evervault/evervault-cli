@@ -8,8 +8,6 @@ use thiserror::Error;
 pub enum EnvError {
     #[error("An error occurred contacting the API — {0}")]
     ApiError(#[from] ApiError),
-    #[error("Error decoding public key — {0}")]
-    Base64DecodeError(#[from] base64::DecodeError),
     #[error("App and team uuid need to be provided in enclave.toml or as args")]
     MissingAppInfo,
     #[error("An error occured during encryption — {0}")]
