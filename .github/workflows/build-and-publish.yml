@@ -29,7 +29,6 @@ on:
 
 env:
   RUST_BACKTRACE: 1
-  WINDOWS_TARGET: x86_64-pc-windows-msvc
   MACOS_TARGET: x86_64-apple-darwin
   LINUX_TARGET: x86_64-unknown-linux-musl
 
@@ -133,67 +132,8 @@ jobs:
           name: macos
           path: ./${{ env.RELEASE_DIR }}
 
-  compile-windows:
-    runs-on: windows-latest
-    env:
-      VCPKGRS_DYNAMIC: 1
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Install Rust
-        run: rustup update --no-self-update stable && rustup default stable
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: ${{ env.WINDOWS_TARGET }}
-          override: true
-
-      - name: Inject Version
-        working-directory: crates/ev-enclave
-        run: |
-          sh ./scripts/insert-cli-version.sh ${{ inputs.full-version }}
-
-      - name: Download cached dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-            shared-key: "windows-cross-builds"
-
-      - name: Fetch dependencies
-        run: cargo fetch
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.evervault-rust-lib-index }}
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.evervault-rust-lib-token }}
-
-      - name: Build CLI for Windows
-        run: |
-          cargo install cross
-          cross build --release --target ${{ env.WINDOWS_TARGET }}
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.evervault-rust-lib-index }}
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.evervault-rust-lib-token }}
-
-      - name: Setup directories
-        shell: bash
-        run: |
-          mkdir ${{ env.BIN_DIR }}
-          mkdir ${{ env.RELEASE_DIR }}
-
-      - name: Compress
-        shell: bash
-        run: |
-          mv target/${{ env.WINDOWS_TARGET }}/release/ev-enclave.exe ${{ env.BIN_DIR }}/ev-enclave.exe
-          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-enclave-${{ env.WINDOWS_TARGET }}-${{ inputs.full-version }}.tar.gz
-
-      - name: Upload as artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: windows
-          path: ./${{ env.RELEASE_DIR }}
-
-          
   upload-artifacts-to-s3:
-    needs: [ compile-ubuntu, compile-macos, compile-windows ]
+    needs: [ compile-ubuntu, compile-macos ]
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -212,15 +152,6 @@ jobs:
         uses: actions/download-artifact@v1
         with:
           name: linux
-
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v1
-        with:
-          name: windows
-
-      - name: Upload Windows CLI to S3
-        run: |
-          aws s3 cp ./windows/ev-enclave-${{ env.WINDOWS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cage-build-assets-${{ inputs.stage }}/cli/${{ inputs.major-version }}/${{ inputs.full-version}}/${{ env.WINDOWS_TARGET }}/ev-enclave.tar.gz
 
       - name: Upload MacOS CLI to S3
         run: |

@@ -7,7 +7,6 @@ on:
 
 env:
   RUST_BACKTRACE: 1
-  WINDOWS_TARGET: x86_64-pc-windows-msvc
   MACOS_TARGET: x86_64-apple-darwin
   LINUX_TARGET: x86_64-unknown-linux-musl
   STAGE: production
@@ -77,11 +76,6 @@ jobs:
         with:
           name: linux
 
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v1
-        with:
-          name: windows
-
       - name: Upload Linux Release
         uses: actions/upload-release-asset@v1
         env:
@@ -102,13 +96,3 @@ jobs:
           asset_content_type: application/gzip
           asset_name: ev-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
 
-      - name: Upload Windows Release
-        uses: actions/upload-release-asset@v1
-        
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./windows/ev-enclave-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
-          asset_content_type: application/gzip
-          asset_name: ev-enclave-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
