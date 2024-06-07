@@ -6,6 +6,8 @@ use ev_enclave::config::{read_and_validate_config, BuildTimeConfig};
 use ev_enclave::docker::command::get_source_date_epoch;
 use ev_enclave::version::get_runtime_and_installer_version;
 
+use crate::BaseArgs;
+
 /// Build an Enclave from a Dockerfile
 #[derive(Parser, Debug)]
 #[command(name = "build", about)]
@@ -29,15 +31,6 @@ pub struct BuildArgs {
     /// Private key used to sign the Enclave image file
     #[arg(long = "private-key")]
     pub private_key: Option<String>,
-
-    /// Disable verbose logging
-    #[arg(long)]
-    pub quiet: bool,
-
-    // TODO(Mark): check
-    /// Enable JSON output
-    // #[arg(long, from_global)]
-    // pub json: bool,
 
     /// Path to directory where the processed dockerfile and Enclave will be saved
     #[arg(short = 'o', long = "output", default_value = ".")]
@@ -79,6 +72,8 @@ impl BuildTimeConfig for BuildArgs {
 }
 
 pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
+    let base_args = BaseArgs::parse();
+
     let (mut enclave_config, validated_config) =
         match read_and_validate_config(&build_args.config, &build_args) {
             Ok(config) => config,
@@ -111,7 +106,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         &validated_config,
         &build_args.context_path,
         Some(&build_args.output_dir),
-        !build_args.quiet,
+        base_args.verbose,
         borrowed_args,
         data_plane_version,
         installer_version,

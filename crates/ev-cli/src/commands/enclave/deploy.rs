@@ -16,6 +16,8 @@ use ev_enclave::{
 };
 use exitcode::ExitCode;
 
+use crate::BaseArgs;
+
 /// Deploy an Enclave from a toml file.
 #[derive(Debug, Parser)]
 #[command(name = "deploy", about)]
@@ -43,10 +45,6 @@ pub struct DeployArgs {
     /// Private key used to sign the Enclave image file
     #[arg(long = "private-key")]
     pub private_key: Option<String>,
-
-    /// Disable verbose output
-    #[arg(long)]
-    pub quiet: bool,
 
     /// Build time arguments to provide to docker
     #[arg(long = "build-arg")]
@@ -84,6 +82,7 @@ impl BuildTimeConfig for DeployArgs {
 }
 
 pub async fn run(deploy_args: DeployArgs, api_key: String) -> exitcode::ExitCode {
+    let base_args = BaseArgs::parse();
     let (mut enclave_config, validated_config) =
         match read_and_validate_config(&deploy_args.config, &deploy_args) {
             Ok(configs) => configs,
@@ -165,7 +164,7 @@ pub async fn run(deploy_args: DeployArgs, api_key: String) -> exitcode::ExitCode
         &validated_config,
         &deploy_args.context_path,
         deploy_args.eif_path.as_deref(),
-        !deploy_args.quiet,
+        base_args.verbose,
         build_args,
         from_existing,
         timestamp,
