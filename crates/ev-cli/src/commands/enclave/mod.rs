@@ -6,6 +6,7 @@ pub mod cert;
 pub mod delete;
 pub mod deploy;
 pub mod describe;
+pub mod env;
 pub mod init;
 pub mod list;
 pub mod logs;
@@ -41,6 +42,7 @@ pub enum AuthenticatedEnclaveCommand {
     Logs(logs::LogArgs),
     Restart(restart::RestartArgs),
     Scale(scale::ScaleArgs),
+    Env(env::EnvArgs),
 }
 
 pub async fn run(enclave_args: EnclaveArgs) {
@@ -51,7 +53,7 @@ pub async fn run(enclave_args: EnclaveArgs) {
         #[cfg(not(target_os = "windows"))]
         EnclaveCommand::Attest(attest_args) => attest::run(attest_args).await,
         EnclaveCommand::Authenticated(authenticated_command) => {
-            let (api_key, _) = crate::get_auth();
+            let (app_uuid, api_key) = crate::get_auth();
 
             match authenticated_command {
                 AuthenticatedEnclaveCommand::Cert(cert_args) => cert::run(cert_args, api_key).await,
@@ -69,6 +71,9 @@ pub async fn run(enclave_args: EnclaveArgs) {
                 }
                 AuthenticatedEnclaveCommand::Scale(scale_args) => {
                     scale::run(scale_args, api_key).await
+                }
+                AuthenticatedEnclaveCommand::Env(env_args) => {
+                    env::run(env_args, app_uuid, api_key).await
                 }
             }
         }
