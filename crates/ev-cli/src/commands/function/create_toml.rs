@@ -48,7 +48,7 @@ impl CmdOutput for CreateTomlMessage {
 
     fn code(&self) -> String {
         match self {
-            CreateTomlMessage::Success => "function-create-toml-success",
+            CreateTomlMessage::Success => "generic/success",
         }
         .to_string()
     }
@@ -76,8 +76,8 @@ impl CmdOutput for CreateTomlError {
 
     fn code(&self) -> String {
         match self {
-            CreateTomlError::Io(_) => "function-create-toml-io-error",
-            CreateTomlError::AlreadyExists => "function-create-toml-already-exists",
+            CreateTomlError::Io(_) => "generic/io-error",
+            CreateTomlError::AlreadyExists => "functions/toml-exists-error",
         }
         .to_string()
     }

@@ -7,7 +7,7 @@ use crate::{
     },
     fs::zip_current_directory,
     function::FunctionToml,
-    BaseArgs, CmdOutput,
+    BaseArgs,
 };
 use chrono::{NaiveDate, Utc};
 use clap::Parser;
@@ -22,6 +22,8 @@ use common::{
 };
 use tempfile::TempDir;
 use thiserror::Error;
+
+mod output;
 
 lazy_static::lazy_static! {
     pub static ref LANGUAGE_DEPRECATION_DATE_MAP:HashMap<String, NaiveDate> = HashMap::new();
@@ -66,37 +68,6 @@ pub enum DeployError {
     DeploymentCancelled,
 }
 
-impl CmdOutput for DeployError {
-    fn code(&self) -> String {
-        match self {
-            DeployError::Toml(_) => "function-toml-error",
-            DeployError::FetchAppFunctions(_) => "function-fetch-functions-error",
-            DeployError::Validation(_) => "function-validation-error",
-            DeployError::Io(_) => "function-deploy-io-error",
-            DeployError::VersionDeprecated(_, _) => "function-version-deprecated-error",
-            DeployError::VersionWillBeDeprecated(_, _) => {
-                "function-version-will-be-deprecated-error"
-            }
-            DeployError::RecordCreate(_) => "function-record-create-error",
-            DeployError::ZipNotFound => "function-zip-not-found-error",
-            DeployError::FunctionUpload(_) => "function-upload-error",
-            DeployError::DeploymentFailed(_) | DeployError::DeploymentCancelled => {
-                "function-deployment-error"
-            }
-            DeployError::DeploymentStatusFetch(_) => "function-deployment-status-fetch-error",
-        }
-        .to_string()
-    }
-
-    fn exitcode(&self) -> crate::errors::ExitCode {
-        crate::errors::SOFTWARE
-    }
-
-    fn data(&self) -> Option<serde_json::Value> {
-        None
-    }
-}
-
 #[derive(strum_macros::Display, Debug)]
 pub enum DeployMessage {
     #[strum(to_string = "Function ({uuid}) Deployed Succesfully")]
@@ -105,27 +76,6 @@ pub enum DeployMessage {
         to_string = "Function deployment initiated successfully. Deployment will continue in the background. You can check the status of your Function deployment in the Evervault Dashboard"
     )]
     BackgroundDeployment,
-}
-
-impl CmdOutput for DeployMessage {
-    fn code(&self) -> String {
-        match self {
-            DeployMessage::Deployed { .. } => "function-deployed",
-            DeployMessage::BackgroundDeployment => "function-background-deployment-started",
-        }
-        .to_string()
-    }
-
-    fn exitcode(&self) -> crate::errors::ExitCode {
-        crate::errors::OK
-    }
-
-    fn data(&self) -> Option<serde_json::Value> {
-        match self {
-            DeployMessage::Deployed { uuid } => Some(serde_json::json!({ "uuid": uuid })),
-            DeployMessage::BackgroundDeployment => None,
-        }
-    }
 }
 
 pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, DeployError> {
@@ -176,6 +126,7 @@ pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, Dep
         .get_all_functions_for_app()
         .await
         .map_err(DeployError::FetchAppFunctions)?;
+
     let maybe_function = apps_functions.iter().find(|f| f.name == name);
 
     let (creds, is_update) = if let Some(_) = maybe_function {

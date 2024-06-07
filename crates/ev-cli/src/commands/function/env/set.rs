@@ -38,9 +38,9 @@ pub enum SetEnvError {
 impl crate::CmdOutput for SetEnvError {
     fn code(&self) -> String {
         match self {
-            SetEnvError::Resolve(_) => "function-resolve-error",
-            SetEnvError::ApiError(_) => "function-environment-set-error",
-            SetEnvError::AlreadyExists(_) => "function-env-var-already-exists",
+            SetEnvError::Resolve(_) => "functions/resolve-error",
+            SetEnvError::ApiError(_) => "generic/api-error",
+            SetEnvError::AlreadyExists(_) => "generic/already-exists-error",
         }
         .to_string()
     }
