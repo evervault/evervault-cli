@@ -2,7 +2,7 @@ use std::fs::{create_dir_all, DirEntry, File};
 use std::io::Error as IoError;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use zip::{self, write::FileOptions};
+use zip::{self, write::SimpleFileOptions};
 
 pub fn extract_zip(tmpfile: File, target_dir: &PathBuf) -> Result<String, IoError> {
     let mut zip = zip::ZipArchive::new(tmpfile).unwrap();
@@ -86,7 +86,7 @@ fn walk_dir(
     zip: &mut zip::ZipWriter<File>,
     method: zip::CompressionMethod,
 ) -> Result<(), IoError> {
-    let options = FileOptions::default()
+    let options = SimpleFileOptions::default()
         .compression_method(method)
         .unix_permissions(0o755);
 
