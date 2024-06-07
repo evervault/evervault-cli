@@ -53,8 +53,8 @@ impl CmdOutput for UpdateError {
 
 #[derive(strum_macros::Display)]
 pub enum UpdateMessage {
-    #[strum(to_string = "The CLI is already up to date. (Version {})")]
-    AlreadyUpToDate(String),
+    #[strum(to_string = "The CLI is already up to date. (Version {version})")]
+    AlreadyUpToDate { version: String },
     #[strum(to_string = "The CLI has been updated to the latest version")]
     Updated,
 }
@@ -66,7 +66,7 @@ impl CmdOutput for UpdateMessage {
 
     fn code(&self) -> String {
         match self {
-            Self::AlreadyUpToDate(_) => "update-already-up-to-date".to_string(),
+            Self::AlreadyUpToDate { .. } => "update-already-up-to-date".to_string(),
             Self::Updated => "update-complete".to_string(),
         }
     }
@@ -85,7 +85,9 @@ pub async fn run(_: UpdateArgs) -> Result<UpdateMessage, UpdateError> {
 
     let current_version = env!("CARGO_PKG_VERSION");
     if new_version.as_str() == current_version {
-        return Ok(UpdateMessage::AlreadyUpToDate(current_version.to_string()));
+        return Ok(UpdateMessage::AlreadyUpToDate {
+            version: current_version.to_string(),
+        });
     }
 
     log::info!(
