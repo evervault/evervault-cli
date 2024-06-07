@@ -51,13 +51,13 @@ where
     // the message to stderr, so a user that doesn't pass the --json flag can still pipe the json
     if !base_args.json {
         if let Some(Ok(data)) = output.data().map(|d| serde_json::to_string_pretty(&d)) {
-            eprintln!("{}", msg);
-            println!("{}", data);
+            eprintln!("{msg}");
+            println!("{data}");
         } else {
-            println!("{}", msg);
+            println!("{msg}");
         }
     } else {
-        println!("{}", msg);
+        println!("{msg}");
     }
 
     std::process::exit(output.exitcode());
