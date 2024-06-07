@@ -33,12 +33,11 @@ impl CmdOutput for VersionError {
 
     fn code(&self) -> String {
         match self {
-            VersionError::IoError(_) => "version-io-error",
-            VersionError::ApiError(_) => "version-api-error",
-            VersionError::SemverError(_) => "version-semver-error",
-            VersionError::ParseIntError(_) => "version-deprecation-date-parse-error",
-            VersionError::FailedVersionCheck => "version-failed-version-check-error",
-            VersionError::IsDeprecated(_) => "version-deprecated-error",
+            VersionError::IoError(_) => "generic/io-error",
+            VersionError::ApiError(_) | VersionError::FailedVersionCheck => "generic/api-error",
+            VersionError::SemverError(_) => "generic/semver-error",
+            VersionError::ParseIntError(_) => "generic/parse-error",
+            VersionError::IsDeprecated(_) => "version/deprecated-error",
         }
         .to_string()
     }
@@ -70,8 +69,8 @@ impl CmdOutput for VersionMessage {
 
     fn code(&self) -> String {
         match self {
-            VersionMessage::WillBeDeprecated { .. } => "version-will-be-deprecated",
-            VersionMessage::Outdated { .. } => "version-outdated",
+            VersionMessage::WillBeDeprecated { .. } => "version/will-be-deprecated",
+            VersionMessage::Outdated { .. } => "version/outdated",
         }
         .to_string()
     }

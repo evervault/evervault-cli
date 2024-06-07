@@ -41,9 +41,9 @@ impl CmdOutput for CreateError {
     fn code(&self) -> String {
         match self {
             CreateError::FileAlreadyExists(_) => "generic/already-exists",
-            CreateError::Io(_) => "relay-write-error",
-            CreateError::Api(_) => "relay-api-error",
-            CreateError::Parse(_) => "relay-parse-error",
+            CreateError::Io(_) => "generic/io-error",
+            CreateError::Api(_) => "generic/api-error",
+            CreateError::Parse(_) => "generic/parse-error",
         }
         .to_string()
     }
@@ -69,7 +69,7 @@ pub enum CreateMessage {
 impl CmdOutput for CreateMessage {
     fn code(&self) -> String {
         match self {
-            CreateMessage::FileWritten(_) => "relay-file-written".to_string(),
+            CreateMessage::FileWritten(_) => "generic/success".to_string(),
         }
     }
 

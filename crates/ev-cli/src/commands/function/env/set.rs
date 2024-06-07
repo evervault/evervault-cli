@@ -63,7 +63,7 @@ pub enum SetEnvMessage {
 impl crate::CmdOutput for SetEnvMessage {
     fn code(&self) -> String {
         match self {
-            SetEnvMessage::Success { .. } => "function-environment-success",
+            SetEnvMessage::Success { .. } => "generic/success",
         }
         .to_string()
     }
