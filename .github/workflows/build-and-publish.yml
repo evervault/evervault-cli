@@ -22,10 +22,6 @@ on:
         required: true
       aws-secret-access-key:
         required: true
-      evervault-rust-lib-index:
-        required: true
-      evervault-rust-lib-token:
-        required: true
 
 env:
   RUST_BACKTRACE: 1
