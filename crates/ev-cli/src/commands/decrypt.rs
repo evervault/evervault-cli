@@ -42,7 +42,7 @@ impl CmdOutput for DecryptError {
 
 #[derive(strum_macros::Display)]
 pub enum DecryptMessage {
-    #[strum(to_string = "{value}")]
+    #[strum(to_string = "Successfully decrypted data")]
     Success { value: Value },
 }
 
@@ -67,7 +67,7 @@ impl CmdOutput for DecryptMessage {
 
 pub async fn run(args: DecryptArgs, auth: BasicAuth) -> Result<DecryptMessage, DecryptError> {
     let api_client = EvApiClient::new(auth);
-    let decrypted = api_client.decrypt(Value::from_str(&args.data)?).await?;
+    let decrypted = api_client.decrypt(serde_json::json!(&args.data)).await?;
 
     Ok(DecryptMessage::Success { value: decrypted })
 }

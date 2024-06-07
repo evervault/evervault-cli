@@ -10,6 +10,7 @@ pub mod deploy;
 pub mod describe;
 pub mod docker;
 pub mod enclave;
+pub mod env;
 pub mod logs;
 pub mod migrate;
 pub mod progress;
