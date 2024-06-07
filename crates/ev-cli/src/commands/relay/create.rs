@@ -40,7 +40,7 @@ pub enum CreateError {
 impl CmdOutput for CreateError {
     fn code(&self) -> String {
         match self {
-            CreateError::FileAlreadyExists(_) => "relay-file-already-exists",
+            CreateError::FileAlreadyExists(_) => "generic/already-exists",
             CreateError::Io(_) => "relay-write-error",
             CreateError::Api(_) => "relay-api-error",
             CreateError::Parse(_) => "relay-parse-error",

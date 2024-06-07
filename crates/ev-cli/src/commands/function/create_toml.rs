@@ -77,7 +77,7 @@ impl CmdOutput for CreateTomlError {
     fn code(&self) -> String {
         match self {
             CreateTomlError::Io(_) => "generic/io-error",
-            CreateTomlError::AlreadyExists => "functions/toml-exists-error",
+            CreateTomlError::AlreadyExists => "generic/already-exists",
         }
         .to_string()
     }

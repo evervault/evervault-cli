@@ -1,4 +1,4 @@
-use crate::{errors, version::VersionError, CmdOutput};
+use crate::{errors, CmdOutput};
 use clap::Parser;
 use common::api::{self, client::ApiError};
 use thiserror::Error;
@@ -10,8 +10,6 @@ pub struct UpdateArgs {}
 
 #[derive(Error, Debug)]
 pub enum UpdateError {
-    #[error(transparent)]
-    VersionError(#[from] VersionError),
     #[error("Failed to fetch information about the latest version of the CLI - {0}")]
     FetchLatestVersion(ApiError),
     #[error("Failed to fetch the CLI install script - {0}")]
@@ -30,20 +28,17 @@ impl CmdOutput for UpdateError {
             Self::FetchLatestVersion(_) | Self::FetchInstallScript(_) => errors::SOFTWARE,
             Self::TempFileError(_) => errors::CANTCREAT,
             Self::WriteError(_) => errors::IOERR,
-            Self::VersionError(e) => e.exitcode(),
             Self::ScriptExec(_) => errors::SOFTWARE,
         }
     }
 
     fn code(&self) -> String {
         match self {
-            Self::FetchLatestVersion(_) => "update-fetch-version-error".to_string(),
-            Self::FetchInstallScript(_) => "update-fetch-install-script-error".to_string(),
-            Self::TempFileError(_) => "update-tempfile-error".to_string(),
-            Self::WriteError(_) => "update-write-error".to_string(),
-            Self::VersionError(e) => e.code(),
-            Self::ScriptExec(_) => "update-script-exec-error".to_string(),
+            Self::FetchLatestVersion(_) | Self::FetchInstallScript(_) => "generic/api-error",
+            Self::TempFileError(_) => "generic/temp-file-error",
+            Self::ScriptExec(_) | Self::WriteError(_) => "generic/io-error",
         }
+        .to_string()
     }
 
     fn data(&self) -> Option<serde_json::Value> {
@@ -65,10 +60,7 @@ impl CmdOutput for UpdateMessage {
     }
 
     fn code(&self) -> String {
-        match self {
-            Self::AlreadyUpToDate { .. } => "update-already-up-to-date".to_string(),
-            Self::Updated => "update-complete".to_string(),
-        }
+        "generic/success".to_string()
     }
 
     fn data(&self) -> Option<serde_json::Value> {

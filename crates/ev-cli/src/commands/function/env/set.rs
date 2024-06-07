@@ -40,7 +40,7 @@ impl crate::CmdOutput for SetEnvError {
         match self {
             SetEnvError::Resolve(_) => "functions/resolve-error",
             SetEnvError::ApiError(_) => "generic/api-error",
-            SetEnvError::AlreadyExists(_) => "generic/already-exists-error",
+            SetEnvError::AlreadyExists(_) => "generic/already-exists",
         }
         .to_string()
     }

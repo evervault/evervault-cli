@@ -24,8 +24,8 @@ pub enum DeployError {
 impl CmdOutput for DeployError {
     fn code(&self) -> String {
         match self {
-            DeployError::RelayConfigError(_) => "relay-config-error",
-            DeployError::ApiError(_) => "relay-deploy-error",
+            DeployError::RelayConfigError(_) => "relay/config-error",
+            DeployError::ApiError(_) => "generic/api-error",
         }
         .to_string()
     }
@@ -53,9 +53,10 @@ pub enum DeployMessage {
 impl CmdOutput for DeployMessage {
     fn code(&self) -> String {
         match self {
-            DeployMessage::Success { .. } => "relay-deployed".to_string(),
-            DeployMessage::NewRelayCreated { .. } => "relay-created".to_string(),
+            DeployMessage::Success { .. } => "generic/success",
+            DeployMessage::NewRelayCreated { .. } => "relay/new-relay-created",
         }
+        .to_string()
     }
 
     fn exitcode(&self) -> crate::errors::ExitCode {

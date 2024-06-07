@@ -30,8 +30,8 @@ impl CmdOutput for EncryptError {
 
     fn code(&self) -> String {
         match self {
-            EncryptError::ApiError(_) => "encrypt-api-error",
-            EncryptError::Se(_) => "encrypt-serialization-error",
+            EncryptError::ApiError(_) => "generic/api-error",
+            EncryptError::Se(_) => "generic/serialization-error",
         }
         .to_string()
     }
@@ -54,7 +54,7 @@ impl CmdOutput for EncryptMessage {
 
     fn code(&self) -> String {
         match self {
-            EncryptMessage::Success { .. } => "encrypt-success",
+            EncryptMessage::Success { .. } => "generic/success",
         }
         .to_string()
     }
