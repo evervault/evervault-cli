@@ -30,8 +30,8 @@ pub enum GetEnvError {
 impl crate::CmdOutput for GetEnvError {
     fn code(&self) -> String {
         match self {
-            GetEnvError::Resolve(_) => "function-resolve-error",
-            GetEnvError::ApiError(_) => "function-environment-fetch-error",
+            GetEnvError::Resolve(_) => "functions/resolve-error",
+            GetEnvError::ApiError(_) => "generic/api-error",
         }
         .to_string()
     }
@@ -54,7 +54,7 @@ pub enum GetEnvMessage {
 impl crate::CmdOutput for GetEnvMessage {
     fn code(&self) -> String {
         match self {
-            GetEnvMessage::Success { .. } => "function-environment-success",
+            GetEnvMessage::Success { .. } => "generic/success",
         }
         .to_string()
     }

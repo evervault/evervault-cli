@@ -27,8 +27,6 @@ pub struct DeleteArgs {
 
 #[derive(strum_macros::Display, Debug)]
 pub enum DeletePrompt {
-    #[strum(to_string = "Select the Function you want to delete:")]
-    Name,
     #[strum(to_string = "Are you sure you want to delete the Function '{function_name}'?")]
     AreYouSure { function_name: String },
 }
@@ -48,8 +46,8 @@ impl CmdOutput for DeleteMessage {
 
     fn code(&self) -> String {
         match self {
-            DeleteMessage::Success => "function-delete-success",
-            DeleteMessage::Cancelled => "function-delete-cancelled",
+            DeleteMessage::Success => "generic/success",
+            DeleteMessage::Cancelled => "functions/deletion-cancelled",
         }
         .to_string()
     }
@@ -82,11 +80,11 @@ impl CmdOutput for DeleteError {
 
     fn code(&self) -> String {
         match self {
-            DeleteError::Io(_) => "function-delete-io-error",
-            DeleteError::FunctionToml(_) => "function-delete-toml-error",
-            DeleteError::Resolve(_) => "function-delete-resolve-error",
-            DeleteError::Api(_) => "function-delete-api-error",
-            DeleteError::MustForce => "function-delete-must-force",
+            DeleteError::Io(_) => "generic/io-error",
+            DeleteError::FunctionToml(_) => "functions/toml-error",
+            DeleteError::Resolve(_) => "functions/resolve-error",
+            DeleteError::Api(_) => "generic/api-error",
+            DeleteError::MustForce => "generic/must-force",
         }
         .to_string()
     }

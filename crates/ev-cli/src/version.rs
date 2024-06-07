@@ -33,12 +33,11 @@ impl CmdOutput for VersionError {
 
     fn code(&self) -> String {
         match self {
-            VersionError::IoError(_) => "version-io-error",
-            VersionError::ApiError(_) => "version-api-error",
-            VersionError::SemverError(_) => "version-semver-error",
-            VersionError::ParseIntError(_) => "version-deprecation-date-parse-error",
-            VersionError::FailedVersionCheck => "version-failed-version-check-error",
-            VersionError::IsDeprecated(_) => "version-deprecated-error",
+            VersionError::IoError(_) => "generic/io-error",
+            VersionError::ApiError(_) | VersionError::FailedVersionCheck => "generic/api-error",
+            VersionError::SemverError(_) => "generic/semver-error",
+            VersionError::ParseIntError(_) => "generic/parse-error",
+            VersionError::IsDeprecated(_) => "version/deprecated-error",
         }
         .to_string()
     }
@@ -52,23 +51,26 @@ pub enum VersionMessage {
     #[strum(to_string = "This major version will be deprecated on {deprecation_date}")]
     WillBeDeprecated { deprecation_date: String },
     #[strum(
-        to_string = "You are behind the latest version. Installed version: {}, latest version {}. Run ev update to update"
+        to_string = "You are behind the latest version. Installed version: {installed_version}, latest version {latest_version}. Run ev update to update"
     )]
-    Outdated(String, String),
+    Outdated {
+        installed_version: String,
+        latest_version: String,
+    },
 }
 
 impl CmdOutput for VersionMessage {
     fn exitcode(&self) -> exitcode::ExitCode {
         match self {
             Self::WillBeDeprecated { .. } => exitcode::OK,
-            Self::Outdated(_, _) => exitcode::SOFTWARE,
+            Self::Outdated { .. } => exitcode::SOFTWARE,
         }
     }
 
     fn code(&self) -> String {
         match self {
-            VersionMessage::WillBeDeprecated { .. } => "version-will-be-deprecated",
-            VersionMessage::Outdated(_, _) => "version-outdated",
+            VersionMessage::WillBeDeprecated { .. } => "version/will-be-deprecated",
+            VersionMessage::Outdated { .. } => "version/outdated",
         }
         .to_string()
     }
@@ -110,10 +112,10 @@ pub async fn check_version() -> Result<Option<VersionMessage>, VersionError> {
             }));
         }
     } else if installed_semver < latest_semver {
-        return Ok(Some(VersionMessage::Outdated(
-            installed_semver.to_string(),
-            latest_semver.to_string(),
-        )));
+        return Ok(Some(VersionMessage::Outdated {
+            installed_version: installed_semver.to_string(),
+            latest_version: latest_semver.to_string(),
+        }));
     }
 
     Ok(None)

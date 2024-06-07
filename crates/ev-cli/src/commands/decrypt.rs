@@ -29,8 +29,8 @@ impl CmdOutput for DecryptError {
 
     fn code(&self) -> String {
         match self {
-            DecryptError::ApiError(_) => "decrypt-api-error",
-            DecryptError::Se(_) => "decrypt-serialization-error",
+            DecryptError::ApiError(_) => "generic/api-error",
+            DecryptError::Se(_) => "generic/serialization-error",
         }
         .to_string()
     }
@@ -53,7 +53,7 @@ impl CmdOutput for DecryptMessage {
 
     fn code(&self) -> String {
         match self {
-            DecryptMessage::Success { .. } => "decrypt-success",
+            DecryptMessage::Success { .. } => "generic/success",
         }
         .to_string()
     }

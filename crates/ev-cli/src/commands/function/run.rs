@@ -45,8 +45,8 @@ impl CmdOutput for RunMessage {
 
     fn code(&self) -> String {
         match self {
-            RunMessage::Success { .. } => "function-run-success",
-            RunMessage::SuccessAsync { .. } => "function-scheduled-async-success",
+            RunMessage::Success { .. } => "functions/run-success",
+            RunMessage::SuccessAsync { .. } => "functions/scheduled-async-success",
         }
         .to_string()
     }
@@ -80,11 +80,11 @@ impl CmdOutput for RunError {
 
     fn code(&self) -> String {
         match self {
-            RunError::Io(_) => "function-run-io-error",
-            RunError::FunctionToml(_) => "function-run-toml-error",
-            RunError::Resolve(_) => "function-run-resolve-error",
-            RunError::Api(_) => "function-run-api-error",
-            RunError::Se(_) => "function-run-json-error",
+            RunError::Io(_) => "generic/io-error",
+            RunError::FunctionToml(_) => "functions/toml-error",
+            RunError::Resolve(_) => "functions/resolve-error",
+            RunError::Api(_) => "generic/api-error",
+            RunError::Se(_) => "generic/serialization-error",
         }
         .to_string()
     }

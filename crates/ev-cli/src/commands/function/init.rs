@@ -31,8 +31,6 @@ pub enum InitError {
     Unzip(#[from] ZipError),
     #[error("Something already exists in the target directory ({0}), use --force if you want to overwrite it")]
     TargetExists(PathBuf),
-    #[error("An occurred updating the function name in the function toml")]
-    TomlUpdate,
     #[error(transparent)]
     Validation(#[from] validators::ValidationError),
     #[error("An IO error occurred: {0}")]
@@ -44,13 +42,12 @@ pub enum InitError {
 impl CmdOutput for InitError {
     fn code(&self) -> String {
         match self {
-            InitError::TemplateFetch(_) => "function-template-fetch-error",
-            InitError::Unzip(_) => "function-template-unzip-error",
-            InitError::Io(_) => "function-io-error",
-            InitError::TargetExists(_) => "function-target-exists-error",
-            InitError::TomlUpdate => "function-toml-update-error",
-            InitError::Validation(_) => "function-validation-error",
-            InitError::Toml(_) => "function-toml-error",
+            InitError::TemplateFetch(_) => "functions/template-fetch-error",
+            InitError::Unzip(_) => "functions/unzip-error",
+            InitError::Io(_) => "generic/io-error",
+            InitError::TargetExists(_) => "functions/not-found-error",
+            InitError::Validation(_) => "generic/validation-failed",
+            InitError::Toml(_) => "functions/toml-error",
         }
         .to_string()
     }
@@ -73,7 +70,7 @@ pub enum InitMessage {
 impl CmdOutput for InitMessage {
     fn code(&self) -> String {
         match self {
-            InitMessage::Initialized { .. } => "function-initialized".to_string(),
+            InitMessage::Initialized { .. } => "generic/success".to_string(),
         }
     }
 

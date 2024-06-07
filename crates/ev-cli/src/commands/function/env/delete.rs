@@ -46,11 +46,11 @@ pub enum DeleteEnvError {
 impl crate::CmdOutput for DeleteEnvError {
     fn code(&self) -> String {
         match self {
-            DeleteEnvError::Resolve(_) => "function-resolve-error",
-            DeleteEnvError::ApiError(_) => "function-environment-delete-error",
-            DeleteEnvError::NotFound(_) => "function-env-var-not-found",
-            DeleteEnvError::Aborted => "function-env-var-delete-aborted",
-            DeleteEnvError::MustForce => "function-env-var-delete-must-force",
+            DeleteEnvError::Resolve(_) => "functions/resolve-error",
+            DeleteEnvError::ApiError(_) => "generic/api-error",
+            DeleteEnvError::NotFound(_) => "generic/not-found-error",
+            DeleteEnvError::Aborted => "generic/aborted",
+            DeleteEnvError::MustForce => "generic/must-force",
         }
         .to_string()
     }
@@ -79,7 +79,7 @@ pub enum DeleteEnvPrompt {
 impl crate::CmdOutput for DeleteEnvMessage {
     fn code(&self) -> String {
         match self {
-            DeleteEnvMessage::Success { .. } => "function-env-var-delete-success",
+            DeleteEnvMessage::Success { .. } => "generic/success",
         }
         .to_string()
     }
