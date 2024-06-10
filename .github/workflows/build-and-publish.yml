@@ -67,7 +67,7 @@ jobs:
           mkdir ${{ env.BIN_DIR }}
           mkdir ${{ env.RELEASE_DIR }}
           cross build -p ev-cli --release --target ${{ env.LINUX_TARGET }}
-          mv ./target/${{ env.LINUX_TARGET }}/release/ev-cli ./${{ env.BIN_DIR }}/ev
+          mv ./target/${{ env.LINUX_TARGET }}/release/ev ./${{ env.BIN_DIR }}/ev
           7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz
         env:
           CARGO_HOME: ${{ github.workspace }}/.cargo
@@ -114,7 +114,7 @@ jobs:
 
       - name: Compress binary
         run: |
-          mv target/${{env.MACOS_TARGET}}/release/ev-cli ${{ env.BIN_DIR }}/ev
+          mv target/${{env.MACOS_TARGET}}/release/ev ${{ env.BIN_DIR }}/ev
           7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ${{ env.RELEASE_DIR }}/ev-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz
 
       - name: Upload as artifact

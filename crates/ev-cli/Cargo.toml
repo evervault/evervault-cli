@@ -3,6 +3,10 @@ edition = "2021"
 name = "ev-cli"
 version = "4.2.0"
 
+[[bin]]
+name = "ev"
+path = "src/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

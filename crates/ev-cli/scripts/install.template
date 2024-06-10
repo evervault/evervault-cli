@@ -117,11 +117,7 @@ if [ "$PERFORM_INSTALL" = true ]; then
 fi
 
 get_file_location() {
-  if [ "$PLATFORM" = "Darwin" ]; then
-    EV_BINARY="${TARGET_DIR}/bin/ev"
-  else
-    EV_BINARY="${TARGET_DIR}/bin/ev"
-  fi
+  EV_BINARY="${TARGET_DIR}/bin/ev"
   chmod 0755 "$EV_BINARY"
 }
 
