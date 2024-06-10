@@ -11,7 +11,7 @@ use thiserror::Error;
 #[command(name = "encrypt", about)]
 pub struct EncryptArgs {
     #[arg(short, long, num_args(0..))]
-    /// The data to encrypt
+    ///A JSON value or file to be encrypted. This can be any valid JSON value: Objects, Arrays, Numbers, Boolean or Strings (strings should be enclosed in double quotes).
     data: String,
 }
 
@@ -19,7 +19,7 @@ pub struct EncryptArgs {
 pub enum EncryptError {
     #[error("An error occured while encrypting data: {0}")]
     ApiError(#[from] ApiError),
-    #[error("Failed to serialize data: {0}")]
+    #[error("Failed to serialize data. Data can be any valid JSON value: Objects, Arrays, Numbers, Boolean or Strings (strings should be enclosed in double quotes): {0}")]
     Se(#[from] serde_json::Error),
 }
 
@@ -43,7 +43,7 @@ impl CmdOutput for EncryptError {
 
 #[derive(strum_macros::Display)]
 pub enum EncryptMessage {
-    #[strum(to_string = "{value}")]
+    #[strum(to_string = "")]
     Success { value: Value },
 }
 
@@ -68,6 +68,7 @@ impl CmdOutput for EncryptMessage {
 
 pub async fn run(args: EncryptArgs, auth: BasicAuth) -> Result<EncryptMessage, EncryptError> {
     let api_client = EvApiClient::new(auth);
+
     let encrypted = api_client.encrypt(Value::from_str(&args.data)?).await?;
 
     Ok(EncryptMessage::Success { value: encrypted })
