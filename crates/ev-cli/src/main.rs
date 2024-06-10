@@ -42,33 +42,48 @@ where
     let base_args = BaseArgs::parse();
 
     let msg = if base_args.json {
-        let mut json = serde_json::json!({
-            "message": output.to_string(),
-            "code": output.code(),
-            "is_error": is_error
-        });
-
-        if let Some(data) = output.data() {
-            json.as_object_mut()
-                .expect("infallible")
-                .insert("data".into(), data);
-        }
-
-        if std::io::stdout().is_terminal() {
-            serde_json::to_string_pretty(&json).unwrap_or(json.to_string())
-        } else {
-            json.to_string()
-        }
+        fmt_json(&output, is_error)
     } else {
-        if let Some(Ok(data)) = output.data().map(|d| serde_json::to_string_pretty(&d)) {
-            format!("{}\n{}", output.to_string(), data)
-        } else {
-            output.to_string()
-        }
+        output.to_string()
     };
 
-    println!("{}", msg);
+    // when a we have json data to display in a non-json output, print it to stdout and print
+    // the message to stderr, so a user that doesn't pass the --json flag can still pipe the json
+    if !base_args.json {
+        if let Some(Ok(data)) = output.data().map(|d| serde_json::to_string_pretty(&d)) {
+            eprintln!("{msg}");
+            println!("{data}");
+        } else {
+            println!("{msg}");
+        }
+    } else {
+        println!("{msg}");
+    }
+
     std::process::exit(output.exitcode());
+}
+
+fn fmt_json<T>(output: &T, is_error: bool) -> String
+where
+    T: CmdOutput,
+{
+    let mut json = serde_json::json!({
+        "message": output.to_string(),
+        "code": output.code(),
+        "is_error": is_error
+    });
+
+    if let Some(data) = output.data() {
+        json.as_object_mut()
+            .expect("infallible")
+            .insert("data".into(), data);
+    }
+
+    if std::io::stdout().is_terminal() {
+        serde_json::to_string_pretty(&json).unwrap_or(json.to_string())
+    } else {
+        json.to_string()
+    }
 }
 
 #[derive(Debug, Parser)]

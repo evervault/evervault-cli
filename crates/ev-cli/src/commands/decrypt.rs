@@ -2,7 +2,6 @@ use crate::{errors, CmdOutput};
 use clap::Parser;
 use common::api::{client::ApiError, papi::EvApi, papi::EvApiClient, BasicAuth};
 use serde_json::Value;
-use std::str::FromStr;
 use thiserror::Error;
 
 /// Decrypt data using the Evervault API
