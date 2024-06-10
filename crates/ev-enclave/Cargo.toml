@@ -32,7 +32,7 @@ async-stream = "0.3.3"
 tokio-stream = "0.1.9"
 minus = { version = "5.0.5", features = ["static_output"] }
 exitcode = "1.1.2"
-tokio-rustls = { version = "0.23", features = ["dangerous_configuration"] }
+tokio-rustls = { version = "0.24", features = ["dangerous_configuration"] }
 x509-parser = "0.14.0"
 hex = "0.4.3"
 axum = "0.5.16"
