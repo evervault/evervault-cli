@@ -1,6 +1,7 @@
 use clap::{ArgGroup, Parser};
 use common::{api::AuthMode, CliError};
 use ev_enclave::api::enclave::{Enclave, EnclaveApi};
+use ev_enclave::cert::{create_new_cert, DesiredLifetime, DistinguishedName};
 use ev_enclave::config::{
     default_dockerfile, EgressSettings, EnclaveConfig, ScalingSettings, SigningInfo,
 };
@@ -153,10 +154,10 @@ async fn init_local_config(init_args: InitArgs, created_enclave: Enclave) -> exi
 
     if initial_config.signing.is_none() {
         log::info!("Generating signing credentials for enclave");
-        match crate::cert::create_new_cert(
+        match create_new_cert(
             output_path,
-            crate::cert::DistinguishedName::default(),
-            crate::cert::DesiredLifetime::default(),
+            DistinguishedName::default(),
+            DesiredLifetime::default(),
         ) {
             Ok((cert_path, key_path)) => {
                 initial_config.set_cert(format!("{}", cert_path.display()));
