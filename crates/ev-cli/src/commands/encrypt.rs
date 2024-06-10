@@ -71,7 +71,7 @@ pub async fn run(args: EncryptArgs, auth: BasicAuth) -> Result<EncryptMessage, E
 
     let data = match Value::from_str(&args.data) {
         Ok(val) => val,
-        Err(_) => format!("\"{}\"", args.data).parse::<Value>()?,
+        Err(_) => Value::String(args.data),
     };
 
     let encrypted = api_client.encrypt(data).await?;
