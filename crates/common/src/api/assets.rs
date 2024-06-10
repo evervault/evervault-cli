@@ -28,8 +28,8 @@ impl ApiClient for AssetsClient {
     }
 
     fn base_url(&self) -> String {
-        let stage = std::env::var("EV_DOMAIN").map_or("staging", |_| "production");
-        format!("https://cli.evervault.com/{stage}")
+        let domain = std::env::var("EV_DOMAIN").unwrap_or_else(|_| String::from("evervault.com"));
+        format!("https://cli.{}", domain)
     }
 
     fn auth(&self) -> &AuthMode {
