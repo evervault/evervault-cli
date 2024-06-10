@@ -2,7 +2,7 @@ use crate::{errors, CmdOutput};
 use clap::Parser;
 use common::api::{client::ApiError, papi::EvApiClient};
 use common::api::{papi::EvApi, BasicAuth};
-use serde_json::Value;
+use serde_json::{from_str, Value};
 use std::str::FromStr;
 use thiserror::Error;
 
@@ -43,7 +43,7 @@ impl CmdOutput for EncryptError {
 
 #[derive(strum_macros::Display)]
 pub enum EncryptMessage {
-    #[strum(to_string = "{value}")]
+    #[strum(to_string = "")]
     Success { value: Value },
 }
 
@@ -68,7 +68,13 @@ impl CmdOutput for EncryptMessage {
 
 pub async fn run(args: EncryptArgs, auth: BasicAuth) -> Result<EncryptMessage, EncryptError> {
     let api_client = EvApiClient::new(auth);
-    let encrypted = api_client.encrypt(Value::from_str(&args.data)?).await?;
+
+    let data = match Value::from_str(&args.data) {
+        Ok(val) => val,
+        Err(_) => format!("\"{}\"", args.data).parse::<Value>()?,
+    };
+
+    let encrypted = api_client.encrypt(data).await?;
 
     Ok(EncryptMessage::Success { value: encrypted })
 }
