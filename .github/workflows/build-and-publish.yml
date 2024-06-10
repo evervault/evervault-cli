@@ -146,11 +146,11 @@ jobs:
 
       - name: Upload MacOS CLI to S3
         run: |
-          aws s3 cp ./macos/ev-enclave-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{ inputs.major-version }}/${{ inputs.full-version }}/${{ env.MACOS_TARGET }}/ev-enclave.tar.gz
+          aws s3 cp ./macos/ev-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{ inputs.major-version }}/${{ inputs.full-version }}/${{ env.MACOS_TARGET }}/ev.tar.gz
 
       - name: Upload Ubuntu CLI to S3
         run: |
-          aws s3 cp ./linux/ev-enclave-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{ inputs.major-version }}/${{ inputs.full-version }}/${{ env.LINUX_TARGET }}/ev-enclave.tar.gz
+          aws s3 cp ./linux/ev-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{ inputs.major-version }}/${{ inputs.full-version }}/${{ env.LINUX_TARGET }}/ev.tar.gz
 
       - uses: actions/checkout@v3
       - name: Update install script in S3
