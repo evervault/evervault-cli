@@ -14,10 +14,6 @@ pub struct DeleteArgs {
     #[arg(long = "enclave-uuid")]
     pub enclave_uuid: Option<String>,
 
-    /// Disable verbose output
-    #[arg(long)]
-    pub quiet: bool,
-
     /// Perform the Enclave deletion in the background
     #[arg(long)]
     pub background: bool,
