@@ -2,7 +2,7 @@ use crate::{errors, CmdOutput};
 use clap::Parser;
 use common::api::{client::ApiError, papi::EvApiClient};
 use common::api::{papi::EvApi, BasicAuth};
-use serde_json::{from_str, Value};
+use serde_json::Value;
 use std::str::FromStr;
 use thiserror::Error;
 
