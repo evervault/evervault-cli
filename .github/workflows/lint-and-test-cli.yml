@@ -18,7 +18,7 @@ jobs:
           toolchain: stable
           components: rustfmt, clippy
       - name: Compile project
-        run: cargo build 
+        run: cargo build
       - name: Prepare pcr-sign package for integration testing
         run: |
           cd crates/pcr-sign

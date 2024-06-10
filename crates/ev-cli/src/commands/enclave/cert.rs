@@ -36,6 +36,18 @@ pub struct NewCertArgs {
     /// Defining the certificate distinguished name e.g. "/CN=EV/C=IE/ST=LEI/L=DUB/O=Evervault/OU=Eng". If not given, a generic Enclaves subject will be used.
     #[arg(long = "subj")]
     pub subject: Option<String>,
+
+    /// Number of days that the certificate will be valid for. Can be composed with the --weeks and --years options. If days, weeks, and years are not provided, the cert will be valid for 1 year.
+    #[clap(long = "days")]
+    pub days: Option<i64>,
+
+    /// Number of weeks that the certificate will be valid for. Can be composed with the --days and --years options. If days, weeks, and years are not provided, the cert will be valid for 1 year.
+    #[clap(long = "weeks")]
+    pub weeks: Option<i64>,
+
+    /// Number of years that the certificate will be valid for. Can be composed with the --days and --weeks options. If days, weeks, and years are not provided, the cert will be valid for 1 year.
+    #[clap(long = "years")]
+    pub years: Option<i64>,
 }
 
 #[derive(Parser, Debug)]
@@ -74,14 +86,18 @@ pub async fn run(cert_args: CertArgs, api_key: String) -> exitcode::ExitCode {
                     }
                 };
             let output_path = std::path::Path::new(&new_args.output_dir);
-            let (cert_path, key_path) = match cert::create_new_cert(output_path, distinguished_name)
-            {
-                Ok(paths) => paths,
-                Err(e) => {
-                    log::error!("An error occurred while generating your cert - {e}");
-                    return e.exitcode();
-                }
-            };
+
+            let desired_lifetime =
+                cert::DesiredLifetime::new(new_args.days, new_args.weeks, new_args.years);
+
+            let (cert_path, key_path) =
+                match cert::create_new_cert(output_path, distinguished_name, desired_lifetime) {
+                    Ok(paths) => paths,
+                    Err(e) => {
+                        log::error!("An error occurred while generating your cert - {e}");
+                        return e.exitcode();
+                    }
+                };
 
             if atty::is(Stream::Stdout) {
                 log::info!("Signing cert successfully generated...");

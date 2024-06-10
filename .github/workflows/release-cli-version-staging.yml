@@ -42,11 +42,11 @@ jobs:
     needs: [get-version]
     uses: ./.github/workflows/build-and-publish.yml
     with:
-      stage: 'staging'
-      major-version: '1'
+      stage: "staging"
+      major-version: "1"
       full-version: "${{ needs.get-version.outputs.full_version }}"
-      ev-domain: 'evervault.io'
+      ev-domain: "evervault.io"
     secrets:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}
-        aws-cloudfront-distribution-id: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }}
+      aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}
+      aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}
+      aws-cloudfront-distribution-id: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }}

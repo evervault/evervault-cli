@@ -4,6 +4,7 @@ use dialoguer::{Confirm, MultiSelect};
 use itertools::Itertools;
 use rcgen::CertificateParams;
 use sha2::{Digest, Sha384};
+use std::cmp::Ordering;
 use std::io::{Read, Write};
 use std::ops::Add;
 use std::path::{Path, PathBuf};
@@ -18,6 +19,38 @@ use common::api::AuthMode;
 
 pub mod error;
 pub use error::CertError;
+
+pub struct DesiredLifetime {
+    days: i64,
+    weeks: i64,
+    years: i64,
+}
+
+impl std::default::Default for DesiredLifetime {
+    fn default() -> Self {
+        Self {
+            days: Default::default(),
+            weeks: Default::default(),
+            years: 1,
+        }
+    }
+}
+
+impl DesiredLifetime {
+    pub fn new(days: Option<i64>, weeks: Option<i64>, years: Option<i64>) -> Self {
+        let use_default_lifetime = days.is_none() && weeks.is_none() && years.is_none();
+
+        if use_default_lifetime {
+            Self::default()
+        } else {
+            Self {
+                days: days.unwrap_or_default(),
+                weeks: weeks.unwrap_or_default(),
+                years: years.unwrap_or_default(),
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct CertValidityPeriod {
@@ -37,6 +70,7 @@ impl CertValidityPeriod {
 pub fn create_new_cert(
     output_dir: &Path,
     distinguished_name: DistinguishedName,
+    desired_lifetime: DesiredLifetime,
 ) -> Result<(PathBuf, PathBuf), CertError> {
     let mut cert_params = CertificateParams::new(vec![]);
     cert_params.alg = &rcgen::PKCS_ECDSA_P384_SHA384;
@@ -46,7 +80,15 @@ pub fn create_new_cert(
     let now = Utc::now();
     cert_params.not_before = rcgen::date_time_ymd(now.year(), now.month() as u8, now.day() as u8);
 
-    let expiry_time = now.add(chrono::Duration::weeks(52));
+    let expiry_time = now
+        .add(chrono::Duration::days(desired_lifetime.days))
+        .add(chrono::Duration::weeks(desired_lifetime.weeks))
+        .add(chrono::Duration::weeks(desired_lifetime.years * 52));
+
+    if expiry_time.cmp(&now) != Ordering::Greater {
+        return Err(CertError::CertExpiryIsInThePast(expiry_time));
+    }
+
     cert_params.not_after = rcgen::date_time_ymd(
         expiry_time.year(),
         expiry_time.month() as u8,

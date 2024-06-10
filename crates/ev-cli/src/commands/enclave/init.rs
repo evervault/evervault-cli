@@ -153,9 +153,10 @@ async fn init_local_config(init_args: InitArgs, created_enclave: Enclave) -> exi
 
     if initial_config.signing.is_none() {
         log::info!("Generating signing credentials for enclave");
-        match ev_enclave::cert::create_new_cert(
+        match crate::cert::create_new_cert(
             output_path,
-            ev_enclave::cert::DistinguishedName::default(),
+            crate::cert::DistinguishedName::default(),
+            crate::cert::DesiredLifetime::default(),
         ) {
             Ok((cert_path, key_path)) => {
                 initial_config.set_cert(format!("{}", cert_path.display()));
