@@ -42,10 +42,11 @@ pub enum EnclaveCommand {
 
 pub async fn run(enclave_args: EnclaveArgs, auth: BasicAuth) {
     let exitcode = match enclave_args.action {
+        #[cfg(not(target_os = "windows"))]
+        EnclaveCommand::Attest(attest_args) => attest::run(attest_args, auth).await,
         EnclaveCommand::Build(build_args) => build::run(build_args).await,
         EnclaveCommand::Describe(describe_args) => describe::run(describe_args).await,
         EnclaveCommand::Migrate(migrate_args) => migrate::run(migrate_args).await,
-        #[cfg(not(target_os = "windows"))]
         EnclaveCommand::Cert(cert_args) => cert::run(cert_args, auth).await,
         EnclaveCommand::Delete(delete_args) => delete::run(delete_args, auth).await,
         EnclaveCommand::Deploy(deploy_args) => deploy::run(deploy_args, auth).await,

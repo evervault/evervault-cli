@@ -1,6 +1,7 @@
 use attestation_doc_validation::attestation_doc::PCRs;
 use attestation_doc_validation::PCRProvider;
 use clap::Parser;
+use common::api::BasicAuth;
 use ev_enclave::attest::attest_connection_to_enclave;
 use ev_enclave::config::EnclaveConfig;
 use ev_enclave::describe::describe_eif;
@@ -29,7 +30,7 @@ macro_rules! unwrap_or_exit_with_error {
     };
 }
 
-pub async fn run(attest_args: AttestArgs) -> i32 {
+pub async fn run(attest_args: AttestArgs, _: BasicAuth) -> i32 {
     let config = unwrap_or_exit_with_error!(EnclaveConfig::try_from_filepath(&attest_args.config));
     let domain = unwrap_or_exit_with_error!(config.get_enclave_domain());
 
