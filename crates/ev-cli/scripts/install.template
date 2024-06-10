@@ -1,9 +1,8 @@
 #!/bin/sh
 set -eu
 
-EV_DOWNLOAD_Darwin_universal="https://enclave-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-apple-darwin/ev-enclave.tar.gz"
-EV_DOWNLOAD_Windows_x86_64="https://enclave-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-pc-windows-msvc/ev-enclave.tar.gz"
-EV_DOWNLOAD_Linux_x86_64="https://enclave-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-unknown-linux-musl/ev-enclave.tar.gz"
+EV_DOWNLOAD_Darwin_universal="https://enclave-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-apple-darwin/ev.tar.gz"
+EV_DOWNLOAD_Linux_x86_64="https://enclave-build-assets.{{domain}}/cli/{{major}}/{{version}}/x86_64-unknown-linux-musl/ev.tar.gz"
 
 VERSION="{{version}}"
 PLATFORM=`uname -s`
@@ -15,21 +14,13 @@ else
   ONBOARDING_TOKEN=""
 fi
 
-case $PLATFORM in (CYGWIN*|MINGW*|MSYS*)
-  PLATFORM="Windows"
-;; esac
-
 if [ "$PLATFORM" = "Darwin" ]; then
     ARCH="universal"
 fi
 
 # If the install directory is not set, set it to a default
-if [ -z ${INSTALL_DIR+x} ]; then
-  if [ "$PLATFORM" = "Windows" ]; then
-    INSTALL_DIR=/usr/bin
-  else
-    INSTALL_DIR=/usr/local/bin
-  fi
+if [ -z ${install_dir+x} ]; then
+  install_dir=/usr/local/bin
 fi
 if [ ! -d "$INSTALL_DIR" ]; then
   if ! mkdir "$INSTALL_DIR" 2> /dev/null; then
@@ -37,11 +28,7 @@ if [ ! -d "$INSTALL_DIR" ]; then
   fi
 fi
 if [ -z ${INSTALL_PATH+x} ]; then
-  if [ "$PLATFORM" = "Windows" ]; then
-    INSTALL_PATH="${INSTALL_DIR}/ev-enclave.exe"
-  else
-    INSTALL_PATH="${INSTALL_DIR}/ev-enclave"
-  fi
+  INSTALL_PATH="${INSTALL_DIR}/ev-cli"
 fi
 DOWNLOAD_URL_LOOKUP="EV_DOWNLOAD_${PLATFORM}_${ARCH}"
 
@@ -52,7 +39,7 @@ ensure_supported_platform() {
 }
 ensure_supported_platform
 
-echo "This script will automatically install the Evervault Enclave CLI@${VERSION} for you."
+echo "This script will automatically install the Evervault CLI@${VERSION} for you."
 echo "Installation path: ${INSTALL_PATH}"
 if [ "x$(id -u)" = "x0" ]; then
   echo "Warning: this script is currently running as root. This is dangerous. "
@@ -61,7 +48,7 @@ fi
 
 if [ -f "$INSTALL_PATH" ]; then
   if [ -z ${CLI_FORCE_INSTALL+x} ]; then
-    echo "Looks like you already have the Evervault Enclave CLI installed. You can update by running ev-enclave update"
+    echo "Looks like you already have the Evervault  CLI installed. You can update by running ev update"
     exit 0
   else
     echo "Proceeding with update..."
@@ -79,7 +66,7 @@ fi
 eval DOWNLOAD_URL=\$$DOWNLOAD_URL_LOOKUP
 
 if [ "$PERFORM_INSTALL" = true ]; then
-  TEMP_FILE=`mktemp "${TMPDIR:-/tmp}/ev-enclave.XXXXXXXX"`
+  TEMP_FILE=`mktemp "${TMPDIR:-/tmp}/ev.XXXXXXXX"`
 fi
 
 cleanup() {
@@ -112,12 +99,12 @@ if [ "$PERFORM_INSTALL" = true ]; then
 fi
 
 extract_via_7zip() {
-   TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}/ev-enclave.XXXXXX"`
+   TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}/ev.XXXXXX"`
    7z x "$TEMP_FILE" -so | 7z x -aoa -si -ttar -o"$TARGET_DIR"
 }
 
 extract_via_tar() {
-  TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}/ev-enclave.XXXXXX"`
+  TARGET_DIR=`mktemp -d "${TMPDIR:-/tmp}/ev.XXXXXX"`
   tar xzf "$TEMP_FILE" -C "$TARGET_DIR"
 }
 
@@ -130,18 +117,8 @@ if [ "$PERFORM_INSTALL" = true ]; then
 fi
 
 get_file_location() {
-  if [ "$PLATFORM" = "Darwin" ]; then
-    EV_BINARY="${TARGET_DIR}/bin/ev-enclave"
-  elif [ "$PLATFORM" = "Windows" ]; then
-    EV_BINARY="${TARGET_DIR}/bin/ev-enclave.exe"
-  else
-    EV_BINARY="${TARGET_DIR}/bin/ev-enclave"
-  fi
+  EV_BINARY="${TARGET_DIR}/bin/ev"
   chmod 0755 "$EV_BINARY"
-}
-
-move_file_windows() {
-  mv "$EV_BINARY" "$INSTALL_PATH"
 }
 
 move_file_general() {
@@ -152,11 +129,7 @@ move_file_general() {
 
 if [ "$PERFORM_INSTALL" = true ]; then
   get_file_location
-  if [ "$PLATFORM" = "Windows" ]; then
-    move_file_windows
-  else
-    move_file_general
-  fi
+  move_file_general
 fi
 
 echo 'Done!'
