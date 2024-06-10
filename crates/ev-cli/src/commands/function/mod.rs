@@ -1,5 +1,6 @@
 use crate::run_cmd;
 use clap::Parser;
+use common::api::BasicAuth;
 
 mod create_toml;
 mod delete;
@@ -25,9 +26,7 @@ pub enum FunctionCommand {
     Run(run::RunArgs),
 }
 
-pub async fn run(args: FunctionArgs) {
-    let auth = crate::get_auth();
-
+pub async fn run(args: FunctionArgs, auth: BasicAuth) {
     match args.action {
         FunctionCommand::Init(init_args) => run_cmd(init::run(init_args, auth).await),
         FunctionCommand::Deploy(deploy_args) => run_cmd(deploy::run(deploy_args, auth).await),

@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use common::api::{papi::EvApiClient, AuthMode};
+use common::api::{papi::EvApiClient, AuthMode, BasicAuth};
 
 use ev_enclave::{api::enclave::EnclaveClient, env};
 
@@ -65,7 +65,7 @@ pub struct GetEnvArgs {
     pub config: String,
 }
 
-pub async fn run(env_args: EnvArgs, app_uuid: String, api_key: String) -> exitcode::ExitCode {
+pub async fn run(env_args: EnvArgs, (app_uuid, api_key): BasicAuth) -> exitcode::ExitCode {
     let api_client = EvApiClient::new((app_uuid, api_key.clone()));
     let enclave_api = EnclaveClient::new(AuthMode::ApiKey(api_key));
 

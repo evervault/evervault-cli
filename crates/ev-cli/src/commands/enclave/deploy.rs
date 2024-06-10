@@ -1,8 +1,8 @@
 use atty::Stream;
 use clap::Parser;
-use common::api::client::ApiErrorKind;
 use common::api::enclave_assets::EnclaveAssetsClient;
 use common::api::AuthMode;
+use common::api::{client::ApiErrorKind, BasicAuth};
 use common::CliError;
 use ev_enclave::{
     api::enclave::EnclaveApi,
@@ -81,7 +81,7 @@ impl BuildTimeConfig for DeployArgs {
     }
 }
 
-pub async fn run(deploy_args: DeployArgs, api_key: String) -> exitcode::ExitCode {
+pub async fn run(deploy_args: DeployArgs, (_, api_key): BasicAuth) -> exitcode::ExitCode {
     let base_args = BaseArgs::parse();
     let (mut enclave_config, validated_config) =
         match read_and_validate_config(&deploy_args.config, &deploy_args) {

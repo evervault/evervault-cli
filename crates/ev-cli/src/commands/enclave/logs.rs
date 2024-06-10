@@ -1,5 +1,8 @@
 use clap::Parser;
-use common::{api::AuthMode, CliError};
+use common::{
+    api::{AuthMode, BasicAuth},
+    CliError,
+};
 use ev_enclave::{api::enclave::EnclaveClient, config::EnclaveConfig, logs::get_logs};
 
 /// Pull the logs for an Enclave
@@ -23,7 +26,7 @@ pub struct LogArgs {
     pub end_time: Option<String>,
 }
 
-pub async fn run(log_args: LogArgs, api_key: String) -> i32 {
+pub async fn run(log_args: LogArgs, (_, api_key): BasicAuth) -> i32 {
     log::info!("Note: each query will return a maximum of 500 logs, if logs are missing reduce the time range");
 
     let enclave_client = EnclaveClient::new(AuthMode::ApiKey(api_key));

@@ -1,5 +1,5 @@
 use clap::Parser;
-use common::CliError;
+use common::{api::BasicAuth, CliError};
 use ev_enclave::delete::delete_enclave;
 
 /// Delete an Enclave from a toml file.
@@ -34,7 +34,7 @@ fn should_continue() -> Result<bool, exitcode::ExitCode> {
         })
 }
 
-pub async fn run(delete_args: DeleteArgs, api_key: String) -> exitcode::ExitCode {
+pub async fn run(delete_args: DeleteArgs, (_, api_key): BasicAuth) -> exitcode::ExitCode {
     if !delete_args.force {
         let should_delete = match should_continue() {
             Ok(should_delete) => should_delete,
