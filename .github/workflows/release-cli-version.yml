@@ -3,7 +3,7 @@ name: Release Enclave CLI version
 on:
   push:
     tags:
-      - "v*"
+      - "v1*"
 
 env:
   RUST_BACKTRACE: 1
