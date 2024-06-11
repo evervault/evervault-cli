@@ -1,8 +1,8 @@
+use crate::config::{EnclaveConfig, EnclaveConfigError};
+use common::CliError;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use thiserror::Error;
-
-use crate::config::{EnclaveConfig, EnclaveConfigError};
 
 pub struct OutputPath {
     _tmp_dir: Option<tempfile::TempDir>,
@@ -85,25 +85,6 @@ pub fn save_enclave_config(enclave_config: &EnclaveConfig, config_path: &str) {
 pub fn log_debug_mode_attestation_warning() {
     log::warn!("When running your Enclave in debug mode, every value in the attestation document returned will be 0.");
     log::warn!("The measurements below will only be returned when running in non-debug mode.");
-}
-
-pub trait CliError {
-    fn exitcode(&self) -> exitcode::ExitCode;
-}
-
-#[macro_export]
-macro_rules! get_api_key {
-    () => {
-        match std::env::var("EV_API_KEY") {
-            Ok(api_key) => api_key,
-            Err(_) => {
-                log::error!(
-                    "No API Key given. Set the EV_API_KEY environment variable to authenticate."
-                );
-                return exitcode::NOUSER;
-            }
-        }
-    };
 }
 
 pub fn prepare_build_args(build_args: &Vec<String>) -> Option<Vec<String>> {

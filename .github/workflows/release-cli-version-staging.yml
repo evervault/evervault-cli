@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - main
+      - release/v4
 
 jobs:
   clippy_check_cli:
@@ -17,22 +18,13 @@ jobs:
           override: true
           components: rustfmt, clippy
       - name: Compile project
-        run: cargo build --features internal_dependency -p ev-enclave
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
+        run: cargo build
       - name: Test project
-        run: cargo test -p ev-enclave
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+        run: cargo test -p ev-cli -p ev-enclave
       - name: Format project
         run: cargo fmt --check
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
       - name: Lint project
         run: cargo clippy
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
 
   get-version:
     needs: [clippy_check_cli]
@@ -44,19 +36,17 @@ jobs:
       - id: get-full-version
         run: |
           echo "using sha tag ${GITHUB_SHA::6}"
-          echo ::set-output name=full_version::1.0.0-${GITHUB_SHA::6}
-          
+          echo ::set-output name=full_version::4.0.0-${GITHUB_SHA::6}
+
   build-and-deploy:
     needs: [get-version]
     uses: ./.github/workflows/build-and-publish.yml
     with:
-      stage: 'staging'
-      major-version: '1'
+      stage: "staging"
+      major-version: "4"
       full-version: "${{ needs.get-version.outputs.full_version }}"
-      ev-domain: 'evervault.io'
+      ev-domain: "evervault.io"
     secrets:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}
-        aws-cloudfront-distribution-id: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }}
-        evervault-rust-lib-index: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-        evervault-rust-lib-token: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
+      aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}
+      aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}
+      aws-cloudfront-distribution-id: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }}

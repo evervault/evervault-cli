@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use crate::api;
 use crate::api::enclave::EnclaveApi;
-use crate::api::AuthMode;
 use crate::progress::{get_tracker, poll_fn_and_report_status, ProgressLogger, StatusReport};
+use common::api::AuthMode;
 mod error;
-use error::DeleteError;
+pub use error::DeleteError;
 
 pub async fn delete_enclave(
     config: &str,
@@ -74,10 +74,10 @@ async fn watch_deletion<T: EnclaveApi>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::api::client::ApiError;
     use crate::api::enclave::{DeleteEnclaveResponse, EnclaveState, MockEnclaveApi};
     use crate::progress::NonTty;
     use crate::test_utils::build_get_enclave_response;
+    use common::api::client::ApiError;
 
     #[tokio::test]
     async fn test_watch_deletion_with_healthy_responses() {
@@ -103,11 +103,11 @@ mod test {
         let mut mock_api = MockEnclaveApi::new();
 
         let mut responses = vec![
-            ApiError::new(api::client::ApiErrorKind::Internal),
-            ApiError::new(api::client::ApiErrorKind::Internal),
-            ApiError::new(api::client::ApiErrorKind::Internal),
-            ApiError::new(api::client::ApiErrorKind::Internal),
-            ApiError::new(api::client::ApiErrorKind::Internal),
+            ApiError::new(common::api::client::ApiErrorKind::Internal),
+            ApiError::new(common::api::client::ApiErrorKind::Internal),
+            ApiError::new(common::api::client::ApiErrorKind::Internal),
+            ApiError::new(common::api::client::ApiErrorKind::Internal),
+            ApiError::new(common::api::client::ApiErrorKind::Internal),
         ]
         .into_iter();
 
@@ -138,7 +138,7 @@ mod test {
         let mut responses = vec![
             Ok(build_get_enclave_response(EnclaveState::Deleting, vec![])),
             Ok(build_get_enclave_response(EnclaveState::Deleting, vec![])),
-            Err(ApiError::new(api::client::ApiErrorKind::Internal)),
+            Err(ApiError::new(common::api::client::ApiErrorKind::Internal)),
             Ok(build_get_enclave_response(EnclaveState::Deleted, vec![])),
         ]
         .into_iter();

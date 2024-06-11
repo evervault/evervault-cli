@@ -16,26 +16,16 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          override: true
           components: rustfmt, clippy
       - name: Compile project
-        run: cargo build --features internal_dependency
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
+        run: cargo build
       - name: Prepare pcr-sign package for integration testing
         run: |
           cd crates/pcr-sign
           sh ./scripts/generate-test-signature.sh
       - name: Test project
-        run: cargo test
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
+        run: cargo test -p ev-cli -p ev-enclave
       - name: Format project
         run: cargo fmt --check
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}
       - name: Lint project
         run: cargo clippy
-        env:
-          CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_INDEX: ${{ secrets.RUST_CRYPTO_REGISTRY }}

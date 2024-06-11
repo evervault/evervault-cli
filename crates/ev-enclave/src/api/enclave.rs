@@ -1,7 +1,7 @@
 use crate::config::ValidatedEnclaveBuildConfig;
 
-use super::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
-use super::AuthMode;
+use common::api::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
+use common::api::AuthMode;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +29,13 @@ impl ApiClient for EnclaveClient {
     fn base_url(&self) -> String {
         let api_base = self.inner.base_url();
         format!("{}/enclaves", api_base)
+    }
+
+    fn accept(&self) -> String {
+        format!(
+            "application/json;version={}",
+            env!("ENCLAVE_RUNTIME_VERSION")
+        )
     }
 }
 

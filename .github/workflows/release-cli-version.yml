@@ -7,7 +7,6 @@ on:
 
 env:
   RUST_BACKTRACE: 1
-  WINDOWS_TARGET: x86_64-pc-windows-msvc
   MACOS_TARGET: x86_64-apple-darwin
   LINUX_TARGET: x86_64-unknown-linux-musl
   STAGE: production
@@ -52,8 +51,6 @@ jobs:
       aws-access-key-id: ${{ secrets.PUBLIC_REPO_AWS_ACCESS_KEY_ID }}
       aws-secret-access-key: ${{ secrets.PUBLIC_REPO_AWS_SECRET_ACCESS_KEY }}
       aws-cloudfront-distribution-id: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
-      evervault-rust-lib-index: ${{ secrets.RUST_CRYPTO_REGISTRY }}
-      evervault-rust-lib-token: ${{ secrets.CARGO_REGISTRIES_EVERVAULT_RUST_LIBRARIES_TOKEN }}
 
   release-cli-version: 
     needs: [ build-and-deploy, get-version ]
@@ -79,20 +76,15 @@ jobs:
         with:
           name: linux
 
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v1
-        with:
-          name: windows
-
       - name: Upload Linux Release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./linux/ev-enclave-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
+          asset_path: ./linux/ev-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
           asset_content_type: application/gzip
-          asset_name: ev-enclave-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
+          asset_name: ev-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
 
       - name: Upload MacOS Release
         uses: actions/upload-release-asset@v1
@@ -100,17 +92,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./macos/ev-enclave-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
+          asset_path: ./macos/ev-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
           asset_content_type: application/gzip
-          asset_name: ev-enclave-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
+          asset_name: ev-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
 
-      - name: Upload Windows Release
-        uses: actions/upload-release-asset@v1
-        
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./windows/ev-enclave-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
-          asset_content_type: application/gzip
-          asset_name: ev-enclave-${{ env.WINDOWS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz

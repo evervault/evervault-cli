@@ -2,7 +2,7 @@ use atty::Stream;
 use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::api::enclave::EnclaveApi;
-use crate::common::CliError;
+use common::CliError;
 
 const MAX_SUCCESSIVE_POLLING_ERRORS: i32 = 5; // # attempts allowed at 6s intervals
 

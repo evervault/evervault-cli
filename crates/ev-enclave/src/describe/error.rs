@@ -1,6 +1,6 @@
-use crate::common::CliError;
 use crate::docker::error::DockerError;
 use crate::enclave::error::EnclaveError;
+use common::CliError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]

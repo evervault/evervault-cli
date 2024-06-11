@@ -13,9 +13,9 @@ use x509_parser::prelude::{parse_x509_pem, X509Certificate};
 
 use crate::api::enclave::{
     CreateEnclaveSigningCertRefRequest, CreateEnclaveSigningCertRefResponse, EnclaveApi,
-    EnclaveSigningCert, UpdateLockedEnclaveSigningCertRequest,
+    EnclaveClient, EnclaveSigningCert, UpdateLockedEnclaveSigningCertRequest,
 };
-use crate::api::{self, AuthMode};
+use common::api::AuthMode;
 
 pub mod error;
 pub use error::CertError;
@@ -135,7 +135,7 @@ pub async fn upload_new_cert_ref(
     let pcr8 = get_cert_pcr(path)?;
     let validity_period = get_cert_validity_period(path)?;
 
-    let enclave_api = api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
+    let enclave_api = EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
 
     let payload = CreateEnclaveSigningCertRefRequest::new(
         pcr8.clone(),
@@ -201,7 +201,7 @@ impl CertWithFormattedString {
 }
 
 async fn get_certs_for_selection(
-    enclave_api: api::enclave::EnclaveClient,
+    enclave_api: EnclaveClient,
     enclave_uuid: &str,
 ) -> Result<Vec<CertWithFormattedString>, CertError> {
     let available_certs = match enclave_api.get_signing_certs().await {
@@ -260,7 +260,7 @@ pub async fn lock_enclave_to_certs(
     enclave_uuid: &str,
     enclave_name: &str,
 ) -> Result<(), CertError> {
-    let enclave_api = api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
+    let enclave_api = EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
 
     let certs_for_select = get_certs_for_selection(enclave_api.clone(), enclave_uuid).await?;
 
@@ -526,12 +526,12 @@ mod test {
 
     #[test]
     fn test_get_cert_validity_period() {
-        let path = Path::new("./test-cert/cert.pem");
+        let path = Path::new("../../fixtures/cert.pem");
 
         let cert_validity_period = get_cert_validity_period(path).unwrap();
 
-        let expected_not_before = "2024-04-25T00:00:00+0000";
-        let expected_not_after = "2025-04-24T00:00:00+0000";
+        let expected_not_before = "2024-06-11T00:00:00+0000";
+        let expected_not_after = "2029-06-05T00:00:00+0000";
 
         assert_eq!(expected_not_before, cert_validity_period.not_before);
         assert_eq!(expected_not_after, cert_validity_period.not_after);
