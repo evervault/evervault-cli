@@ -36,14 +36,14 @@ jobs:
       - id: get-full-version
         run: |
           echo "using sha tag ${GITHUB_SHA::6}"
-          echo ::set-output name=full_version::1.0.0-${GITHUB_SHA::6}
+          echo ::set-output name=full_version::4.0.0-${GITHUB_SHA::6}
 
   build-and-deploy:
     needs: [get-version]
     uses: ./.github/workflows/build-and-publish.yml
     with:
       stage: "staging"
-      major-version: "1"
+      major-version: "4"
       full-version: "${{ needs.get-version.outputs.full_version }}"
       ev-domain: "evervault.io"
     secrets:
