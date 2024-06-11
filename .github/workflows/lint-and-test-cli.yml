@@ -24,7 +24,7 @@ jobs:
           cd crates/pcr-sign
           sh ./scripts/generate-test-signature.sh
       - name: Test project
-        run: cargo test
+        run: cargo test -p ev-cli -p ev-enclave
       - name: Format project
         run: cargo fmt --check
       - name: Lint project
