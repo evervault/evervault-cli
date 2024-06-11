@@ -1,4 +1,5 @@
 use clap::Parser;
+use common::api::BasicAuth;
 use common::{api::AuthMode, CliError};
 use ev_enclave::api;
 use ev_enclave::api::enclave::EnclaveApi;
@@ -37,7 +38,7 @@ pub struct DeploymentArgs {
 }
 impl BuildTimeConfig for DeploymentArgs {}
 
-pub async fn run(list_action: List, api_key: String) -> exitcode::ExitCode {
+pub async fn run(list_action: List, (_, api_key): BasicAuth) -> exitcode::ExitCode {
     let auth = AuthMode::ApiKey(api_key);
 
     let enclave_client = api::enclave::EnclaveClient::new(auth);

@@ -1,5 +1,8 @@
 use clap::Parser;
-use common::{api::AuthMode, CliError};
+use common::{
+    api::{AuthMode, BasicAuth},
+    CliError,
+};
 use ev_enclave::{
     api::enclave::EnclaveClient,
     deploy::{timed_operation, watch_deployment, DEPLOY_WATCH_TIMEOUT_SECONDS},
@@ -24,7 +27,7 @@ pub struct RestartArgs {
     pub background: bool,
 }
 
-pub async fn run(restart_args: RestartArgs, api_key: String) -> i32 {
+pub async fn run(restart_args: RestartArgs, (_, api_key): BasicAuth) -> i32 {
     let enclave_api = EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
 
     let new_deployment = match restart_enclave(

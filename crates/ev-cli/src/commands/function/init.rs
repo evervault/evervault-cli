@@ -17,7 +17,7 @@ use zip::result::ZipError;
 #[derive(Parser, Debug)]
 #[command(name = "init")]
 pub struct InitArgs {
-    #[arg(short, long)]
+    #[arg(long = "dir")]
     pub directory: Option<String>,
     #[arg(short, default_value_t = false)]
     pub force: bool,

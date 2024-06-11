@@ -1,4 +1,5 @@
 use clap::{ArgGroup, Parser};
+use common::api::BasicAuth;
 use common::{api::AuthMode, CliError};
 use ev_enclave::api::enclave::{Enclave, EnclaveApi};
 use ev_enclave::cert::{create_new_cert, DesiredLifetime, DistinguishedName};
@@ -125,7 +126,7 @@ fn convert_comma_list(maybe_str: Option<String>) -> Option<Vec<String>> {
     maybe_str.map(|str| str.split(',').map(|value| value.to_string()).collect())
 }
 
-pub async fn run(init_args: InitArgs, api_key: String) -> exitcode::ExitCode {
+pub async fn run(init_args: InitArgs, (_, api_key): BasicAuth) -> exitcode::ExitCode {
     let enclave_client =
         ev_enclave::api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key.clone()));
 

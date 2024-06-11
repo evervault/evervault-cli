@@ -19,8 +19,6 @@ pub struct CreateArgs {
     /// Path to write relay.json to. Defaults to relay.json
     #[arg(short = 'o', long = "out", default_value = "relay.json")]
     pub out: String,
-    #[arg(short = 'f', long = "force", default_value = "false")]
-    pub force: bool,
 }
 
 #[derive(Error, Debug)]
@@ -94,7 +92,7 @@ pub async fn run(args: CreateArgs, auth: BasicAuth) -> Result<CreateMessage, Cre
     let path = PathBuf::from(&args.out);
 
     if let Ok(exists) = path.try_exists() {
-        if exists & !args.force {
+        if exists {
             return Err(CreateError::FileAlreadyExists(args.out));
         }
     }

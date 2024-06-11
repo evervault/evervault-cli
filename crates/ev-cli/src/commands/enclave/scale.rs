@@ -1,5 +1,8 @@
 use clap::Parser;
-use common::{api::AuthMode, CliError};
+use common::{
+    api::{AuthMode, BasicAuth},
+    CliError,
+};
 use ev_enclave::{
     api::enclave::{EnclaveApi, EnclaveClient},
     config::EnclaveConfig,
@@ -48,7 +51,7 @@ pub struct ScaleArgs {
     pub sync: bool,
 }
 
-pub async fn run(args: ScaleArgs, api_key: String) -> i32 {
+pub async fn run(args: ScaleArgs, (_, api_key): BasicAuth) -> i32 {
     let enclave_api = EnclaveClient::new(AuthMode::ApiKey(api_key.to_string()));
 
     let enclave_config = EnclaveConfig::try_from_filepath(&args.config);

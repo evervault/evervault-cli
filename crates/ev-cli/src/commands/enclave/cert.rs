@@ -1,5 +1,6 @@
 use atty::Stream;
 use clap::{Parser, Subcommand};
+use common::api::BasicAuth;
 use common::CliError;
 use ev_enclave::cert::{self, DistinguishedName};
 use ev_enclave::config::EnclaveConfig;
@@ -74,7 +75,7 @@ pub struct LockCertArgs {
     pub config: String,
 }
 
-pub async fn run(cert_args: CertArgs, api_key: String) -> exitcode::ExitCode {
+pub async fn run(cert_args: CertArgs, (_, api_key): BasicAuth) -> exitcode::ExitCode {
     match cert_args.action {
         CertCommands::New(new_args) => {
             let distinguished_name =
