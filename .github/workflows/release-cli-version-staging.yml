@@ -18,9 +18,9 @@ jobs:
           override: true
           components: rustfmt, clippy
       - name: Compile project
-        run: cargo build -p ev-cli
+        run: cargo build
       - name: Test project
-        run: cargo test -p ev-cli
+        run: cargo test
       - name: Format project
         run: cargo fmt --check
       - name: Lint project

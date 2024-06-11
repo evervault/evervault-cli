@@ -16,8 +16,8 @@ destinations = ["*"]
 ports = ["443"]
 
 [signing]
-certPath = "./cert.pem"
-keyPath = "./key.pem"
+certPath = "./tests/cert.pem"
+keyPath = "./tests/key.pem"
 
 [attestation]
 HashAlgorithm = "Sha384 { ... }"
