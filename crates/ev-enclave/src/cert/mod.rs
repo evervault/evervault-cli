@@ -526,12 +526,12 @@ mod test {
 
     #[test]
     fn test_get_cert_validity_period() {
-        let path = Path::new("./test-cert/cert.pem");
+        let path = Path::new("../../fixtures/cert.pem");
 
         let cert_validity_period = get_cert_validity_period(path).unwrap();
 
-        let expected_not_before = "2024-04-25T00:00:00+0000";
-        let expected_not_after = "2025-04-24T00:00:00+0000";
+        let expected_not_before = "2024-06-11T00:00:00+0000";
+        let expected_not_after = "2029-06-05T00:00:00+0000";
 
         assert_eq!(expected_not_before, cert_validity_period.not_before);
         assert_eq!(expected_not_after, cert_validity_period.not_after);

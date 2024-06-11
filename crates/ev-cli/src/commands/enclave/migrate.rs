@@ -48,7 +48,7 @@ mod migrate_tests {
         let output_dir = TempDir::new().unwrap();
         let output_file = output_dir.path().join("v1.enclave.toml");
         let args = MigrateArgs {
-            config: "./tests/v0.cage.toml".into(),
+            config: "../../fixtures/v0.cage.toml".into(),
             output: Some(output_file.to_str().unwrap().to_string()),
         };
         run(args).await;
@@ -72,8 +72,8 @@ enabled = true
 destinations = ["*"]
 
 [signing]
-certPath = "./tests/cert.pem"
-keyPath = "./tests/key.pem"
+certPath = "../../fixtures/cert.pem"
+keyPath = "../../fixtures/key.pem"
 
 [attestation]
 HashAlgorithm = "Sha384 { ... }"

@@ -2,14 +2,17 @@
 target
 */target
 *.pem
-!/crates/ev-enclave/test-cert/cert.pem
-!/crates/ev-cli/tests/cert.pem
-!/crates/ev-cli/tests/key.pem
 *-build.json
-!crates/ev-enclave/**/nitro-cli-image.Dockerfile
 enclave.Dockerfile
 *.eif
 .metals/
+
+# Test Fixtures
+!/fixtures/*
+!/crates/ev-enclave/test-cert/cert.pem
+!/crates/ev-cli/tests/cert.pem
+!/crates/ev-cli/tests/key.pem
+!crates/ev-enclave/**/nitro-cli-image.Dockerfile
 
 ### PCR-Sign Testing Files ###
 crates/pcr-sign/signature.txt
