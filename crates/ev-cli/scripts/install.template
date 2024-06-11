@@ -28,7 +28,7 @@ if [ ! -d "$INSTALL_DIR" ]; then
   fi
 fi
 if [ -z ${INSTALL_PATH+x} ]; then
-  INSTALL_PATH="${INSTALL_DIR}/ev-cli"
+  INSTALL_PATH="${INSTALL_DIR}/ev"
 fi
 DOWNLOAD_URL_LOOKUP="EV_DOWNLOAD_${PLATFORM}_${ARCH}"
 
@@ -48,8 +48,17 @@ fi
 
 if [ -f "$INSTALL_PATH" ]; then
   if [ -z ${CLI_FORCE_INSTALL+x} ]; then
-    echo "Looks like you already have the Evervault  CLI installed. You can update by running ev update"
-    exit 0
+    echo "Looks like you already have the Evervault  CLI installed. You can update by running ev update. Do you want to force install to the latest major? (y/n)"
+    # read in 2 characters to get a response + return char, check if leading char is y/n
+    y=$(dd bs=1 count=2 2>/dev/null)
+    response=`echo $y | cut -c1-1`
+    if [ "$response" = "y" ]; then
+      echo "Proceeding with update..."
+      PERFORM_INSTALL=true
+    else
+      echo "Exiting without update..."
+      PERFORM_INSTALL=false
+    fi
   else
     echo "Proceeding with update..."
     PERFORM_INSTALL=true
