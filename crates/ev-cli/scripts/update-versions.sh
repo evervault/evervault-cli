@@ -25,7 +25,7 @@ major_version=$(echo "$release_version" | cut -d '.' -f 1)
 
 echo "Release major version: $major_version"
 
-version_json=$(curl -s "https://cli.evervault.com/cli/versions")
+version_json=$(curl -s "https://cli.$2/versions")
 echo "Version response: $version_json"
 
 if [ $? -eq 0 ]; then
