@@ -45,9 +45,6 @@ mod migrate_tests {
 
     #[tokio::test]
     async fn test_migrate_v0_to_v1() {
-        let dn_string = ev_enclave::cert::DistinguishedName::default();
-        ev_enclave::cert::create_new_cert(std::path::Path::new("."), dn_string)
-            .expect("Failed to gen cert in tests");
         let output_dir = TempDir::new().unwrap();
         let output_file = output_dir.path().join("v1.enclave.toml");
         let args = MigrateArgs {
