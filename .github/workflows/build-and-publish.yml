@@ -157,7 +157,7 @@ jobs:
         working-directory: crates/ev-cli
         run: |
           sh ./scripts/generate-installer.sh ${{ inputs.full-version }} ${{ inputs.major-version }} ${{ inputs.ev-domain }}
-          sh ./scripts/update-versions.sh ${{ inputs.full-version }} ${{ inputs.ev_domain }}
+          sh ./scripts/update-versions.sh ${{ inputs.full-version }} ${{ inputs.ev-domain }}
 
           aws s3 cp scripts/install s3://cli-assets-bucket-${{ inputs.stage }}/v${{ inputs.major-version }}/${{ inputs.full-version }}/install
           aws s3 cp scripts/install s3://cli-assets-bucket-${{ inputs.stage }}/v${{ inputs.major-version }}/install
