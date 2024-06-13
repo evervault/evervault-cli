@@ -9,7 +9,7 @@ use tokio::io::AsyncRead;
 use tokio_util::codec::{Decoder, FramedRead};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-enum Delimiter {
+pub enum Delimiter {
     Eq,
     None,
 }
@@ -44,11 +44,15 @@ impl From<u8> for Mode {
 pub struct EnvVar {
     pub key: String,
     pub val: String,
+    pub delim: Delimiter
 }
 
 impl Display for EnvVar {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}={}", self.key, self.val)?;
+        match self.delim {
+          Delimiter::Eq => write!(f, "{}={}", self.key, self.val)?,
+          Delimiter::None => write!(f, "{} {}", self.key, self.val)?,
+        };
         Ok(())
     }
 }
@@ -192,6 +196,7 @@ impl Directive {
             return Ok(vec![EnvVar {
                 key: key[0].to_string(),
                 val: values.join(" "),
+                delim
             }]);
         }
 
@@ -209,7 +214,7 @@ impl Directive {
                 .next()
                 .ok_or(DecodeError::IncompleteInstruction)?
                 .to_string();
-            env_vars.push(EnvVar { key, val });
+            env_vars.push(EnvVar { key, val, delim: delim.clone() });
             i += 1;
         }
         return Ok(env_vars);
@@ -1099,7 +1104,7 @@ ENTRYPOINT apk update && apk add python3 glib make g++ gcc libc-dev &&\
         let env_directive = decoder.decode(&mut buffer);
         let directive = assert_directive_has_been_parsed(env_directive);
 
-        assert_eq!(directive.to_string(), "ENV Hello=World".to_string());
+        assert_eq!(directive.to_string(), "ENV Hello World".to_string());
         assert_eq!(directive.is_env(), true);
     }
 
@@ -1187,14 +1192,27 @@ ENTRYPOINT apk update && apk add python3 glib make g++ gcc libc-dev &&\
     }
 
     #[test]
-    fn test_constructor_for_env_commands() {
+    fn test_constructor_for_env_commands_with_eq_delim() {
         let env_directive = Directive::new_env(vec![EnvVar {
             key: "Hello".to_string(),
             val: "World".to_string(),
+            delim: Delimiter::Eq
         }]);
 
         assert_eq!(env_directive.is_env(), true);
         assert_eq!(env_directive.to_string(), "ENV Hello=World".to_string());
+    }
+
+    #[test]
+    fn test_constructor_for_env_commands_with_none_delim() {
+        let env_directive = Directive::new_env(vec![EnvVar {
+            key: "Hello".to_string(),
+            val: "World".to_string(),
+            delim: Delimiter::None
+        }]);
+
+        assert_eq!(env_directive.is_env(), true);
+        assert_eq!(env_directive.to_string(), "ENV Hello World".to_string());
     }
 
     #[test]
@@ -1203,10 +1221,12 @@ ENTRYPOINT apk update && apk add python3 glib make g++ gcc libc-dev &&\
             EnvVar {
                 key: "Hello".to_string(),
                 val: "World".to_string(),
+                delim: Delimiter::Eq
             },
             EnvVar {
                 key: "World".to_string(),
                 val: "Hello".to_string(),
+                delim: Delimiter::Eq
             },
         ]);
 
