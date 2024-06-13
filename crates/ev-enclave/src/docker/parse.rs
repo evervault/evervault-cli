@@ -9,6 +9,12 @@ use tokio::io::AsyncRead;
 use tokio_util::codec::{Decoder, FramedRead};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+enum Delimiter {
+    Eq,
+    None,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Mode {
     Exec,
     Shell,
@@ -125,44 +131,88 @@ impl Directive {
         }
     }
 
-    fn parse_env_directive(directive: String) -> Result<Vec<EnvVar>, DecodeError> {
-        let mut last_key: Option<String> = None;
-        let mut env_vars: Vec<EnvVar> = vec![];
+    fn extract_tokens_for_env_directive(directive: String) -> (Vec<String>, Delimiter) {
+        let mut in_quotes = false;
+        let mut escape = false;
+        let mut current_token = String::new();
+        let mut tokens = Vec::new();
+        let mut delim = Delimiter::None;
 
-        let parts: Vec<&str> = directive.split(' ').collect();
-
-        for (i, part) in parts.iter().enumerate() {
-            let equals_assignment_parts = &part.split('=').collect::<Vec<&str>>();
-            let is_equals_assignment = equals_assignment_parts.len() == 2;
-
-            // ENV directive's do not have to contain an "="
-            // `ENV HELLO WORLD` is the same as `ENV HELLO=WORLD`
-            // However you must use an = if you want to assign multiple env vars on one line
-            // https://docs.docker.com/engine/reference/builder/#env
-            if is_equals_assignment {
-                // if previous part was an env var key then this should be it's value, not a new key
-                if last_key.is_some() {
-                    return Err(DecodeError::IncompleteInstruction);
+        for c in directive.chars() {
+            match c {
+                '\\' if escape => {
+                    escape = false;
+                    current_token.push(c);
                 }
-
-                env_vars.push(EnvVar {
-                    key: equals_assignment_parts[0].to_string(),
-                    val: equals_assignment_parts[1].replace('"', "").to_string(),
-                });
-            } else {
-                if let Some(last_ident) = last_key {
-                    env_vars.push(EnvVar {
-                        key: last_ident,
-                        val: parts[i..].join(" ").replace('"', "").to_string(),
-                    });
-                    break;
+                '\\' if !escape => {
+                    escape = true;
                 }
-
-                last_key = Some(part.to_string());
+                '"' => {
+                    in_quotes = !in_quotes;
+                    current_token.push(c);
+                }
+                ' ' if in_quotes => {
+                    current_token.push(c);
+                }
+                ' ' if !in_quotes => {
+                    if !current_token.is_empty() {
+                        tokens.push(current_token.trim().to_string());
+                        current_token = String::new();
+                    }
+                }
+                '=' if !in_quotes && !escape => {
+                    current_token.push(c);
+                    delim = Delimiter::Eq;
+                }
+                _ => current_token.push(c),
             }
         }
 
-        Ok(env_vars)
+        if !current_token.is_empty() {
+            tokens.push(current_token.trim().to_string());
+        }
+
+        (tokens, delim)
+    }
+
+    fn parse_env_directive(directive: String) -> Result<Vec<EnvVar>, DecodeError> {
+        let (tokens, delim) = Self::extract_tokens_for_env_directive(directive);
+
+        // ENV directive's do not have to contain an "="
+        // `ENV HELLO WORLD` is the same as `ENV HELLO=WORLD`
+        // However you must use an = if you want to assign multiple env vars on one line
+        // https://docs.docker.com/engine/reference/builder/#env
+
+        // If delimiter is none, then the first token is assumed to be the key, with all subsequent tokens as a single string value
+        if delim == Delimiter::None {
+            if tokens.len() < 2 {
+                return Err(DecodeError::IncompleteInstruction);
+            }
+            let (key, values) = tokens.split_at(1);
+            return Ok(vec![EnvVar {
+                key: key[0].to_string(),
+                val: values.join(" "),
+            }]);
+        }
+
+        // Otherwise, we assume all tokens are in the form KEY=VALUE
+        let mut env_vars: Vec<EnvVar> = vec![];
+        let mut i = 0;
+        while i < tokens.len() {
+            let token = tokens.get(i).expect("Within length bounded loop");
+            if !token.contains('=') {
+                return Err(DecodeError::IncompleteInstruction);
+            }
+            let mut assignment = token.splitn(2, '=');
+            let key = assignment.next().unwrap().to_string();
+            let val = assignment
+                .next()
+                .ok_or(DecodeError::IncompleteInstruction)?
+                .to_string();
+            env_vars.push(EnvVar { key, val });
+            i += 1;
+        }
+        return Ok(env_vars);
     }
 
     pub fn set_arguments(&mut self, given_arguments: Vec<u8>) -> Result<(), DecodeError> {
@@ -1043,13 +1093,42 @@ ENTRYPOINT apk update && apk add python3 glib make g++ gcc libc-dev &&\
     #[test]
     fn test_parsing_of_non_standard_env_directives() {
         let mut decoder = DockerfileDecoder::new();
-        let test_dockerfile = r#"ENV Hello World Spaces"#;
+        let test_dockerfile = r#"ENV Hello World"#;
         let dockerfile_contents = format!("{}\n", test_dockerfile);
         let mut buffer = BytesMut::from(dockerfile_contents.as_str());
         let env_directive = decoder.decode(&mut buffer);
         let directive = assert_directive_has_been_parsed(env_directive);
 
-        assert_eq!(directive.to_string(), "ENV Hello=World Spaces".to_string());
+        assert_eq!(directive.to_string(), "ENV Hello=World".to_string());
+        assert_eq!(directive.is_env(), true);
+    }
+
+    #[test]
+    fn test_parsing_env_directive_containing_equals() {
+        let mut decoder = DockerfileDecoder::new();
+        let test_dockerfile = r#"ENV FOO=BAR=true"#;
+        let dockerfile_contents = format!("{}\n", test_dockerfile);
+        let mut buffer = BytesMut::from(dockerfile_contents.as_str());
+        let env_directive = decoder.decode(&mut buffer);
+        let directive = assert_directive_has_been_parsed(env_directive);
+
+        assert_eq!(directive.to_string(), r#"ENV FOO=BAR=true"#.to_string());
+        assert_eq!(directive.is_env(), true);
+    }
+
+    #[test]
+    fn test_parsing_env_directive_with_uneven_equals_assignments() {
+        let mut decoder = DockerfileDecoder::new();
+        let test_dockerfile = r#"ENV FOO=BAR=true BAR=BAZ"#;
+        let dockerfile_contents = format!("{}\n", test_dockerfile);
+        let mut buffer = BytesMut::from(dockerfile_contents.as_str());
+        let env_directive = decoder.decode(&mut buffer);
+        let directive = assert_directive_has_been_parsed(env_directive);
+
+        assert_eq!(
+            directive.to_string(),
+            r#"ENV FOO=BAR=true BAR=BAZ"#.to_string()
+        );
         assert_eq!(directive.is_env(), true);
     }
 
