@@ -29,7 +29,13 @@ pub async fn run(base_args: BaseArgs) {
         print_and_exit(version_msg, true);
     };
 
+    match base_args.command {
+        Command::Update(update_args) => run_cmd(update::run(update_args).await),
+        _ => {}
+    }
+
     let auth = crate::get_auth();
+
     match base_args.command {
         Command::Enclave(enclave_args) => enclave::run(enclave_args, auth).await,
         Command::Relay(relay_args) => relay::run(relay_args, auth).await,
