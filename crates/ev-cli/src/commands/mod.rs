@@ -40,8 +40,8 @@ pub async fn run(base_args: BaseArgs) {
         Command::Enclave(enclave_args) => enclave::run(enclave_args, auth).await,
         Command::Relay(relay_args) => relay::run(relay_args, auth).await,
         Command::Function(function_args) => function::run(function_args, auth).await,
-        Command::Update(update_args) => run_cmd(update::run(update_args).await),
         Command::Encrypt(encrypt_args) => run_cmd(encrypt::run(encrypt_args, auth).await),
         Command::Decrypt(decrypt_args) => run_cmd(decrypt::run(decrypt_args, auth).await),
+        Command::Update(_) => unreachable!("infallible: matched previously"),
     }
 }
