@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::{errors, CmdOutput};
 use clap::Parser;
 use common::api::{client::ApiError, papi::EvApi, papi::EvApiClient, BasicAuth};
@@ -66,7 +68,7 @@ impl CmdOutput for DecryptMessage {
 
 pub async fn run(args: DecryptArgs, auth: BasicAuth) -> Result<DecryptMessage, DecryptError> {
     let api_client = EvApiClient::new(auth);
-    let decrypted = api_client.decrypt(serde_json::json!(&args.data)).await?;
+    let decrypted = api_client.decrypt(Value::from_str(&args.data)?).await?;
 
     Ok(DecryptMessage::Success { value: decrypted })
 }
