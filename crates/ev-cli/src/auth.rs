@@ -9,7 +9,7 @@ pub fn get_auth() -> (String, String) {
             );
             std::process::exit(crate::errors::NOUSER);
         }
-        (Err(_), _) => {
+        (_, Err(_)) => {
             log::error!(
                 "No API Key found. Make sure you have correctly set the EV_API_KEY \
                      environment variable. See https://docs.evervault.com/sdks/cli for more \
@@ -17,7 +17,7 @@ pub fn get_auth() -> (String, String) {
             );
             std::process::exit(crate::errors::NOUSER);
         }
-        (_, Err(_)) => {
+        (Err(_), _) => {
             log::error!(
                 "No App UUID found. Make sure you have correctly set the EV_APP_UUID \
                      environment variable. See https://docs.evervault.com/sdks/cli for more \
