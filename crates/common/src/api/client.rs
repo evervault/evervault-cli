@@ -71,11 +71,11 @@ pub trait ApiClient {
     }
 
     fn user_agent(&self) -> String {
-        format!("evervault-cli/{}", env!("CLI_RELEASE_VERSION"))
+        format!("evervault-cli/{}", env!("CLI_VERSION"))
     }
 
     fn accept(&self) -> String {
-        format!("application/json;version={}", env!("CLI_RELEASE_VERSION"))
+        format!("application/json;version={}", env!("CLI_VERSION"))
     }
 
     fn is_authorised(&self) -> bool {

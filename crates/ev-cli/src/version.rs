@@ -81,11 +81,7 @@ impl CmdOutput for VersionMessage {
 }
 
 pub fn get_latest_major_version() -> Result<u8, VersionError> {
-    Ok(env!("CLI_RELEASE_VERSION")
-        .split(".")
-        .next()
-        .expect("infallible")
-        .parse::<u8>()?)
+    Ok(env!("CLI_VERSION_MAJOR").parse::<u8>()?)
 }
 
 pub async fn check_version() -> Result<Option<VersionMessage>, VersionError> {
@@ -96,7 +92,7 @@ pub async fn check_version() -> Result<Option<VersionMessage>, VersionError> {
     let assets_client = AssetsClient::new();
     let cli_versions = assets_client.get_cli_versions().await?;
     let installed_major_version = get_latest_major_version()?;
-    let installed_semver = Version::parse(env!("CLI_RELEASE_VERSION"))?;
+    let installed_semver = Version::parse(env!("CLI_VERSION"))?;
 
     let current_version = cli_versions
         .versions
