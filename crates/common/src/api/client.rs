@@ -75,7 +75,7 @@ pub trait ApiClient {
     }
 
     fn accept(&self) -> String {
-        format!("application/json;version={}", env!("CLI_VERSION"))
+        format!("application/json;version={}", env!("CLI_VERSION_MAJOR"))
     }
 
     fn is_authorised(&self) -> bool {
