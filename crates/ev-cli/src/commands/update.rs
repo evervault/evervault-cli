@@ -75,7 +75,7 @@ pub async fn run(_: UpdateArgs) -> Result<UpdateMessage, UpdateError> {
         .await
         .map_err(UpdateError::FetchLatestVersion)?;
 
-    let current_version = env!("CARGO_PKG_VERSION");
+    let current_version = env!("CLI_RELEASE_VERSION");
     if new_version.as_str() == current_version {
         return Ok(UpdateMessage::AlreadyUpToDate {
             version: current_version.to_string(),

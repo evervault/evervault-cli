@@ -1105,7 +1105,7 @@ dependencies = [
 
 [[package]]
 name = "ev-cli"
-version = "4.1.2"
+version = "0.0.0"
 dependencies = [
  "async-trait",
  "attestation-doc-validation",

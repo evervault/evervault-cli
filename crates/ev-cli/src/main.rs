@@ -15,7 +15,6 @@ mod fs;
 mod function;
 mod relay;
 mod theme;
-mod tty;
 mod version;
 
 pub use auth::get_auth;
@@ -87,7 +86,7 @@ where
 }
 
 #[derive(Debug, Parser)]
-#[clap(name = "Evervault Enclave CLI", version)]
+#[clap(name = "Evervault Enclave CLI", version = env!("CLI_RELEASE_VERSION"))]
 pub struct BaseArgs {
     /// Toggle verbose output
     #[clap(short, long, global = true, default_value_t = false)]
@@ -106,7 +105,7 @@ async fn main() {
     // Use human panic to give nicer error logs in the case of a runtime panic
     setup_panic!(Metadata {
         name: env!("CARGO_PKG_NAME").into(),
-        version: env!("CARGO_PKG_VERSION").into(),
+        version: env!("CLI_RELEASE_VERSION").into(),
         authors: "Engineering <engineering@evervault.com>".into(),
         homepage: "https://github.com/evervault/cages".into(),
     });
