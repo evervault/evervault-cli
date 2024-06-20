@@ -195,6 +195,8 @@ pub enum EnclaveConfigError {
     MissingDockerfile,
     #[error("{0} was not set in the toml.")]
     MissingField(String),
+    #[error("{0} is not a valid input.")]
+    InvalidInput(String),
     #[error("TLS Termination must be enabled to enable Enclave logging.")]
     LoggingEnabledWithoutTLSTermination(),
 }
@@ -206,6 +208,7 @@ impl CliError for EnclaveConfigError {
             Self::FailedToParseEnclaveConfig(_)
             | Self::MissingDockerfile
             | Self::MissingField(_)
+            | Self::InvalidInput(_)
             | Self::LoggingEnabledWithoutTLSTermination() => exitcode::DATAERR,
             Self::MissingSigningInfo(signing_err) => signing_err.exitcode(),
         }
@@ -242,6 +245,7 @@ pub struct EnclaveConfig {
     pub trusted_headers: Vec<String>,
     #[serde(default)]
     pub healthcheck: Option<String>,
+    pub export_metrics: Option<String>,
     // Table configs
     pub egress: EgressSettings,
     pub scaling: Option<ScalingSettings>,
@@ -294,6 +298,7 @@ impl std::convert::From<EnclaveConfigV0> for EnclaveConfig {
             scaling: value.scaling,
             signing: value.signing,
             attestation: value.attestation,
+            export_metrics: None
         }
     }
 }
@@ -332,6 +337,7 @@ pub struct ValidatedEnclaveBuildConfig {
     pub forward_proxy_protocol: bool,
     pub trusted_headers: Vec<String>,
     pub healthcheck: Option<String>,
+    pub export_metrics: Option<String>
 }
 
 impl ValidatedEnclaveBuildConfig {
@@ -399,6 +405,10 @@ impl ValidatedEnclaveBuildConfig {
 
     pub fn healthcheck(&self) -> Option<&str> {
         self.healthcheck.as_deref()
+    }
+
+    pub fn export_metrics(&self) -> Option<&str> {
+        self.export_metrics.as_deref()
     }
 }
 
@@ -510,6 +520,14 @@ impl std::convert::TryFrom<&EnclaveConfig> for ValidatedEnclaveBuildConfig {
             .clone()
             .ok_or_else(|| EnclaveConfigError::MissingField("Team uuid".into()))?;
 
+        if let Some(metric) = &config.export_metrics {   
+            if metric != "datadog" {
+                return Err(EnclaveConfigError::InvalidInput(
+                    "Only Datadog is currently supported for export-metrics".to_string(),
+                ));
+            }
+        }
+
         let trx_logging_enabled = match (config.trx_logging, config.tls_termination) {
             (false, _) => Ok(false), // (logging disabled, _) = logging disabled
             (true, false) => Err(EnclaveConfigError::LoggingEnabledWithoutTLSTermination()), // (logging enabled, tls_termination disabled) = config error (Tls termination needed for logging)
@@ -517,6 +535,7 @@ impl std::convert::TryFrom<&EnclaveConfig> for ValidatedEnclaveBuildConfig {
         }?;
 
         let scaling_settings = config.scaling.clone();
+
 
         Ok(ValidatedEnclaveBuildConfig {
             version: config.version,
@@ -536,6 +555,7 @@ impl std::convert::TryFrom<&EnclaveConfig> for ValidatedEnclaveBuildConfig {
             forward_proxy_protocol: config.forward_proxy_protocol,
             trusted_headers: config.trusted_headers.clone(),
             healthcheck: config.healthcheck.clone(),
+            export_metrics: config.export_metrics.clone()
         })
     }
 }

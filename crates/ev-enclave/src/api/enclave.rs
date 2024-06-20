@@ -330,6 +330,7 @@ pub struct VersionMetadata {
     git_timestamp: String,
 }
 
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateEnclaveDeploymentIntentRequest {
@@ -350,6 +351,8 @@ pub struct CreateEnclaveDeploymentIntentRequest {
     desired_replicas: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pcrs_signature: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    export_metrics: Option<String>,
 }
 
 impl CreateEnclaveDeploymentIntentRequest {
@@ -362,7 +365,7 @@ impl CreateEnclaveDeploymentIntentRequest {
         git_timestamp: String,
         git_hash: String,
         desired_replicas: Option<u32>,
-        pcrs_signature: Option<String>,
+        pcrs_signature: Option<String>
     ) -> Self {
         Self {
             pcrs: pcrs.clone(),
@@ -382,6 +385,7 @@ impl CreateEnclaveDeploymentIntentRequest {
             healthcheck: config.healthcheck().map(String::from),
             desired_replicas,
             pcrs_signature,
+            export_metrics: config.export_metrics,
         }
     }
 }

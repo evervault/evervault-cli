@@ -84,6 +84,10 @@ pub struct InitArgs {
     /// The desired number of instances for your Enclave to use. Default is 2.
     #[arg(long = "desired-replicas")]
     pub desired_replicas: Option<u32>,
+
+    /// Where to export enclave metrics, currenly only datadog is supported
+    #[arg(long = "export-metrics")]
+    pub export_metrics: Option<String>,
 }
 
 impl std::convert::From<InitArgs> for EnclaveConfig {
@@ -118,6 +122,7 @@ impl std::convert::From<InitArgs> for EnclaveConfig {
             forward_proxy_protocol: val.forward_proxy_protocol,
             trusted_headers: convert_comma_list(val.trusted_headers).unwrap_or_default(),
             healthcheck: val.healthcheck,
+            export_metrics: val.export_metrics
         }
     }
 }
@@ -174,7 +179,7 @@ async fn init_local_config(init_args: InitArgs, created_enclave: Enclave) -> exi
     let serialized_config = match toml::ser::to_vec(&initial_config) {
         Ok(bytes) => bytes,
         Err(e) => {
-            log::error!("Error serializing enclave.toml — {:?}", e);
+            log::error!("Error serializing enclave.toml — {:?} {:?}", e, initial_config);
             return exitcode::SOFTWARE;
         }
     };
