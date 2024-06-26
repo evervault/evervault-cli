@@ -43,6 +43,13 @@ impl ApiClient for EnclaveAssetsClient {
     fn update_auth(&mut self, _: AuthMode) -> Result<(), ApiClientError> {
         Err(ApiClientError::AuthModeNotSupported)
     }
+
+    fn accept(&self) -> String {
+        format!(
+            "application/json;version={}",
+            env!("ENCLAVE_RUNTIME_VERSION")
+        )
+    }
 }
 
 impl Default for EnclaveAssetsClient {
