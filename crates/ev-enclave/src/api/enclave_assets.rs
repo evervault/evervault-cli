@@ -43,7 +43,10 @@ impl ApiClient for EnclaveAssetsClient {
     }
 
     fn accept(&self) -> String {
-        format!("application/json;version={}", env!("CARGO_PKG_VERSION"))
+        format!(
+            "application/json;version={}",
+            env!("CARGO_PKG_VERSION_MAJOR")
+        )
     }
 }
 
