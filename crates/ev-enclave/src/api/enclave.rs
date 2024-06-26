@@ -1,4 +1,5 @@
 use crate::config::ValidatedEnclaveBuildConfig;
+use crate::version::EnclaveRuntime;
 
 use common::api::client::{ApiClient, ApiClientError, ApiResult, GenericApiClient, HandleResponse};
 use common::api::AuthMode;
@@ -357,8 +358,7 @@ impl CreateEnclaveDeploymentIntentRequest {
         pcrs: &crate::enclave::PCRs,
         config: ValidatedEnclaveBuildConfig,
         eif_size_bytes: u64,
-        data_plane_version: String,
-        installer_version: String,
+        enclave_runtime: &EnclaveRuntime,
         git_timestamp: String,
         git_hash: String,
         desired_replicas: Option<u32>,
@@ -375,8 +375,8 @@ impl CreateEnclaveDeploymentIntentRequest {
             not_after: config.signing.not_after(),
             metadata: VersionMetadata {
                 git_hash,
-                installer_version,
-                data_plane_version,
+                installer_version: enclave_runtime.installer_version.clone(),
+                data_plane_version: enclave_runtime.data_plane_version.clone(),
                 git_timestamp,
             },
             healthcheck: config.healthcheck().map(String::from),

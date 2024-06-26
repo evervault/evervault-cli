@@ -3,12 +3,13 @@ use crate::api::enclave::{
     EnclaveRegionalDeployment, EnclaveSigningCert, EnclaveState, EnclaveVersion,
     GetEnclaveDeploymentResponse, GetEnclaveResponse,
 };
+use crate::api::enclave_assets::EnclaveAssetsClient;
 use crate::build::build_enclave_image_file;
 use crate::build::error::BuildError;
 use crate::common::OutputPath;
 use crate::config::{read_and_validate_config, ValidatedEnclaveBuildConfig};
 use crate::enclave::BuiltEnclave;
-use common::api::enclave_assets::EnclaveAssetsClient;
+use crate::version::EnclaveRuntime;
 
 pub async fn build_test_enclave(
     output_dir: Option<&str>,
@@ -25,8 +26,7 @@ pub async fn build_test_enclave(
     let build_args = get_test_build_args();
     let assets_client = EnclaveAssetsClient::new();
 
-    let data_plane_version = assets_client.get_data_plane_version().await.unwrap();
-    let installer_version = assets_client.get_runtime_installer_version().await.unwrap();
+    let enclave_runtime = EnclaveRuntime::new().await.unwrap();
     let timestamp = "0".to_string();
 
     build_enclave_image_file(
@@ -35,8 +35,7 @@ pub async fn build_test_enclave(
         output_dir,
         false,
         None,
-        data_plane_version,
-        installer_version,
+        &enclave_runtime,
         timestamp,
         from_existing,
         reproducible,
