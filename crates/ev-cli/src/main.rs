@@ -86,7 +86,7 @@ where
 }
 
 #[derive(Debug, Parser)]
-#[clap(name = "Evervault Enclave CLI")]
+#[clap(name = "Evervault Enclave CLI", version)]
 pub struct BaseArgs {
     /// Toggle verbose output
     #[clap(short, long, global = true, default_value_t = false)]
