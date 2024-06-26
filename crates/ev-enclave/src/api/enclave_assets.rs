@@ -74,7 +74,7 @@ impl EnclaveAssetsClient {
     }
 
     pub async fn get_runtime_versions(&self) -> ApiResult<RuntimeMajorVersion> {
-        let enclave_version = env!("CARGO_PKG_VERSION");
+        let enclave_version = env!("CARGO_PKG_VERSION_MAJOR");
         let data_plane_version = format!("{}/runtime/versions", self.base_url());
         let result = self
             .get(&data_plane_version)
