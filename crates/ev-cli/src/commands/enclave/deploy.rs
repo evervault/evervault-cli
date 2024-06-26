@@ -149,7 +149,13 @@ pub async fn run(deploy_args: DeployArgs, (_, api_key): BasicAuth) -> exitcode::
         .as_ref()
         .map(|args| args.iter().map(AsRef::as_ref).collect());
 
-    let enclave_runtime = EnclaveRuntime::new().await.unwrap();
+    let enclave_runtime = match EnclaveRuntime::new().await {
+        Ok(versions) => versions,
+        Err(e) => {
+            log::error!("Failed to get data plane and installer versions – {e}");
+            return e.exitcode();
+        }
+    };
 
     let from_existing = deploy_args.from_existing;
     let (eif_measurements, output_path) = match resolve_eif(

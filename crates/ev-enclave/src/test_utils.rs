@@ -3,7 +3,6 @@ use crate::api::enclave::{
     EnclaveRegionalDeployment, EnclaveSigningCert, EnclaveState, EnclaveVersion,
     GetEnclaveDeploymentResponse, GetEnclaveResponse,
 };
-use crate::api::enclave_assets::EnclaveAssetsClient;
 use crate::build::build_enclave_image_file;
 use crate::build::error::BuildError;
 use crate::common::OutputPath;
@@ -24,7 +23,6 @@ pub async fn build_test_enclave(
     )
     .expect("Failed to gen cert in tests");
     let build_args = get_test_build_args();
-    let assets_client = EnclaveAssetsClient::new();
 
     let enclave_runtime = EnclaveRuntime::new().await.unwrap();
     let timestamp = "0".to_string();

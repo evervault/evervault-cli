@@ -33,10 +33,7 @@ impl ApiClient for EnclaveClient {
     }
 
     fn accept(&self) -> String {
-        format!(
-            "application/json;version={}",
-            env!("ENCLAVE_RUNTIME_VERSION")
-        )
+        format!("application/json;version={}", env!("CARGO_PKG_VERSION"))
     }
 }
 
