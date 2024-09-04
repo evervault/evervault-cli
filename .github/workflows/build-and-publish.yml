@@ -1,10 +1,10 @@
-name: "Build and publish CLI"
+name: 'Build and publish CLI'
 on:
   workflow_call:
     inputs:
       stage:
         required: true
-        default: "staging"
+        default: 'staging'
         type: string
       major-version:
         required: true
@@ -22,25 +22,20 @@ on:
         required: true
       aws-secret-access-key:
         required: true
-
 env:
   RUST_BACKTRACE: 1
   MACOS_TARGET: x86_64-apple-darwin
   LINUX_TARGET: x86_64-unknown-linux-musl
-
   # Directories to target during release
   BIN_DIR: bin
   RELEASE_DIR: release
-
 jobs:
   compile-ubuntu:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - name: Install musl-tools
         run: sudo apt-get install musl-tools
-
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -48,20 +43,15 @@ jobs:
           toolchain: stable
           override: true
           target: ${{ env.LINUX_TARGET }}
-
       - name: Download cached dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "linux-cross-builds"
-
+          shared-key: 'linux-cross-builds'
       - name: Install cross
         run: cargo install cross
-
       - name: Inject Version
         working-directory: crates/ev-cli
-        run: |
-          sh ./scripts/insert-cli-version.sh ${{ inputs.full-version }}
-
+        run: sh ./scripts/insert-cli-version.sh ${{ inputs.full-version }}
       - name: Build and Compress cli
         run: |
           mkdir ${{ env.BIN_DIR }}
@@ -71,58 +61,46 @@ jobs:
           7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz
         env:
           CARGO_HOME: ${{ github.workspace }}/.cargo
-
       - name: Upload as artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: linux
           path: ./${{ env.RELEASE_DIR }}
-
   compile-macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-
       - name: Inject Version
         working-directory: crates/ev-cli
-        run: |
-          sh ./scripts/insert-cli-version.sh ${{ inputs.full-version }}
-
+        run: sh ./scripts/insert-cli-version.sh ${{ inputs.full-version }}
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           target: ${{ env.MACOS_TARGET }}
           override: true
-
       - name: Download cached dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "macos-cross-builds"
-
+          shared-key: 'macos-cross-builds'
       - name: Build CLI MacOs Target
         run: |
           cargo install cross
           cross build --release --target ${{ env.MACOS_TARGET }}
-
       - name: Install 7z cli
         run: brew install p7zip
-
       - name: Setup directories
         run: |
           mkdir ${{ env.BIN_DIR }}
           mkdir ${{ env.RELEASE_DIR }}
-
       - name: Compress binary
         run: |
           mv target/${{env.MACOS_TARGET}}/release/ev ${{ env.BIN_DIR }}/ev
           7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ${{ env.RELEASE_DIR }}/ev-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz
-
       - name: Upload as artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: macos
           path: ./${{ env.RELEASE_DIR }}
-
   upload-artifacts-to-s3:
     needs: [compile-ubuntu, compile-macos]
     runs-on: ubuntu-latest
@@ -133,25 +111,26 @@ jobs:
           aws-access-key-id: ${{ secrets.aws-access-key-id }}
           aws-secret-access-key: ${{ secrets.aws-secret-access-key }}
           aws-region: us-east-1
-
       - name: Download MacOS Artifacts
         uses: actions/download-artifact@v4.1.7
         with:
           name: macos
-
       - name: Download Linux Artifacts
         uses: actions/download-artifact@v4.1.7
         with:
           name: linux
-
       - name: Upload MacOS CLI to S3
-        run: |
-          aws s3 cp ./macos/ev-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{ inputs.major-version }}/${{ inputs.full-version }}/${{ env.MACOS_TARGET }}/ev.tar.gz
-
+        run:
+          aws s3 cp ./macos/ev-${{ env.MACOS_TARGET }}-${{ inputs.full-version
+          }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{
+          inputs.major-version }}/${{ inputs.full-version }}/${{
+          env.MACOS_TARGET }}/ev.tar.gz
       - name: Upload Ubuntu CLI to S3
-        run: |
-          aws s3 cp ./linux/ev-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{ inputs.major-version }}/${{ inputs.full-version }}/${{ env.LINUX_TARGET }}/ev.tar.gz
-
+        run:
+          aws s3 cp ./linux/ev-${{ env.LINUX_TARGET }}-${{ inputs.full-version
+          }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{
+          inputs.major-version }}/${{ inputs.full-version }}/${{
+          env.LINUX_TARGET }}/ev.tar.gz
       - uses: actions/checkout@v3
       - name: Update install script in S3
         working-directory: crates/ev-cli
@@ -165,4 +144,3 @@ jobs:
           aws s3 cp scripts/version s3://cli-assets-bucket-${{ inputs.stage }}/version
           aws s3 cp scripts/versions s3://cli-assets-bucket-${{ inputs.stage }}/versions
           aws cloudfront create-invalidation --distribution-id ${{ secrets.aws-cloudfront-distribution-id }} --paths "/v4/install" "/version" "/versions"
-

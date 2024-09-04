@@ -1,20 +1,16 @@
 name: Release Enclave CLI version
-
 on:
   push:
     tags:
-      - "v*"
-
+      - 'v*'
 env:
   RUST_BACKTRACE: 1
   MACOS_TARGET: x86_64-apple-darwin
   LINUX_TARGET: x86_64-unknown-linux-musl
   STAGE: production
-
   # Directories to target during release
   BIN_DIR: bin
   RELEASE_DIR: release
-
 jobs:
   get-version:
     runs-on: ubuntu-latest
@@ -26,8 +22,7 @@ jobs:
       - id: get-full-version
         run: |
           echo "using version tag ${GITHUB_REF:11}"
-          echo ::set-output name=full_version::${GITHUB_REF:11}
-
+          echo "full_version=${GITHUB_REF:11}" >> $GITHUB_OUTPUT
       - id: get-major-version
         uses: actions/github-script@v6
         with:
@@ -38,25 +33,22 @@ jobs:
             }
             return version.split('.')[0];
           result-encoding: string
-
   build-and-deploy:
     needs: [get-version]
     uses: ./.github/workflows/build-and-publish.yml
     with:
       stage: 'production'
-      major-version:  ${{ needs.get-version.outputs.major_version }}
+      major-version: ${{ needs.get-version.outputs.major_version }}
       full-version: ${{ needs.get-version.outputs.full_version }}
       ev-domain: 'evervault.com'
     secrets:
       aws-access-key-id: ${{ secrets.PUBLIC_REPO_AWS_ACCESS_KEY_ID }}
       aws-secret-access-key: ${{ secrets.PUBLIC_REPO_AWS_SECRET_ACCESS_KEY }}
       aws-cloudfront-distribution-id: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
-
-  release-cli-version: 
-    needs: [ build-and-deploy, get-version ]
+  release-cli-version:
+    needs: [build-and-deploy, get-version]
     runs-on: ubuntu-latest
     steps:
-
       - name: Create Release
         id: create-release
         uses: actions/create-release@v1
@@ -65,34 +57,37 @@ jobs:
         with:
           tag_name: ${{ needs.get-version.outputs.full_version }}
           release_name: ${{ needs.get-version.outputs.full_version }}
-
       - name: Download MacOS Artifacts
         uses: actions/download-artifact@v4.1.7
         with:
           name: macos
-
       - name: Download Linux Artifacts
         uses: actions/download-artifact@v4.1.7
         with:
           name: linux
-
       - name: Upload Linux Release
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./linux/ev-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
+          asset_path:
+            ./linux/ev-${{ env.LINUX_TARGET }}-${{
+            needs.get-version.outputs.full_version }}.tar.gz
           asset_content_type: application/gzip
-          asset_name: ev-${{ env.LINUX_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
-
+          asset_name:
+            ev-${{ env.LINUX_TARGET }}-${{
+            needs.get-version.outputs.full_version }}.tar.gz
       - name: Upload MacOS Release
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./macos/ev-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
+          asset_path:
+            ./macos/ev-${{ env.MACOS_TARGET }}-${{
+            needs.get-version.outputs.full_version }}.tar.gz
           asset_content_type: application/gzip
-          asset_name: ev-${{ env.MACOS_TARGET }}-${{ needs.get-version.outputs.full_version }}.tar.gz
-
+          asset_name:
+            ev-${{ env.MACOS_TARGET }}-${{
+            needs.get-version.outputs.full_version }}.tar.gz
