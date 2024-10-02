@@ -1,7 +1,7 @@
 use clap::Parser;
 use common::CliError;
 use ev_enclave::build::build_enclave_image_file;
-use ev_enclave::common::prepare_build_args;
+use ev_enclave::common::{prepare_build_args, prepare_build_secrets};
 use ev_enclave::config::{read_and_validate_config, BuildTimeConfig};
 use ev_enclave::docker::command::get_source_date_epoch;
 use ev_enclave::version::EnclaveRuntime;
@@ -39,6 +39,10 @@ pub struct BuildArgs {
     /// Build time arguments to provide to docker
     #[arg(long = "build-arg")]
     pub docker_build_args: Vec<String>,
+
+    /// Build time secrets to provide to docker
+    #[arg(long = "build-secret")]
+    pub docker_build_secrets: Vec<String>,
 
     /// Path to an Enclave dockerfile to build from existing
     #[arg(long = "from-existing")]
@@ -88,6 +92,11 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         .as_ref()
         .map(|args| args.iter().map(AsRef::as_ref).collect());
 
+    let formatted_secrets = prepare_build_secrets(&build_args.docker_build_secrets);
+    let borrowed_secrets = formatted_secrets
+        .as_ref()
+        .map(|secrets| secrets.iter().map(AsRef::as_ref).collect());
+
     let enclave_runtime = match EnclaveRuntime::maybe_from_existing_dockerfile(
         build_args.from_existing.clone(),
     )
@@ -109,6 +118,7 @@ pub async fn run(build_args: BuildArgs) -> exitcode::ExitCode {
         Some(&build_args.output_dir),
         base_args.verbose,
         borrowed_args,
+        borrowed_secrets,
         &enclave_runtime,
         timestamp,
         from_existing,
