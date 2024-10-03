@@ -49,7 +49,6 @@ jobs:
     needs: [build-and-deploy, get-version]
     runs-on: ubuntu-latest
     steps:
-      - name: 
       - name: Create Release
         id: create-release
         uses: actions/create-release@v1
