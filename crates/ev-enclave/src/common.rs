@@ -103,6 +103,23 @@ pub fn prepare_build_args(build_args: &Vec<String>) -> Option<Vec<String>> {
     Some(formatted_args)
 }
 
+pub fn prepare_build_secrets(build_secrets: &Vec<String>) -> Option<Vec<String>> {
+    if build_secrets.is_empty() {
+        return None;
+    }
+
+    let mut formatted_secrets: Vec<String> = Vec::with_capacity(build_secrets.len() * 2);
+    build_secrets
+        .iter()
+        .fold(&mut formatted_secrets, |acc, build_secret| {
+            acc.push("--secret".to_string());
+            acc.push(build_secret.clone());
+            acc
+        });
+
+    Some(formatted_secrets)
+}
+
 pub fn resolve_enclave_uuid(
     given_uuid: Option<&str>,
     config_path: &str,
@@ -153,6 +170,32 @@ mod test {
             let value = formatted_args[1].as_str();
             assert_eq!(flag, "--build-arg");
             assert_eq!(value, expected_arg.as_str());
+        });
+    }
+
+    #[test]
+    fn test_build_secrets_prep_with_empty_list() {
+        let secrets = vec![];
+        let result = prepare_build_secrets(&secrets);
+        assert_eq!(None, result);
+    }
+
+    #[test]
+    fn test_build_secrets_prep_with_non_empty_list() {
+        let secrets = vec![
+            "id=aws,src=$HOME/.aws/credentials".into(),
+            "id=ssh,src=$HOME/.ssh".into(),
+        ];
+        let result = prepare_build_secrets(&secrets);
+        assert!(result.is_some());
+        let formatted = result.unwrap();
+        let chunked_secrets = formatted.chunks(2);
+        let combined_iter = secrets.iter().zip(chunked_secrets.into_iter());
+        combined_iter.for_each(|(expected_secret, formatted_secrets)| {
+            let flag = formatted_secrets[0].as_str();
+            let value = formatted_secrets[1].as_str();
+            assert_eq!(flag, "--secret");
+            assert_eq!(value, expected_secret.as_str());
         });
     }
 }

@@ -23,6 +23,7 @@ pub fn build_user_image(
     user_context_path: &std::path::Path,
     verbose: bool,
     docker_build_args: Option<Vec<&str>>,
+    docker_build_secrets: Option<Vec<&str>>,
     timestamp: String,
     no_cache: bool,
 ) -> Result<(), EnclaveError> {
@@ -31,6 +32,11 @@ pub fn build_user_image(
     if let Some(build_args) = docker_build_args.as_ref() {
         let mut docker_build_args = build_args.iter().map(AsRef::as_ref).collect();
         command_line_args.append(&mut docker_build_args);
+    }
+
+    if let Some(build_secrets) = docker_build_secrets.as_ref() {
+        let mut docker_build_secrets = build_secrets.iter().map(AsRef::as_ref).collect();
+        command_line_args.append(&mut docker_build_secrets);
     }
 
     let tag_name = format!("{EV_USER_IMAGE_NAME}:latest");

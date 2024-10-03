@@ -33,6 +33,7 @@ pub async fn build_test_enclave(
         output_dir,
         false,
         None,
+        None,
         &enclave_runtime,
         timestamp,
         from_existing,

@@ -3,6 +3,7 @@ use clap::Parser;
 use common::api::AuthMode;
 use common::api::{client::ApiErrorKind, BasicAuth};
 use common::CliError;
+use ev_enclave::common::prepare_build_secrets;
 use ev_enclave::version::EnclaveRuntime;
 use ev_enclave::{
     api::enclave::EnclaveApi,
@@ -48,6 +49,10 @@ pub struct DeployArgs {
     /// Build time arguments to provide to docker
     #[arg(long = "build-arg")]
     pub docker_build_args: Vec<String>,
+
+    /// Build time secrets to provide to docker
+    #[arg(long = "build-secret")]
+    pub docker_build_secrets: Vec<String>,
 
     /// Path to an Enclave dockerfile to build from existing
     #[arg(long = "from-existing")]
@@ -149,6 +154,11 @@ pub async fn run(deploy_args: DeployArgs, (_, api_key): BasicAuth) -> exitcode::
         .as_ref()
         .map(|args| args.iter().map(AsRef::as_ref).collect());
 
+    let formatted_secrets = prepare_build_secrets(&deploy_args.docker_build_secrets);
+    let build_secrets = formatted_secrets
+        .as_ref()
+        .map(|secrets| secrets.iter().map(AsRef::as_ref).collect());
+
     let enclave_runtime = match EnclaveRuntime::new().await {
         Ok(versions) => versions,
         Err(e) => {
@@ -164,6 +174,7 @@ pub async fn run(deploy_args: DeployArgs, (_, api_key): BasicAuth) -> exitcode::
         deploy_args.eif_path.as_deref(),
         base_args.verbose,
         build_args,
+        build_secrets,
         from_existing,
         timestamp,
         &enclave_runtime,
@@ -225,6 +236,7 @@ async fn resolve_eif(
     eif_path: Option<&str>,
     verbose: bool,
     build_args: Option<Vec<&str>>,
+    build_secrets: Option<Vec<&str>>,
     from_existing: Option<String>,
     timestamp: String,
     enclave_runtime: &EnclaveRuntime,
@@ -274,6 +286,7 @@ async fn resolve_eif(
             None,
             verbose,
             build_args,
+            build_secrets,
             enclave_runtime,
             timestamp,
             from_existing,
