@@ -66,7 +66,7 @@ jobs:
         with:
           name: linux
       - name: Upload Linux Release
-        uses: actions/upload-release-asset@v4
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -79,7 +79,7 @@ jobs:
             ev-${{ env.LINUX_TARGET }}-${{
             needs.get-version.outputs.full_version }}.tar.gz
       - name: Upload MacOS Release
-        uses: actions/upload-release-asset@v4
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
