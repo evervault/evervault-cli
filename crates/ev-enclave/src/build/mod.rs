@@ -748,7 +748,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut readable_contents = sample_dockerfile_contents.as_bytes();
 
         let mut config: ValidatedEnclaveBuildConfig = get_config(false);
-        config.healthcheck = Some("/health".into());
+        config.healthcheck = Some(crate::config::HealthcheckConfig::Path("/health".into()));
 
         let enclave_runtime = EnclaveRuntime {
             data_plane_version: "0.0.0".to_string(),
@@ -766,7 +766,7 @@ USER root
 RUN mkdir -p /opt/evervault
 ADD https://enclave-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
 RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
-RUN echo {\"api_key_auth\":true,\"forward_proxy_protocol\":false,\"healthcheck\":\"/health\",\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
+RUN echo {\"api_key_auth\":true,\"forward_proxy_protocol\":false,\"healthcheck\":\"/health\",\"healthcheck_port\":null,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
 RUN mkdir -p /etc/service/user-entrypoint
 RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
 ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
