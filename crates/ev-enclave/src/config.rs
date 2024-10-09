@@ -221,6 +221,29 @@ pub fn default_true() -> bool {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum HealthcheckConfig {
+    Path(String),
+    Table { path: String, port: Option<u16> },
+}
+
+impl HealthcheckConfig {
+    pub fn path(&self) -> &str {
+        match self {
+            HealthcheckConfig::Path(path) => path.as_str(),
+            HealthcheckConfig::Table { path, .. } => path.as_str(),
+        }
+    }
+
+    pub fn port(&self) -> Option<u16> {
+        match self {
+            HealthcheckConfig::Path(_) => None,
+            HealthcheckConfig::Table { port, .. } => port.as_ref().map(|port_num| *port_num),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EnclaveConfig {
     pub version: u8,
     pub name: String,
@@ -241,7 +264,7 @@ pub struct EnclaveConfig {
     #[serde(default)]
     pub trusted_headers: Vec<String>,
     #[serde(default)]
-    pub healthcheck: Option<String>,
+    pub healthcheck: Option<HealthcheckConfig>,
     // Table configs
     pub egress: EgressSettings,
     pub scaling: Option<ScalingSettings>,
@@ -289,7 +312,7 @@ impl std::convert::From<EnclaveConfigV0> for EnclaveConfig {
             tls_termination: !value.disable_tls_termination,
             forward_proxy_protocol: value.forward_proxy_protocol,
             trusted_headers: value.trusted_headers,
-            healthcheck: value.healthcheck,
+            healthcheck: value.healthcheck.map(HealthcheckConfig::Path),
             egress: value.egress,
             scaling: value.scaling,
             signing: value.signing,
@@ -331,7 +354,7 @@ pub struct ValidatedEnclaveBuildConfig {
     pub trx_logging_enabled: bool,
     pub forward_proxy_protocol: bool,
     pub trusted_headers: Vec<String>,
-    pub healthcheck: Option<String>,
+    pub healthcheck: Option<HealthcheckConfig>,
 }
 
 impl ValidatedEnclaveBuildConfig {
@@ -397,8 +420,8 @@ impl ValidatedEnclaveBuildConfig {
         &self.trusted_headers
     }
 
-    pub fn healthcheck(&self) -> Option<&str> {
-        self.healthcheck.as_deref()
+    pub fn healthcheck(&self) -> Option<&HealthcheckConfig> {
+        self.healthcheck.as_ref()
     }
 }
 

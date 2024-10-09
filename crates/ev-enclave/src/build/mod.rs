@@ -9,7 +9,7 @@ use crate::docker::utils::verify_docker_is_running;
 use crate::enclave;
 use crate::version::EnclaveRuntime;
 
-use serde_json::json;
+use serde_json::{json, Number, Value};
 use std::io::Write;
 use std::path::Path;
 use tokio::fs::File;
@@ -287,8 +287,12 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let installer_bundle = "runtime-dependencies.tar.gz";
     let installer_destination = format!("{INSTALLER_DIRECTORY}/{installer_bundle}");
 
-    if let Some(healthcheck) = build_config.healthcheck.as_deref() {
-        dataplane_info["healthcheck"] = json!(healthcheck);
+    if let Some(healthcheck) = build_config.healthcheck.as_ref() {
+        dataplane_info["healthcheck"] = json!(healthcheck.path());
+        dataplane_info["healthcheck_port"] = healthcheck
+            .port()
+            .map(|port| Value::Number(Number::from(port)))
+            .unwrap_or_else(|| Value::Null);
     }
 
     let dataplane_env = format!(

@@ -345,6 +345,8 @@ pub struct CreateEnclaveDeploymentIntentRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     healthcheck: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    healthcheck_port: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     desired_replicas: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pcrs_signature: Option<String>,
@@ -376,7 +378,10 @@ impl CreateEnclaveDeploymentIntentRequest {
                 data_plane_version: enclave_runtime.data_plane_version.clone(),
                 git_timestamp,
             },
-            healthcheck: config.healthcheck().map(String::from),
+            healthcheck: config
+                .healthcheck()
+                .map(|hc_config| hc_config.path().into()),
+            healthcheck_port: config.healthcheck().and_then(|hc_config| hc_config.port()),
             desired_replicas,
             pcrs_signature,
         }
