@@ -438,7 +438,7 @@ impl ValidatedEnclaveBuildConfig {
     }
 
     /// TLS Healthchecks are not explicitly configurable. They are only enabled when a legacy healthcheck is defined (path only) for an Enclave with
-    /// TLS Termination disabled. This is here to avoid a breaking change in behaviour, but TLS healthchecks are not a recommended pattern. Users should define 
+    /// TLS Termination disabled. This is here to avoid a breaking change in behaviour, but TLS healthchecks are not a recommended pattern. Users should define
     /// a dedicated port for their healthcheck requests instead.
     pub fn use_tls_healthcheck(&self) -> bool {
         self.healthcheck()

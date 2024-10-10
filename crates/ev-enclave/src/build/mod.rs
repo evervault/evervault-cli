@@ -864,8 +864,8 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
         let mut config: ValidatedEnclaveBuildConfig = get_config(false);
         config.tls_termination = false;
         config.healthcheck = Some(crate::config::HealthcheckConfig::Table {
-          port: Some(8080),
-          path: "/health".into()
+            port: Some(8080),
+            path: "/health".into(),
         });
 
         let enclave_runtime = EnclaveRuntime {
