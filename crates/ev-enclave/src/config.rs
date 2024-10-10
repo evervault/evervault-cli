@@ -220,6 +220,42 @@ pub fn default_true() -> bool {
     true
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(untagged)]
+pub enum HealthcheckConfig {
+    Path(String),
+    Table { path: String, port: Option<u16> },
+}
+
+impl HealthcheckConfig {
+    pub fn path(&self) -> &str {
+        match self {
+            HealthcheckConfig::Path(path) => path.as_str(),
+            HealthcheckConfig::Table { path, .. } => path.as_str(),
+        }
+    }
+
+    pub fn port(&self) -> Option<u16> {
+        match self {
+            HealthcheckConfig::Path(_) => None,
+            HealthcheckConfig::Table { port, .. } => port.as_ref().map(|port_num| *port_num),
+        }
+    }
+
+    pub fn new_table<T: std::convert::Into<String>>(path: T, port: u16) -> Self {
+        Self::Table {
+            path: path.into(),
+            port: Some(port),
+        }
+    }
+}
+
+impl<T: std::convert::Into<String>> std::convert::From<T> for HealthcheckConfig {
+    fn from(value: T) -> Self {
+        Self::Path(value.into())
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EnclaveConfig {
     pub version: u8,
@@ -241,7 +277,7 @@ pub struct EnclaveConfig {
     #[serde(default)]
     pub trusted_headers: Vec<String>,
     #[serde(default)]
-    pub healthcheck: Option<String>,
+    pub healthcheck: Option<HealthcheckConfig>,
     // Table configs
     pub egress: EgressSettings,
     pub scaling: Option<ScalingSettings>,
@@ -289,7 +325,7 @@ impl std::convert::From<EnclaveConfigV0> for EnclaveConfig {
             tls_termination: !value.disable_tls_termination,
             forward_proxy_protocol: value.forward_proxy_protocol,
             trusted_headers: value.trusted_headers,
-            healthcheck: value.healthcheck,
+            healthcheck: value.healthcheck.map(HealthcheckConfig::Path),
             egress: value.egress,
             scaling: value.scaling,
             signing: value.signing,
@@ -331,7 +367,7 @@ pub struct ValidatedEnclaveBuildConfig {
     pub trx_logging_enabled: bool,
     pub forward_proxy_protocol: bool,
     pub trusted_headers: Vec<String>,
-    pub healthcheck: Option<String>,
+    pub healthcheck: Option<HealthcheckConfig>,
 }
 
 impl ValidatedEnclaveBuildConfig {
@@ -397,8 +433,17 @@ impl ValidatedEnclaveBuildConfig {
         &self.trusted_headers
     }
 
-    pub fn healthcheck(&self) -> Option<&str> {
-        self.healthcheck.as_deref()
+    pub fn healthcheck(&self) -> Option<&HealthcheckConfig> {
+        self.healthcheck.as_ref()
+    }
+
+    /// TLS Healthchecks are not explicitly configurable. They are only enabled when a legacy healthcheck is defined (path only) for an Enclave with
+    /// TLS Termination disabled. This is here to avoid a breaking change in behaviour, but TLS healthchecks are not a recommended pattern. Users should define
+    /// a dedicated port for their healthcheck requests instead.
+    pub fn use_tls_healthcheck(&self) -> bool {
+        self.healthcheck()
+            .map(|cfg| cfg.port().is_none() && !self.tls_termination)
+            .unwrap_or(false)
     }
 }
 
@@ -634,7 +679,9 @@ mod test {
             trx_logging: true,
             forward_proxy_protocol: false,
             trusted_headers: vec![],
-            healthcheck: Some("/health".to_string()),
+            healthcheck: Some(crate::config::HealthcheckConfig::Path(
+                "/health".to_string(),
+            )),
         };
 
         let test_args = ExampleArgs {
@@ -648,5 +695,52 @@ mod test {
         assert_eq!(merged.dockerfile(), test_args.dockerfile().unwrap());
         assert_eq!(merged.cert().unwrap(), test_args.certificate().unwrap());
         assert_eq!(merged.key().unwrap(), test_args.private_key().unwrap());
+    }
+
+    #[test]
+    fn merge_args_with_config_using_healthcheck_table() {
+        let config = EnclaveConfig {
+            version: 1,
+            name: "Enclave123".to_string(),
+            uuid: Some("abcdef123".to_string()),
+            app_uuid: Some("abcdef321".to_string()),
+            team_uuid: Some("team_abcdef456".to_string()),
+            debug: false,
+            dockerfile: "./Dockerfile.config".to_string(),
+            tls_termination: true,
+            egress: super::EgressSettings {
+                enabled: false,
+                destinations: None,
+            },
+            scaling: Some(super::ScalingSettings {
+                desired_replicas: 2,
+            }),
+            signing: None,
+            attestation: None,
+            api_key_auth: true,
+            trx_logging: true,
+            forward_proxy_protocol: false,
+            trusted_headers: vec![],
+            healthcheck: Some(crate::config::HealthcheckConfig::Table {
+                path: "/health".to_string(),
+                port: Some(8080),
+            }),
+        };
+
+        let test_args = ExampleArgs {
+            cert: "args-cert.pem".to_string(),
+            dockerfile: "./Dockerfile.args".to_string(),
+            pk: "pk.pem".to_string(),
+        };
+
+        let merged = test_args.merge_with_config(&config);
+        assert!(merged.signing.is_some());
+        assert_eq!(merged.dockerfile(), test_args.dockerfile().unwrap());
+        assert_eq!(merged.cert().unwrap(), test_args.certificate().unwrap());
+        assert_eq!(merged.key().unwrap(), test_args.private_key().unwrap());
+        assert_eq!(
+            merged.healthcheck.unwrap(),
+            config.healthcheck.clone().unwrap()
+        );
     }
 }
