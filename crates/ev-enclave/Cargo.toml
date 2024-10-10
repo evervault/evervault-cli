@@ -27,7 +27,7 @@ reqwest = { version = "0.11.12", features = ["json", "stream"] }
 zip = { version = "0.6.2", default-features = false }
 async-trait = "0.1.57"
 indicatif = { version = "0.17.1" }
-dialoguer = "0.10.2"
+dialoguer = "0.11.0"
 async-stream = "0.3.3"
 tokio-stream = "0.1.9"
 minus = { version = "5.0.5", features = ["static_output"] }
