@@ -1,5 +1,6 @@
 pub mod error;
 use error::BuildError;
+use itertools::Itertools;
 
 use crate::common::{resolve_output_path, OutputPath};
 use crate::config::ValidatedEnclaveBuildConfig;
@@ -194,7 +195,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
     let mut last_cmd = None;
     let mut last_entrypoint = None;
     let mut last_user = None;
-    let mut exposed_port: Option<u16> = None;
+    let mut exposed_ports: Vec<u16> = vec![];
     let mut user_env_vars: Vec<EnvVar> = vec![];
 
     let mut directive_parse_error = None;
@@ -203,7 +204,11 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         match directive {
             Directive::Cmd { .. } => last_cmd = Some(directive.clone()),
             Directive::Entrypoint { .. } => last_entrypoint = Some(directive.clone()),
-            Directive::Expose { port } => exposed_port = *port,
+            Directive::Expose { port } => {
+                if let Some(port) = port {
+                    exposed_ports.push(*port);
+                }
+            }
             Directive::User(b) => {
                 if let Ok(user) = String::from_utf8(b.to_vec()) {
                     last_user = Some(user);
@@ -229,6 +234,40 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         .filter(remove_unwanted_directives)
         .collect();
 
+    // If there are many ports exposed, check if they are disambiguated through the `.toml` file.
+    // If not, explain behaviour and suggest adding explicit config to the `.toml`.
+    if exposed_ports.len() > 1 {
+        let has_service_port = build_config.service().is_some();
+        let has_healthcheck_port = build_config
+            .healthcheck()
+            .and_then(|hc_cfg| hc_cfg.port())
+            .is_some();
+        if !has_service_port && !has_healthcheck_port {
+            log::info!("Found multiple expose directives in the provided dockerfile. The Evervault CLI will assume the final expose directive ({}) is the port for your in-Enclave service.", exposed_ports.last().unwrap());
+            let example_str =
+                "[service]\nport=PRIMARY_PORT\n[healthcheck]\npath=\"/health\"\nport=HC_PORT";
+            log::info!("It is recommended to use the enclave.toml to specify the ports exposed by your service. The ports can be defined based on their function, under either the service or healthcheck heading. The format is as follows:\n{example_str}");
+        }
+
+        let is_configured_port_missing_in_docker = build_config
+            .service()
+            .map(|service_cfg| exposed_ports.contains(&service_cfg.port()));
+        // catch for edge case where port is defined in the toml, but was never exposed in docker
+        if let Some(false) = is_configured_port_missing_in_docker {
+            log::warn!(
+              "Found service port in enclave.toml which is not exposed in the supplied Dockerfile. This may suggest a misconfiguration. The build will continue using the service port defined in the enclave.toml file.", 
+            );
+            log::warn!(
+                "Service port from enclave.toml: {}",
+                build_config.service().unwrap().port()
+            );
+            log::warn!(
+                "Port(s) exposed by Dockerfile: {}",
+                exposed_ports.iter().join(", ")
+            );
+        }
+    }
+
     let (instructions, layer_name) = handle_multi_step_builds(cleaned_instructions.clone())?;
 
     if let Some(directive_parse_error) = directive_parse_error {
@@ -252,7 +291,9 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
 
     let mut data_plane_run_script =
         r#"echo \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane"#.to_string();
-    if let Some(port) = exposed_port {
+    if let Some(port) = build_config.service().map(|service_cfg| service_cfg.port()) {
+        data_plane_run_script = format!("{data_plane_run_script} {port}");
+    } else if let Some(port) = exposed_ports.last() {
         data_plane_run_script = format!("{data_plane_run_script} {port}");
     }
 
@@ -486,6 +527,7 @@ mod test {
                 desired_replicas: 2,
             }),
             attestation: None,
+            service: None,
             signing: ValidatedSigningInfo {
                 cert: "".into(),
                 key: "".into(),
@@ -774,6 +816,174 @@ ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-d
 RUN chmod +x /opt/evervault/data-plane
 RUN mkdir -p /etc/service/data-plane
 RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 3443\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+ENTRYPOINT ["/bootstrap", "1>&2"]
+"##;
+
+        let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
+            expected_output_contents.as_bytes(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(expected_directives.len(), processed_file.len());
+        for (expected_directive, processed_directive) in
+            zip(expected_directives.iter(), processed_file.iter())
+        {
+            let expected_directive = expected_directive.to_string();
+            let processed_directive = processed_directive.to_string();
+            assert_eq!(expected_directive, processed_directive);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_process_dockerfile_with_service_config_set() {
+        let sample_dockerfile_contents = r#"FROM alpine
+
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+ENTRYPOINT ["sh", "/hello-script"]"#;
+        let mut readable_contents = sample_dockerfile_contents.as_bytes();
+
+        let mut config: ValidatedEnclaveBuildConfig = get_config(false);
+        config.service = Some(crate::config::ServiceSettings::new(8080));
+
+        let enclave_runtime = EnclaveRuntime {
+            data_plane_version: "0.0.0".to_string(),
+            installer_version: "abcdef".to_string(),
+        };
+        let processed_file =
+            process_dockerfile(&config, &mut readable_contents, &enclave_runtime, false).await;
+        assert_eq!(processed_file.is_ok(), true);
+        let processed_file = processed_file.unwrap();
+
+        let expected_output_contents = r##"FROM alpine
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+USER root
+RUN mkdir -p /opt/evervault
+ADD https://enclave-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
+RUN echo {\"api_key_auth\":true,\"forward_proxy_protocol\":false,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
+RUN mkdir -p /etc/service/user-entrypoint
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN chmod +x /opt/evervault/data-plane
+RUN mkdir -p /etc/service/data-plane
+RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 8080\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+ENTRYPOINT ["/bootstrap", "1>&2"]
+"##;
+
+        let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
+            expected_output_contents.as_bytes(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(expected_directives.len(), processed_file.len());
+        for (expected_directive, processed_directive) in
+            zip(expected_directives.iter(), processed_file.iter())
+        {
+            let expected_directive = expected_directive.to_string();
+            let processed_directive = processed_directive.to_string();
+            assert_eq!(expected_directive, processed_directive);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_process_dockerfile_with_service_config_and_conflicting_docker_directives() {
+        let sample_dockerfile_contents = r#"FROM alpine
+
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+EXPOSE 8008
+ENTRYPOINT ["sh", "/hello-script"]"#;
+        let mut readable_contents = sample_dockerfile_contents.as_bytes();
+
+        let mut config: ValidatedEnclaveBuildConfig = get_config(false);
+        config.service = Some(crate::config::ServiceSettings::new(8080));
+
+        let enclave_runtime = EnclaveRuntime {
+            data_plane_version: "0.0.0".to_string(),
+            installer_version: "abcdef".to_string(),
+        };
+        let processed_file =
+            process_dockerfile(&config, &mut readable_contents, &enclave_runtime, false).await;
+        assert_eq!(processed_file.is_ok(), true);
+        let processed_file = processed_file.unwrap();
+
+        let expected_output_contents = r##"FROM alpine
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+USER root
+RUN mkdir -p /opt/evervault
+ADD https://enclave-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
+RUN echo {\"api_key_auth\":true,\"forward_proxy_protocol\":false,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
+RUN mkdir -p /etc/service/user-entrypoint
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN chmod +x /opt/evervault/data-plane
+RUN mkdir -p /etc/service/data-plane
+RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 8080\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
+RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
+ENTRYPOINT ["/bootstrap", "1>&2"]
+"##;
+
+        let expected_directives = docker::parse::DockerfileDecoder::decode_dockerfile_from_src(
+            expected_output_contents.as_bytes(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(expected_directives.len(), processed_file.len());
+        for (expected_directive, processed_directive) in
+            zip(expected_directives.iter(), processed_file.iter())
+        {
+            let expected_directive = expected_directive.to_string();
+            let processed_directive = processed_directive.to_string();
+            assert_eq!(expected_directive, processed_directive);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_process_dockerfile_with_service_config_and_multiple_docker_directives() {
+        let sample_dockerfile_contents = r#"FROM alpine
+
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+EXPOSE 8080
+EXPOSE 8081
+ENTRYPOINT ["sh", "/hello-script"]"#;
+        let mut readable_contents = sample_dockerfile_contents.as_bytes();
+
+        let mut config: ValidatedEnclaveBuildConfig = get_config(false);
+        config.service = Some(crate::config::ServiceSettings::new(8080));
+
+        let enclave_runtime = EnclaveRuntime {
+            data_plane_version: "0.0.0".to_string(),
+            installer_version: "abcdef".to_string(),
+        };
+        let processed_file =
+            process_dockerfile(&config, &mut readable_contents, &enclave_runtime, false).await;
+        assert_eq!(processed_file.is_ok(), true);
+        let processed_file = processed_file.unwrap();
+
+        let expected_output_contents = r##"FROM alpine
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+USER root
+RUN mkdir -p /opt/evervault
+ADD https://enclave-build-assets.evervault.com/installer/abcdef.tar.gz /opt/evervault/runtime-dependencies.tar.gz
+RUN cd /opt/evervault ; tar -xzf runtime-dependencies.tar.gz ; sh ./installer.sh ; rm runtime-dependencies.tar.gz
+RUN echo {\"api_key_auth\":true,\"forward_proxy_protocol\":false,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json
+RUN mkdir -p /etc/service/user-entrypoint
+RUN printf "#!/bin/sh\nsleep 5\necho \"Checking status of data-plane\"\nSVDIR=/etc/service sv check data-plane || exit 1\necho \"Data-plane up and running\"\nwhile ! grep -q \"EV_INITIALIZED\" /etc/customer-env\n do echo \"Env not ready, sleeping user process for one second\"\n sleep 1\n done \n . /etc/customer-env\n\necho \"Booting user service...\"\ncd %s\nexec sh /hello-script\n" "$PWD"  > /etc/service/user-entrypoint/run && chmod +x /etc/service/user-entrypoint/run
+ADD https://enclave-build-assets.evervault.com/runtime/0.0.0/data-plane/egress-disabled/tls-termination-enabled /opt/evervault/data-plane
+RUN chmod +x /opt/evervault/data-plane
+RUN mkdir -p /etc/service/data-plane
+RUN printf "#!/bin/sh\necho \"Booting Evervault data plane...\"\nexec /opt/evervault/data-plane 8080\n" > /etc/service/data-plane/run && chmod +x /etc/service/data-plane/run
 RUN printf "#!/bin/sh\nifconfig lo 127.0.0.1\n echo \"enclave.local\" > /etc/hostname \n echo \"127.0.0.1 enclave.local\" >> /etc/hosts \n hostname -F /etc/hostname \necho \"Booting enclave...\"\nexec runsvdir /etc/service\n" > /bootstrap && chmod +x /bootstrap
 ENTRYPOINT ["/bootstrap", "1>&2"]
 "##;
