@@ -253,11 +253,17 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             .service()
             .map(|service_cfg| exposed_ports.contains(&service_cfg.port()));
         // catch for edge case where port is defined in the toml, but was never exposed in docker
-        if let Some(true) = is_configured_port_missing_in_docker {
+        if let Some(false) = is_configured_port_missing_in_docker {
             log::warn!(
-              "Found service port in enclave.toml which is not exposed in the supplied Dockerfile. This may suggest a misconfiguration. The build will continue using the port defined in the enclave.toml file.\nPort from enclave.toml: {}\nPort(s) exposed by Dockerfile: {}", 
-              build_config.service().unwrap().port(), 
-              exposed_ports.iter().join(", ")
+              "Found service port in enclave.toml which is not exposed in the supplied Dockerfile. This may suggest a misconfiguration. The build will continue using the service port defined in the enclave.toml file.", 
+            );
+            log::warn!(
+                "Service port from enclave.toml: {}",
+                build_config.service().unwrap().port()
+            );
+            log::warn!(
+                "Port(s) exposed by Dockerfile: {}",
+                exposed_ports.iter().join(", ")
             );
         }
     }

@@ -44,9 +44,7 @@ pub struct ServiceSettings {
 
 impl ServiceSettings {
     pub fn new(port: u16) -> Self {
-      Self {
-        port,
-    }
+        Self { port }
     }
 
     pub fn port(&self) -> u16 {

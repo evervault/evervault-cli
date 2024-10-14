@@ -4,7 +4,8 @@ use common::{api::AuthMode, CliError};
 use ev_enclave::api::enclave::{Enclave, EnclaveApi};
 use ev_enclave::cert::{create_new_cert, DesiredLifetime, DistinguishedName};
 use ev_enclave::config::{
-    default_dockerfile, EgressSettings, EnclaveConfig, HealthcheckConfig, ScalingSettings, ServiceSettings, SigningInfo
+    default_dockerfile, EgressSettings, EnclaveConfig, HealthcheckConfig, ScalingSettings,
+    ServiceSettings, SigningInfo,
 };
 
 /// Initialize an Enclave.toml in the current directory
@@ -135,7 +136,7 @@ impl std::convert::From<InitArgs> for EnclaveConfig {
             forward_proxy_protocol: val.forward_proxy_protocol,
             trusted_headers: convert_comma_list(val.trusted_headers).unwrap_or_default(),
             healthcheck,
-            service: val.port.map(ServiceSettings::new)
+            service: val.port.map(ServiceSettings::new),
         }
     }
 }
@@ -234,6 +235,7 @@ mod init_tests {
             trusted_headers: Some("X-Evervault-*".to_string()),
             healthcheck: None,
             healthcheck_port: None,
+            port: None,
         }
     }
 
@@ -372,6 +374,55 @@ destinations = ["evervault.com"]
 
 [scaling]
 desired_replicas = 2
+
+[signing]
+certPath = "./cert.pem"
+keyPath = "./key.pem"
+"#;
+        assert_eq!(config_content, expected_config_content);
+    }
+
+    #[tokio::test]
+    async fn init_local_config_test_with_service_port() {
+        let output_dir = TempDir::new().unwrap();
+        let sample_enclave = Enclave {
+            uuid: "1234".into(),
+            name: "hello-enclave".into(),
+            team_uuid: "1234".into(),
+            app_uuid: "1234".into(),
+            domain: "hello.com".into(),
+            state: EnclaveState::Pending,
+            created_at: "00:00:00".into(),
+            updated_at: "00:00:00".into(),
+        };
+        let mut init_args = default_init_args(&output_dir);
+        init_args.port = Some(8080);
+        init_local_config(init_args, sample_enclave).await;
+        let config_path = output_dir.path().join("enclave.toml");
+        assert!(config_path.exists());
+        let config_content = String::from_utf8(read(config_path).unwrap()).unwrap();
+        let expected_config_content = r#"version = 1
+name = "hello"
+uuid = "1234"
+app_uuid = "1234"
+team_uuid = "1234"
+debug = false
+dockerfile = "Dockerfile"
+api_key_auth = true
+trx_logging = true
+tls_termination = true
+forward_proxy_protocol = false
+trusted_headers = ["X-Evervault-*"]
+
+[egress]
+enabled = true
+destinations = ["evervault.com"]
+
+[scaling]
+desired_replicas = 2
+
+[service]
+port = 8080
 
 [signing]
 certPath = "./cert.pem"

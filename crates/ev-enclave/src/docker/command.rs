@@ -58,17 +58,17 @@ fn docker_buildkit_enabled() -> Result<bool, CommandError> {
     use version_compare::Version;
     let args: Vec<&OsStr> = vec!["buildx".as_ref(), "version".as_ref()];
     let output = Command::new("docker").args(args).output()?;
-    
+
     // If output returns an error code, assume that buildkit isn't available.
     if !output.status.success() {
-      return Ok(false);
+        return Ok(false);
     }
 
     let version_output = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
     let semver_regex = Regex::new(r"\d+\.\d+\.\d+")?;
     // If we can't find a valid semver string in the buildkit version output, assume it isn't available
     let Some(buildkit_version) = semver_regex.find(&version_output) else {
-      return Ok(false);
+        return Ok(false);
     };
 
     let semver_match = buildkit_version.as_str();
