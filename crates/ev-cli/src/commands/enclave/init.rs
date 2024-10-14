@@ -4,8 +4,7 @@ use common::{api::AuthMode, CliError};
 use ev_enclave::api::enclave::{Enclave, EnclaveApi};
 use ev_enclave::cert::{create_new_cert, DesiredLifetime, DistinguishedName};
 use ev_enclave::config::{
-    default_dockerfile, EgressSettings, EnclaveConfig, HealthcheckConfig, ScalingSettings,
-    SigningInfo,
+    default_dockerfile, EgressSettings, EnclaveConfig, HealthcheckConfig, ScalingSettings, ServiceSettings, SigningInfo
 };
 
 /// Initialize an Enclave.toml in the current directory
@@ -89,6 +88,10 @@ pub struct InitArgs {
     /// The desired number of instances for your Enclave to use. Default is 2.
     #[arg(long = "desired-replicas")]
     pub desired_replicas: Option<u32>,
+
+    /// The port that all incoming traffic should be forwarded to within the Enclave.
+    #[arg(long = "port")]
+    pub port: Option<u16>,
 }
 
 impl std::convert::From<InitArgs> for EnclaveConfig {
@@ -132,6 +135,7 @@ impl std::convert::From<InitArgs> for EnclaveConfig {
             forward_proxy_protocol: val.forward_proxy_protocol,
             trusted_headers: convert_comma_list(val.trusted_headers).unwrap_or_default(),
             healthcheck,
+            service: val.port.map(ServiceSettings::new)
         }
     }
 }
