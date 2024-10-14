@@ -38,6 +38,23 @@ impl EgressSettings {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ServiceSettings {
+    port: u16,
+}
+
+impl ServiceSettings {
+    pub fn new(port: u16) -> Self {
+      Self {
+        port,
+    }
+    }
+
+    pub fn port(&self) -> u16 {
+        self.port
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ScalingSettings {
     pub desired_replicas: u32,
 }
@@ -281,6 +298,7 @@ pub struct EnclaveConfig {
     // Table configs
     pub egress: EgressSettings,
     pub scaling: Option<ScalingSettings>,
+    pub service: Option<ServiceSettings>,
     pub signing: Option<SigningInfo>,
     pub attestation: Option<EIFMeasurements>,
 }
@@ -328,6 +346,7 @@ impl std::convert::From<EnclaveConfigV0> for EnclaveConfig {
             healthcheck: value.healthcheck.map(HealthcheckConfig::Path),
             egress: value.egress,
             scaling: value.scaling,
+            service: None,
             signing: value.signing,
             attestation: value.attestation,
         }
@@ -358,6 +377,7 @@ pub struct ValidatedEnclaveBuildConfig {
     pub team_uuid: String,
     pub debug: bool,
     pub dockerfile: String,
+    pub service: Option<ServiceSettings>,
     pub egress: EgressSettings,
     pub scaling: Option<ScalingSettings>,
     pub signing: ValidatedSigningInfo,
@@ -401,6 +421,10 @@ impl ValidatedEnclaveBuildConfig {
 
     pub fn tls_termination(&self) -> bool {
         self.tls_termination
+    }
+
+    pub fn service(&self) -> Option<&ServiceSettings> {
+        self.service.as_ref()
     }
 
     pub fn get_dataplane_feature_label(&self) -> String {
@@ -531,6 +555,10 @@ impl EnclaveConfig {
             .as_ref()
             .ok_or_else(|| EnclaveConfigError::MissingField("attestation".to_string()))
     }
+
+    pub fn service(&self) -> Option<&ServiceSettings> {
+        self.service.as_ref()
+    }
 }
 
 impl std::convert::TryFrom<&EnclaveConfig> for ValidatedEnclaveBuildConfig {
@@ -572,6 +600,7 @@ impl std::convert::TryFrom<&EnclaveConfig> for ValidatedEnclaveBuildConfig {
             debug: config.debug,
             dockerfile: config.dockerfile.clone(),
             egress: config.egress.clone(),
+            service: config.service().cloned(),
             signing: signing_info.try_into()?,
             scaling: scaling_settings,
             attestation: config.attestation.clone(),
@@ -673,6 +702,7 @@ mod test {
             scaling: Some(super::ScalingSettings {
                 desired_replicas: 2,
             }),
+            service: None,
             signing: None,
             attestation: None,
             api_key_auth: true,
@@ -715,6 +745,7 @@ mod test {
             scaling: Some(super::ScalingSettings {
                 desired_replicas: 2,
             }),
+            service: None,
             signing: None,
             attestation: None,
             api_key_auth: true,
