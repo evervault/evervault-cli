@@ -14,6 +14,15 @@ pub enum EnvError {
     EncryptError(ApiError),
     #[error("An error occured reading enclave.toml — {0}")]
     EnclaveConfigError(#[from] EnclaveConfigError),
+    #[error("The computed secret value is invalid, please contact Evervault support.")]
+    InvalidSecretValueError,
+}
+
+fn unwrap_serde_string(val: serde_json::Value) -> Result<String, EnvError> {
+    match val {
+        serde_json::Value::String(val_str) => Ok(val_str),
+        _ => Err(EnvError::InvalidSecretValueError),
+    }
 }
 
 pub async fn add_env_var(
@@ -30,8 +39,8 @@ pub async fn add_env_var(
         papi_client
             .encrypt(value.into())
             .await
-            .map_err(EnvError::EncryptError)?
-            .to_string()
+            .map_err(EnvError::EncryptError)
+            .and_then(unwrap_serde_string)?
     } else {
         value
     };
