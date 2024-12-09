@@ -34,7 +34,7 @@ strum = { version = "0.26.2", features = [ "derive", "strum_macros" ]}
 strum_macros = "0.26.2"
 tempfile = "3.10.1"
 thiserror = "1.0.59"
-tokio = {version = "1.37.0", features = ["rt", "rt-multi-thread", "macros", "fs"]}
+tokio = {version = "1.42.0", features = ["rt", "rt-multi-thread", "macros", "fs"]}
 tokio-util = "0.7.11"
 toml = "0.5.9"
 zip = "2.1.3"
