@@ -50,6 +50,11 @@ impl CleanUpMode {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct AttestationCors {
+    pub origin: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EIFMeasurements {
     #[serde(rename = "HashAlgorithm")]
     hash_algorithm: String,

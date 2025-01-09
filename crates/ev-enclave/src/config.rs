@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::cert::{get_cert_validity_period, CertValidityPeriod};
 
 use super::enclave::{EIFMeasurements, EnclaveSigningInfo};
-use common::CliError;
+use common::{enclave::types::AttestationCors, CliError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -246,6 +246,7 @@ pub struct EnclaveConfig {
     pub egress: EgressSettings,
     pub scaling: Option<ScalingSettings>,
     pub signing: Option<SigningInfo>,
+    pub attestation_cors: Option<AttestationCors>,
     pub attestation: Option<EIFMeasurements>,
 }
 
@@ -271,6 +272,7 @@ pub struct EnclaveConfigV0 {
     pub egress: EgressSettings,
     pub scaling: Option<ScalingSettings>,
     pub signing: Option<SigningInfo>,
+    pub attestation_cors: Option<AttestationCors>,
     pub attestation: Option<EIFMeasurements>,
 }
 
@@ -294,6 +296,7 @@ impl std::convert::From<EnclaveConfigV0> for EnclaveConfig {
             scaling: value.scaling,
             signing: value.signing,
             attestation: value.attestation,
+            attestation_cors: value.attestation_cors,
         }
     }
 }
@@ -332,6 +335,7 @@ pub struct ValidatedEnclaveBuildConfig {
     pub forward_proxy_protocol: bool,
     pub trusted_headers: Vec<String>,
     pub healthcheck: Option<String>,
+    pub attestation_cors: Option<AttestationCors>,
 }
 
 impl ValidatedEnclaveBuildConfig {
@@ -399,6 +403,10 @@ impl ValidatedEnclaveBuildConfig {
 
     pub fn healthcheck(&self) -> Option<&str> {
         self.healthcheck.as_deref()
+    }
+
+    pub fn attestation_cors(&self) -> &Option<AttestationCors> {
+        &self.attestation_cors
     }
 }
 
@@ -536,6 +544,7 @@ impl std::convert::TryFrom<&EnclaveConfig> for ValidatedEnclaveBuildConfig {
             forward_proxy_protocol: config.forward_proxy_protocol,
             trusted_headers: config.trusted_headers.clone(),
             healthcheck: config.healthcheck.clone(),
+            attestation_cors: config.attestation_cors.clone(),
         })
     }
 }
@@ -588,6 +597,8 @@ pub fn read_and_validate_config<B: BuildTimeConfig>(
 
 #[cfg(test)]
 mod test {
+    use common::enclave::types::AttestationCors;
+
     use super::{BuildTimeConfig, EnclaveConfig};
 
     struct ExampleArgs {
@@ -635,6 +646,9 @@ mod test {
             forward_proxy_protocol: false,
             trusted_headers: vec![],
             healthcheck: Some("/health".to_string()),
+            attestation_cors: Some(AttestationCors {
+                origin: "*".to_string(),
+            }),
         };
 
         let test_args = ExampleArgs {
