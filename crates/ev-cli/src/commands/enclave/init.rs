@@ -4,7 +4,8 @@ use common::{api::AuthMode, CliError};
 use ev_enclave::api::enclave::{Enclave, EnclaveApi};
 use ev_enclave::cert::{create_new_cert, DesiredLifetime, DistinguishedName};
 use ev_enclave::config::{
-    default_dockerfile, EgressSettings, EnclaveConfig, ScalingSettings, SigningInfo,
+    default_dockerfile, EgressSettings, EnclaveConfig, HealthcheckConfig, ScalingSettings,
+    ServiceSettings, SigningInfo,
 };
 
 /// Initialize an Enclave.toml in the current directory
@@ -81,9 +82,17 @@ pub struct InitArgs {
     #[arg(long = "healthcheck")]
     pub healthcheck: Option<String>,
 
+    /// The port to send healthcheck requests to. This is required if TLS termination is disabled.
+    #[arg(long = "healthcheck-port")]
+    pub healthcheck_port: Option<u16>,
+
     /// The desired number of instances for your Enclave to use. Default is 2.
     #[arg(long = "desired-replicas")]
     pub desired_replicas: Option<u32>,
+
+    /// The port that all incoming traffic should be forwarded to within the Enclave.
+    #[arg(long = "port")]
+    pub port: Option<u16>,
 }
 
 impl std::convert::From<InitArgs> for EnclaveConfig {
@@ -95,6 +104,15 @@ impl std::convert::From<InitArgs> for EnclaveConfig {
                 cert: val.cert_path,
                 key: val.key_path,
             })
+        };
+
+        let healthcheck = if val.healthcheck.is_some() && val.healthcheck_port.is_some() {
+            Some(HealthcheckConfig::new_table(
+                val.healthcheck.as_ref().unwrap(),
+                val.healthcheck_port.unwrap(),
+            ))
+        } else {
+            val.healthcheck.map(HealthcheckConfig::from)
         };
 
         EnclaveConfig {
@@ -117,7 +135,8 @@ impl std::convert::From<InitArgs> for EnclaveConfig {
             trx_logging: !val.trx_logging_disabled,
             forward_proxy_protocol: val.forward_proxy_protocol,
             trusted_headers: convert_comma_list(val.trusted_headers).unwrap_or_default(),
-            healthcheck: val.healthcheck,
+            healthcheck,
+            service: val.port.map(ServiceSettings::new),
         }
     }
 }
@@ -196,20 +215,9 @@ mod init_tests {
     use std::fs::read;
     use tempfile::TempDir;
 
-    #[tokio::test]
-    async fn init_local_config_test() {
-        let output_dir = TempDir::new().unwrap();
-        let sample_enclave = Enclave {
-            uuid: "1234".into(),
-            name: "hello-enclave".into(),
-            team_uuid: "1234".into(),
-            app_uuid: "1234".into(),
-            domain: "hello.com".into(),
-            state: EnclaveState::Pending,
-            created_at: "00:00:00".into(),
-            updated_at: "00:00:00".into(),
-        };
-        let init_args = InitArgs {
+    /// Helper which returns a minimal set of init args. Can be modified for specific tests.
+    fn default_init_args(output_dir: &TempDir) -> InitArgs {
+        InitArgs {
             output_dir: output_dir.path().to_str().unwrap().to_string(),
             enclave_name: "hello".to_string(),
             debug: false,
@@ -226,7 +234,25 @@ mod init_tests {
             forward_proxy_protocol: false,
             trusted_headers: Some("X-Evervault-*".to_string()),
             healthcheck: None,
+            healthcheck_port: None,
+            port: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn init_local_config_test() {
+        let output_dir = TempDir::new().unwrap();
+        let sample_enclave = Enclave {
+            uuid: "1234".into(),
+            name: "hello-enclave".into(),
+            team_uuid: "1234".into(),
+            app_uuid: "1234".into(),
+            domain: "hello.com".into(),
+            state: EnclaveState::Pending,
+            created_at: "00:00:00".into(),
+            updated_at: "00:00:00".into(),
         };
+        let init_args = default_init_args(&output_dir);
         init_local_config(init_args, sample_enclave).await;
         let config_path = output_dir.path().join("enclave.toml");
         assert!(config_path.exists());
@@ -250,6 +276,153 @@ destinations = ["evervault.com"]
 
 [scaling]
 desired_replicas = 2
+
+[signing]
+certPath = "./cert.pem"
+keyPath = "./key.pem"
+"#;
+        assert_eq!(config_content, expected_config_content);
+    }
+
+    #[tokio::test]
+    async fn init_local_config_test_with_simple_healthcheck() {
+        let output_dir = TempDir::new().unwrap();
+        let sample_enclave = Enclave {
+            uuid: "1234".into(),
+            name: "hello-enclave".into(),
+            team_uuid: "1234".into(),
+            app_uuid: "1234".into(),
+            domain: "hello.com".into(),
+            state: EnclaveState::Pending,
+            created_at: "00:00:00".into(),
+            updated_at: "00:00:00".into(),
+        };
+        let mut init_args = default_init_args(&output_dir);
+        init_args.healthcheck = Some("/health".into());
+        init_local_config(init_args, sample_enclave).await;
+        let config_path = output_dir.path().join("enclave.toml");
+        assert!(config_path.exists());
+        let config_content = String::from_utf8(read(config_path).unwrap()).unwrap();
+        let expected_config_content = r#"version = 1
+name = "hello"
+uuid = "1234"
+app_uuid = "1234"
+team_uuid = "1234"
+debug = false
+dockerfile = "Dockerfile"
+api_key_auth = true
+trx_logging = true
+tls_termination = true
+forward_proxy_protocol = false
+trusted_headers = ["X-Evervault-*"]
+healthcheck = "/health"
+
+[egress]
+enabled = true
+destinations = ["evervault.com"]
+
+[scaling]
+desired_replicas = 2
+
+[signing]
+certPath = "./cert.pem"
+keyPath = "./key.pem"
+"#;
+        assert_eq!(config_content, expected_config_content);
+    }
+
+    #[tokio::test]
+    async fn init_local_config_test_with_custom_port_and_path_healthcheck() {
+        let output_dir = TempDir::new().unwrap();
+        let sample_enclave = Enclave {
+            uuid: "1234".into(),
+            name: "hello-enclave".into(),
+            team_uuid: "1234".into(),
+            app_uuid: "1234".into(),
+            domain: "hello.com".into(),
+            state: EnclaveState::Pending,
+            created_at: "00:00:00".into(),
+            updated_at: "00:00:00".into(),
+        };
+        let mut init_args = default_init_args(&output_dir);
+        init_args.healthcheck = Some("/health".into());
+        init_args.healthcheck_port = Some(8080);
+        init_local_config(init_args, sample_enclave).await;
+        let config_path = output_dir.path().join("enclave.toml");
+        assert!(config_path.exists());
+        let config_content = String::from_utf8(read(config_path).unwrap()).unwrap();
+        let expected_config_content = r#"version = 1
+name = "hello"
+uuid = "1234"
+app_uuid = "1234"
+team_uuid = "1234"
+debug = false
+dockerfile = "Dockerfile"
+api_key_auth = true
+trx_logging = true
+tls_termination = true
+forward_proxy_protocol = false
+trusted_headers = ["X-Evervault-*"]
+
+[healthcheck]
+path = "/health"
+port = 8080
+
+[egress]
+enabled = true
+destinations = ["evervault.com"]
+
+[scaling]
+desired_replicas = 2
+
+[signing]
+certPath = "./cert.pem"
+keyPath = "./key.pem"
+"#;
+        assert_eq!(config_content, expected_config_content);
+    }
+
+    #[tokio::test]
+    async fn init_local_config_test_with_service_port() {
+        let output_dir = TempDir::new().unwrap();
+        let sample_enclave = Enclave {
+            uuid: "1234".into(),
+            name: "hello-enclave".into(),
+            team_uuid: "1234".into(),
+            app_uuid: "1234".into(),
+            domain: "hello.com".into(),
+            state: EnclaveState::Pending,
+            created_at: "00:00:00".into(),
+            updated_at: "00:00:00".into(),
+        };
+        let mut init_args = default_init_args(&output_dir);
+        init_args.port = Some(8080);
+        init_local_config(init_args, sample_enclave).await;
+        let config_path = output_dir.path().join("enclave.toml");
+        assert!(config_path.exists());
+        let config_content = String::from_utf8(read(config_path).unwrap()).unwrap();
+        let expected_config_content = r#"version = 1
+name = "hello"
+uuid = "1234"
+app_uuid = "1234"
+team_uuid = "1234"
+debug = false
+dockerfile = "Dockerfile"
+api_key_auth = true
+trx_logging = true
+tls_termination = true
+forward_proxy_protocol = false
+trusted_headers = ["X-Evervault-*"]
+
+[egress]
+enabled = true
+destinations = ["evervault.com"]
+
+[scaling]
+desired_replicas = 2
+
+[service]
+port = 8080
 
 [signing]
 certPath = "./cert.pem"
