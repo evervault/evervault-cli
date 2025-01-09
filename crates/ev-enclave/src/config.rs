@@ -721,7 +721,7 @@ mod test {
             healthcheck: Some(crate::config::HealthcheckConfig::Path(
                 "/health".to_string(),
             )),
-            attestation_cors: None
+            attestation_cors: None,
         };
 
         let test_args = ExampleArgs {
