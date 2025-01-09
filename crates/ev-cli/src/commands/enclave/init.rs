@@ -137,6 +137,7 @@ impl std::convert::From<InitArgs> for EnclaveConfig {
             trusted_headers: convert_comma_list(val.trusted_headers).unwrap_or_default(),
             healthcheck,
             service: val.port.map(ServiceSettings::new),
+            attestation_cors: None,
         }
     }
 }

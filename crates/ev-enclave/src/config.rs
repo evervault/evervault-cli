@@ -764,6 +764,7 @@ mod test {
             healthcheck: Some(crate::config::HealthcheckConfig::Table {
                 path: "/health".to_string(),
                 port: Some(8080),
+            }),
             attestation_cors: Some(AttestationCors {
                 origin: "*".to_string(),
             }),
