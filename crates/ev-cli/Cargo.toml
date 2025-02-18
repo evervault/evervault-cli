@@ -24,10 +24,10 @@ human-panic = "1.0.3"
 indicatif = "0.17.8"
 lazy_static = "1.4.0"
 log = "0.4.17"
-openssl ={version = "0.10.64", features = ["vendored"]}
+openssl ={version = "0.10.70", features = ["vendored"]}
 regex = "1.10.4"
 semver = "1.0.20"
-sentry = "0.32.3"
+sentry = "0.36.0"
 serde = {version = "1.0.199", features = ["derive"]}
 serde_json = "1.0.116"
 strum = { version = "0.26.2", features = [ "derive", "strum_macros" ]}
