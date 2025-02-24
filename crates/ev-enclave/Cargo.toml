@@ -47,7 +47,7 @@ semver = "1.0.20"
 pcr-sign = { path = "../pcr-sign", optional=true }
 elliptic-curve = { version = "0.13.8", features = ["pkcs8"] }
 attestation-doc-validation = "0.7.4"
-clap = { version = "4.5.4", features = ["derive"] }
+clap = { version = "4.5.31", features = ["derive"] }
 common = { path = "../common" }
 
 [dev-dependencies]
