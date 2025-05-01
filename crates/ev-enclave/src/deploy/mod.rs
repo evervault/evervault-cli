@@ -217,7 +217,7 @@ fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::Zip
 
     let mut zip = zip::ZipWriter::new(zip_file);
 
-    let zip_opts =
+    let zip_opts: zip::write::FileOptions<()> =
         zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
     let eif_path = output_path.join(ENCLAVE_FILENAME);
