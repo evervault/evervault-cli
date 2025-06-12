@@ -1,6 +1,6 @@
 name: 'Build and publish CLI'
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       stage:
         required: true
