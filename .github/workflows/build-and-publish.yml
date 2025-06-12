@@ -150,5 +150,6 @@ jobs:
         run: |
           sh ./scripts/generate-installer.sh ${{ inputs.full-version }} ${{ inputs.major-version }} ${{ inputs.ev-domain }} ${{ steps.read-hashes.outputs.macos_hash }} ${{ steps.read-hashes.outputs.linux_hash }}
           cat ./scripts/install
+          sh ./scripts/install
           exit 0
 
