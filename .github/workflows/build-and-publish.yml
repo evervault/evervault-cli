@@ -150,4 +150,11 @@ jobs:
         run: |
           sh ./scripts/generate-installer.sh ${{ inputs.full-version }} ${{ inputs.major-version }} ${{ inputs.ev-domain }} ${{ steps.read-hashes.outputs.macos_hash }} ${{ steps.read-hashes.outputs.linux_hash }}
           cat ./scripts/install
-          sh ./scripts/update-versions.sh ${{ inputs.full-version }} ${{ inputs.ev-domain }}
+          # sh ./scripts/update-versions.sh ${{ inputs.full-version }} ${{ inputs.ev-domain }}
+
+          # aws s3 cp scripts/install s3://cli-assets-bucket-${{ inputs.stage }}/v${{ inputs.major-version }}/${{ inputs.full-version }}/install
+          # aws s3 cp scripts/install s3://cli-assets-bucket-${{ inputs.stage }}/v${{ inputs.major-version }}/install
+          # aws s3 cp scripts/version s3://cli-assets-bucket-${{ inputs.stage }}/v${{ inputs.major-version }}/version
+          # aws s3 cp scripts/version s3://cli-assets-bucket-${{ inputs.stage }}/version
+          # aws s3 cp scripts/versions s3://cli-assets-bucket-${{ inputs.stage }}/versions
+          # aws cloudfront create-invalidation --distribution-id ${{ secrets.aws-cloudfront-distribution-id }} --paths "/v4/install" "/version" "/versions"
