@@ -150,6 +150,13 @@ jobs:
         run: |
           sh ./scripts/generate-installer.sh ${{ inputs.full-version }} ${{ inputs.major-version }} ${{ inputs.ev-domain }} ${{ steps.read-hashes.outputs.macos_hash }} ${{ steps.read-hashes.outputs.linux_hash }}
           cat ./scripts/install
-          sh ./scripts/install
+          # Calculate hash of the install script
+          INSTALL_SCRIPT_HASH=$(shasum -a 256 ./scripts/install | cut -d ' ' -f 1)
+          echo "Install script hash: $INSTALL_SCRIPT_HASH"
+          # Add hash to GitHub Actions summary
+          echo "### Install Script Hash" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "$INSTALL_SCRIPT_HASH" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
           exit 0
 
