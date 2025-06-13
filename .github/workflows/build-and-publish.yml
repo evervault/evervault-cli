@@ -1,6 +1,6 @@
 name: 'Build and publish CLI'
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       stage:
         required: true
@@ -15,13 +15,13 @@ on:
       ev-domain:
         required: true
         type: string
-    # secrets:
-    #   aws-cloudfront-distribution-id:
-    #     required: true
-    #   aws-access-key-id:
-    #     required: true
-    #   aws-secret-access-key:
-    #     required: true
+    secrets:
+      aws-cloudfront-distribution-id:
+        required: true
+      aws-access-key-id:
+        required: true
+      aws-secret-access-key:
+        required: true
 env:
   RUST_BACKTRACE: 1
   MACOS_TARGET: x86_64-apple-darwin
@@ -111,12 +111,12 @@ jobs:
     needs: [compile-ubuntu, compile-macos]
     runs-on: ubuntu-latest
     steps:
-      # - name: Configure AWS credentials
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     aws-access-key-id: ${{ secrets.aws-access-key-id }}
-      #     aws-secret-access-key: ${{ secrets.aws-secret-access-key }}
-      #     aws-region: us-east-1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.aws-access-key-id }}
+          aws-secret-access-key: ${{ secrets.aws-secret-access-key }}
+          aws-region: us-east-1
       - name: Download MacOS Artifacts
         uses: actions/download-artifact@v4.1.8
         with:
@@ -132,24 +132,25 @@ jobs:
         run: |
           echo "macos_hash=$(cat macos/macos.hash)" >> $GITHUB_OUTPUT
           echo "linux_hash=$(cat linux/linux.hash)" >> $GITHUB_OUTPUT
-      # - name: Upload MacOS CLI to S3
-      #   run:
-      #     aws s3 cp ./macos/ev-${{ env.MACOS_TARGET }}-${{ inputs.full-version
-      #     }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{
-      #     inputs.major-version }}/${{ inputs.full-version }}/${{
-      #     env.MACOS_TARGET }}/ev.tar.gz
-      # - name: Upload Ubuntu CLI to S3
-      #   run:
-      #     aws s3 cp ./linux/ev-${{ env.LINUX_TARGET }}-${{ inputs.full-version
-      #     }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{
-      #     inputs.major-version }}/${{ inputs.full-version }}/${{
-      #     env.LINUX_TARGET }}/ev.tar.gz
+      - name: Upload MacOS CLI to S3
+        run:
+          aws s3 cp ./macos/ev-${{ env.MACOS_TARGET }}-${{ inputs.full-version
+          }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{
+          inputs.major-version }}/${{ inputs.full-version }}/${{
+          env.MACOS_TARGET }}/ev.tar.gz
+      - name: Upload Ubuntu CLI to S3
+        run:
+          aws s3 cp ./linux/ev-${{ env.LINUX_TARGET }}-${{ inputs.full-version
+          }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{
+          inputs.major-version }}/${{ inputs.full-version }}/${{
+          env.LINUX_TARGET }}/ev.tar.gz
       - uses: actions/checkout@v4
       - name: Update install script in S3
         working-directory: crates/ev-cli
         run: |
           sh ./scripts/generate-installer.sh ${{ inputs.full-version }} ${{ inputs.major-version }} ${{ inputs.ev-domain }} ${{ steps.read-hashes.outputs.macos_hash }} ${{ steps.read-hashes.outputs.linux_hash }}
-          cat ./scripts/install
+          sh ./scripts/update-versions.sh ${{ inputs.full-version }} ${{ inputs.ev-domain }}
+          
           # Calculate hash of the install script
           INSTALL_SCRIPT_HASH=$(shasum -a 256 ./scripts/install | cut -d ' ' -f 1)
           echo "Install script hash: $INSTALL_SCRIPT_HASH"
@@ -159,5 +160,11 @@ jobs:
           echo "**SHA-256 Hash**: \`$INSTALL_SCRIPT_HASH\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version**: ${{ inputs.full-version }}" >> $GITHUB_STEP_SUMMARY
-          exit 0
+
+          aws s3 cp scripts/install s3://cli-assets-bucket-${{ inputs.stage }}/v${{ inputs.major-version }}/${{ inputs.full-version }}/install
+          aws s3 cp scripts/install s3://cli-assets-bucket-${{ inputs.stage }}/v${{ inputs.major-version }}/install
+          aws s3 cp scripts/version s3://cli-assets-bucket-${{ inputs.stage }}/v${{ inputs.major-version }}/version
+          aws s3 cp scripts/version s3://cli-assets-bucket-${{ inputs.stage }}/version
+          aws s3 cp scripts/versions s3://cli-assets-bucket-${{ inputs.stage }}/versions
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.aws-cloudfront-distribution-id }} --paths "/v4/install" "/version" "/versions"
 
