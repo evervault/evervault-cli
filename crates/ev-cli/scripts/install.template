@@ -4,6 +4,9 @@ set -eu
 EV_DOWNLOAD_Darwin_universal="https://cli.{{domain}}/{{major}}/{{version}}/x86_64-apple-darwin/ev.tar.gz"
 EV_DOWNLOAD_Linux_x86_64="https://cli.{{domain}}/{{major}}/{{version}}/x86_64-unknown-linux-musl/ev.tar.gz"
 
+EV_HASH_Darwin_universal="{{macos_hash}}"
+EV_HASH_Linux_x86_64="{{linux_hash}}"
+
 VERSION="{{version}}"
 PLATFORM=`uname -s`
 ARCH=`uname -m`
@@ -31,6 +34,7 @@ if [ -z ${INSTALL_PATH+x} ]; then
   INSTALL_PATH="${INSTALL_DIR}/ev"
 fi
 DOWNLOAD_URL_LOOKUP="EV_DOWNLOAD_${PLATFORM}_${ARCH}"
+HASH_LOOKUP="EV_HASH_${PLATFORM}_${ARCH}"
 
 ensure_supported_platform() {
   local x
@@ -64,6 +68,7 @@ if [ "$is_supported" = false ]; then
 fi
 
 eval DOWNLOAD_URL=\$$DOWNLOAD_URL_LOOKUP
+eval EXPECTED_HASH=\$$HASH_LOOKUP
 
 if [ "$PERFORM_INSTALL" = true ]; then
   TEMP_FILE=`mktemp "${TMPDIR:-/tmp}/ev.XXXXXXXX"`
@@ -86,6 +91,22 @@ install_via_curl() {
   curl -SL --progress-bar "$DOWNLOAD_URL" > "$TEMP_FILE"
 }
 
+verify_hash() {
+  if [ "$PLATFORM" = "Darwin" ]; then
+    COMPUTED_HASH=$(shasum -a 256 "$TEMP_FILE" | cut -d ' ' -f 1)
+  else
+    COMPUTED_HASH=$(sha256sum "$TEMP_FILE" | cut -d ' ' -f 1)
+  fi
+  
+  if [ "$COMPUTED_HASH" != "$EXPECTED_HASH" ]; then
+    echo "Error: Hash verification failed"
+    echo "Expected: $EXPECTED_HASH"
+    echo "Got:      $COMPUTED_HASH"
+    exit 4
+  fi
+  echo "Hash verification successful"
+}
+
 if [ "$PERFORM_INSTALL" = true ]; then
   if hash curl 2> /dev/null; then
     install_via_curl
@@ -95,6 +116,8 @@ if [ "$PERFORM_INSTALL" = true ]; then
     echo "You do not have curl or wget installed, which are required for this script."
     exit 3
   fi
+  
+  verify_hash
   chmod 0755 "$TEMP_FILE"
 fi
 
