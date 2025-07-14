@@ -37,4 +37,4 @@ thiserror = "1.0.59"
 tokio = {version = "1.45.0", features = ["rt", "rt-multi-thread", "macros", "fs"]}
 tokio-util = "0.7.11"
 toml = "0.5.9"
-zip = "2.3.0"
+zip = "4.3.0"
