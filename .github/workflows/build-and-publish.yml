@@ -118,12 +118,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.aws-secret-access-key }}
           aws-region: us-east-1
       - name: Download MacOS Artifacts
-        uses: actions/download-artifact@v4.1.8
+        uses: actions/download-artifact@v5.0.0
         with:
           name: macos
           path: macos
       - name: Download Linux Artifacts
-        uses: actions/download-artifact@v4.1.8
+        uses: actions/download-artifact@v5.0.0
         with:
           name: linux
           path: linux
