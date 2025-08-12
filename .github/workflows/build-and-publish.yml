@@ -33,7 +33,7 @@ jobs:
   compile-ubuntu:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install musl-tools
         run: sudo apt-get install musl-tools
       - name: Set up Rust
@@ -72,7 +72,7 @@ jobs:
   compile-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Inject Version
         working-directory: crates/ev-cli
         run: sh ./scripts/insert-cli-version.sh ${{ inputs.full-version }}
@@ -144,7 +144,7 @@ jobs:
           }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{
           inputs.major-version }}/${{ inputs.full-version }}/${{
           env.LINUX_TARGET }}/ev.tar.gz
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Update install script in S3
         working-directory: crates/ev-cli
         run: |
