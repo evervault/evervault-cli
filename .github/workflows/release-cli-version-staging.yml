@@ -47,5 +47,5 @@ jobs:
       full-version: "${{ needs.get-version.outputs.full_version }}"
       ev-domain: "evervault.io"
     secrets:
-      aws-oidc-role-arn: ${{ secrets.AWS_EV_CLI_PRODUCTION_OIDC_ROLE_ARN}}
+      aws-oidc-role-arn: ${{ secrets.AWS_EV_CLI_STAGING_OIDC_ROLE_ARN }}
       aws-cloudfront-distribution-id: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }}
