@@ -27,6 +27,9 @@ env:
   # Directories to target during release
   BIN_DIR: bin
   RELEASE_DIR: release
+permissions:
+  id-token: write
+  contents: read
 jobs:
   compile-ubuntu:
     runs-on: ubuntu-latest
