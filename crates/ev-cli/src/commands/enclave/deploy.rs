@@ -69,6 +69,11 @@ pub struct DeployArgs {
     /// Disables the use of cache during the image builds
     #[arg(long = "no-cache")]
     pub no_cache: bool,
+
+    /// Timeout in seconds to wait for the Enclave to finish deploying into the Trusted Execution Environment.
+    /// Does not affect the EIF build or upload steps.
+    #[arg(long = "timeout", default_value_t = ev_enclave::deploy::DEPLOY_WATCH_TIMEOUT_SECONDS)]
+    pub timeout: u64,
 }
 
 impl BuildTimeConfig for DeployArgs {
@@ -206,6 +211,7 @@ pub async fn run(deploy_args: DeployArgs, (_, api_key): BasicAuth) -> exitcode::
         output_path,
         &eif_measurements,
         &enclave_runtime,
+        deploy_args.timeout,
     )
     .await
     {
