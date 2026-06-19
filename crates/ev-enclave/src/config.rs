@@ -75,6 +75,48 @@ impl ScalingSettings {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct AcceptorConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_concurrent_connections: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_concurrent_handshakes: Option<u32>,
+    /// Handshake timeout in milliseconds.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub handshake_timeout: Option<u64>,
+}
+
+impl AcceptorConfig {
+    pub fn validate(&self) -> Result<(), EnclaveConfigError> {
+        if let Some(0) = self.max_concurrent_connections {
+            return Err(EnclaveConfigError::InvalidAcceptorConfig(
+                "max_concurrent_connections must be greater than 0".to_string(),
+            ));
+        }
+        if let Some(0) = self.max_concurrent_handshakes {
+            return Err(EnclaveConfigError::InvalidAcceptorConfig(
+                "max_concurrent_handshakes must be greater than 0".to_string(),
+            ));
+        }
+        if let Some(0) = self.handshake_timeout {
+            return Err(EnclaveConfigError::InvalidAcceptorConfig(
+                "handshake_timeout must be greater than 0".to_string(),
+            ));
+        }
+        if let (Some(connections), Some(handshakes)) = (
+            self.max_concurrent_connections,
+            self.max_concurrent_handshakes,
+        ) {
+            if handshakes > connections {
+                return Err(EnclaveConfigError::InvalidAcceptorConfig(format!(
+                    "max_concurrent_handshakes ({handshakes}) must not exceed max_concurrent_connections ({connections})"
+                )));
+            }
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SigningInfo {
     #[serde(rename = "certPath")]
@@ -212,6 +254,8 @@ pub enum EnclaveConfigError {
     MissingField(String),
     #[error("TLS Termination must be enabled to enable Enclave logging.")]
     LoggingEnabledWithoutTLSTermination(),
+    #[error("Invalid acceptor config — {0}")]
+    InvalidAcceptorConfig(String),
 }
 
 impl CliError for EnclaveConfigError {
@@ -221,7 +265,8 @@ impl CliError for EnclaveConfigError {
             Self::FailedToParseEnclaveConfig(_)
             | Self::MissingDockerfile
             | Self::MissingField(_)
-            | Self::LoggingEnabledWithoutTLSTermination() => exitcode::DATAERR,
+            | Self::LoggingEnabledWithoutTLSTermination()
+            | Self::InvalidAcceptorConfig(_) => exitcode::DATAERR,
             Self::MissingSigningInfo(signing_err) => signing_err.exitcode(),
         }
     }
@@ -300,6 +345,8 @@ pub struct EnclaveConfig {
     pub signing: Option<SigningInfo>,
     pub attestation_cors: Option<AttestationCors>,
     pub attestation: Option<EIFMeasurements>,
+    #[serde(default)]
+    pub acceptor: Option<AcceptorConfig>,
 }
 
 // This type exists only to read V0 tomls and migrate to V1
@@ -350,6 +397,7 @@ impl std::convert::From<EnclaveConfigV0> for EnclaveConfig {
             signing: value.signing,
             attestation: value.attestation,
             attestation_cors: value.attestation_cors,
+            acceptor: None,
         }
     }
 }
@@ -390,6 +438,7 @@ pub struct ValidatedEnclaveBuildConfig {
     pub trusted_headers: Vec<String>,
     pub healthcheck: Option<HealthcheckConfig>,
     pub attestation_cors: Option<AttestationCors>,
+    pub acceptor: Option<AcceptorConfig>,
 }
 
 impl ValidatedEnclaveBuildConfig {
@@ -474,6 +523,10 @@ impl ValidatedEnclaveBuildConfig {
 
     pub fn attestation_cors(&self) -> &Option<AttestationCors> {
         &self.attestation_cors
+    }
+
+    pub fn acceptor(&self) -> Option<&AcceptorConfig> {
+        self.acceptor.as_ref()
     }
 }
 
@@ -597,6 +650,10 @@ impl std::convert::TryFrom<&EnclaveConfig> for ValidatedEnclaveBuildConfig {
 
         let scaling_settings = config.scaling.clone();
 
+        if let Some(acceptor) = config.acceptor.as_ref() {
+            acceptor.validate()?;
+        }
+
         Ok(ValidatedEnclaveBuildConfig {
             version: config.version,
             enclave_uuid,
@@ -617,6 +674,7 @@ impl std::convert::TryFrom<&EnclaveConfig> for ValidatedEnclaveBuildConfig {
             trusted_headers: config.trusted_headers.clone(),
             healthcheck: config.healthcheck.clone(),
             attestation_cors: config.attestation_cors.clone(),
+            acceptor: config.acceptor.clone(),
         })
     }
 }
@@ -671,7 +729,7 @@ pub fn read_and_validate_config<B: BuildTimeConfig>(
 mod test {
     use common::enclave::types::AttestationCors;
 
-    use super::{BuildTimeConfig, EnclaveConfig};
+    use super::{AcceptorConfig, BuildTimeConfig, EnclaveConfig, ValidatedEnclaveBuildConfig};
 
     struct ExampleArgs {
         cert: String,
@@ -722,6 +780,7 @@ mod test {
                 "/health".to_string(),
             )),
             attestation_cors: None,
+            acceptor: None,
         };
 
         let test_args = ExampleArgs {
@@ -769,6 +828,7 @@ mod test {
             attestation_cors: Some(AttestationCors {
                 origin: "*".to_string(),
             }),
+            acceptor: None,
         };
 
         let test_args = ExampleArgs {
@@ -786,5 +846,112 @@ mod test {
             merged.healthcheck.unwrap(),
             config.healthcheck.clone().unwrap()
         );
+    }
+
+    #[test]
+    fn parse_config_with_acceptor_table() {
+        let toml = r#"version = 1
+name = "Enclave123"
+uuid = "abcdef123"
+app_uuid = "abcdef321"
+team_uuid = "team_abcdef456"
+debug = false
+dockerfile = "./Dockerfile"
+
+[egress]
+enabled = false
+
+[signing]
+certPath = "../../fixtures/cert.pem"
+keyPath = "../../fixtures/key.pem"
+
+[acceptor]
+max_concurrent_connections = 100
+max_concurrent_handshakes = 10
+handshake_timeout = 10000
+"#;
+        let config: EnclaveConfig = toml::de::from_str(toml).unwrap();
+        let acceptor = config.acceptor.as_ref().expect("acceptor table present");
+        assert_eq!(acceptor.max_concurrent_connections, Some(100));
+        assert_eq!(acceptor.max_concurrent_handshakes, Some(10));
+        assert_eq!(acceptor.handshake_timeout, Some(10000));
+
+        let validated: ValidatedEnclaveBuildConfig = (&config).try_into().unwrap();
+        let acceptor = validated.acceptor().expect("acceptor threaded through");
+        assert_eq!(acceptor.max_concurrent_connections, Some(100));
+        assert_eq!(acceptor.max_concurrent_handshakes, Some(10));
+        assert_eq!(acceptor.handshake_timeout, Some(10000));
+    }
+
+    #[test]
+    fn parse_config_without_acceptor_table() {
+        let toml = r#"version = 1
+name = "Enclave123"
+uuid = "abcdef123"
+app_uuid = "abcdef321"
+team_uuid = "team_abcdef456"
+debug = false
+dockerfile = "./Dockerfile"
+
+[egress]
+enabled = false
+
+[signing]
+certPath = "./cert.pem"
+keyPath = "./key.pem"
+"#;
+        let config: EnclaveConfig = toml::de::from_str(toml).unwrap();
+        assert!(config.acceptor.is_none());
+    }
+
+    #[test]
+    fn acceptor_validate_rejects_zero_values() {
+        let zero_connections = AcceptorConfig {
+            max_concurrent_connections: Some(0),
+            max_concurrent_handshakes: None,
+            handshake_timeout: None,
+        };
+        assert!(zero_connections.validate().is_err());
+
+        let zero_handshakes = AcceptorConfig {
+            max_concurrent_connections: None,
+            max_concurrent_handshakes: Some(0),
+            handshake_timeout: None,
+        };
+        assert!(zero_handshakes.validate().is_err());
+
+        let zero_timeout = AcceptorConfig {
+            max_concurrent_connections: None,
+            max_concurrent_handshakes: None,
+            handshake_timeout: Some(0),
+        };
+        assert!(zero_timeout.validate().is_err());
+    }
+
+    #[test]
+    fn acceptor_validate_rejects_handshakes_exceeding_connections() {
+        let acceptor = AcceptorConfig {
+            max_concurrent_connections: Some(10),
+            max_concurrent_handshakes: Some(11),
+            handshake_timeout: None,
+        };
+        assert!(acceptor.validate().is_err());
+    }
+
+    #[test]
+    fn acceptor_validate_accepts_valid_combinations() {
+        let acceptor = AcceptorConfig {
+            max_concurrent_connections: Some(100),
+            max_concurrent_handshakes: Some(100),
+            handshake_timeout: Some(5000),
+        };
+        assert!(acceptor.validate().is_ok());
+
+        let partial = AcceptorConfig {
+            max_concurrent_connections: None,
+            max_concurrent_handshakes: Some(5),
+            handshake_timeout: None,
+        };
+        assert!(partial.validate().is_ok());
     }
 }

@@ -341,6 +341,28 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         dataplane_info["healthcheck_use_tls"] = json!(build_config.use_tls_healthcheck());
     }
 
+    if let Some(acceptor) = build_config.acceptor() {
+        let mut acc = serde_json::Map::new();
+        if let Some(c) = acceptor.max_concurrent_connections {
+            acc.insert("max_concurrent_connections".into(), json!(c));
+        }
+        if let Some(h) = acceptor.max_concurrent_handshakes {
+            acc.insert("max_concurrent_handshakes".into(), json!(h));
+        }
+        if let Some(ms) = acceptor.handshake_timeout {
+            acc.insert(
+                "handshake_timeout".into(),
+                json!({
+                    "secs": ms / 1000,
+                    "nanos": (ms % 1000) * 1_000_000,
+                }),
+            );
+        }
+        if !acc.is_empty() {
+            dataplane_info["acceptor"] = Value::Object(acc);
+        }
+    }
+
     let dataplane_env = format!(
         "echo {} > /etc/dataplane-config.json",
         dataplane_info.to_string().replace('"', "\\\"")
@@ -550,6 +572,7 @@ mod test {
             attestation_cors: Some(AttestationCors {
                 origin: "test.com".to_string(),
             }),
+            acceptor: None,
         }
     }
 
@@ -1364,6 +1387,76 @@ ENTRYPOINT ["/bootstrap", "1>&2"]
             let processed_directive = processed_directive.to_string();
             assert_eq!(expected_directive, processed_directive);
         }
+    }
+
+    #[tokio::test]
+    async fn test_process_dockerfile_with_acceptor_config() {
+        let sample_dockerfile_contents = r#"FROM alpine
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+ENTRYPOINT ["sh", "/hello-script"]"#;
+        let mut readable_contents = sample_dockerfile_contents.as_bytes();
+
+        let mut config = get_config(false);
+        config.acceptor = Some(crate::config::AcceptorConfig {
+            max_concurrent_connections: Some(100),
+            max_concurrent_handshakes: Some(10),
+            handshake_timeout: Some(10000),
+        });
+
+        let enclave_runtime = EnclaveRuntime {
+            data_plane_version: "0.0.0".to_string(),
+            installer_version: "abcdef".to_string(),
+        };
+
+        let processed_file =
+            process_dockerfile(&config, &mut readable_contents, &enclave_runtime, false)
+                .await
+                .unwrap();
+
+        let dataplane_directive = processed_file
+            .iter()
+            .map(|directive| directive.to_string())
+            .find(|directive| directive.contains("/etc/dataplane-config.json"))
+            .expect("dataplane-config directive present");
+
+        let expected = r#"RUN echo {\"acceptor\":{\"handshake_timeout\":{\"nanos\":0,\"secs\":10},\"max_concurrent_connections\":100,\"max_concurrent_handshakes\":10},\"api_key_auth\":true,\"attestation_cors\":{\"origin\":\"test.com\"},\"forward_proxy_protocol\":false,\"trusted_headers\":[\"X-Evervault-*\"],\"trx_logging_enabled\":true} > /etc/dataplane-config.json"#;
+        assert_eq!(dataplane_directive, expected);
+    }
+
+    #[tokio::test]
+    async fn test_process_dockerfile_with_sub_second_handshake_timeout() {
+        let sample_dockerfile_contents = r#"FROM alpine
+RUN touch /hello-script;\
+    /bin/sh -c "echo -e '"'#!/bin/sh\nwhile true; do echo "hello"; sleep 2; done;\n'"' > /hello-script"
+ENTRYPOINT ["sh", "/hello-script"]"#;
+        let mut readable_contents = sample_dockerfile_contents.as_bytes();
+
+        let mut config = get_config(false);
+        config.acceptor = Some(crate::config::AcceptorConfig {
+            max_concurrent_connections: None,
+            max_concurrent_handshakes: None,
+            handshake_timeout: Some(500),
+        });
+
+        let enclave_runtime = EnclaveRuntime {
+            data_plane_version: "0.0.0".to_string(),
+            installer_version: "abcdef".to_string(),
+        };
+
+        let processed_file =
+            process_dockerfile(&config, &mut readable_contents, &enclave_runtime, false)
+                .await
+                .unwrap();
+
+        let dataplane_directive = processed_file
+            .iter()
+            .map(|directive| directive.to_string())
+            .find(|directive| directive.contains("/etc/dataplane-config.json"))
+            .expect("dataplane-config directive present");
+
+        assert!(dataplane_directive
+            .contains(r#"\"acceptor\":{\"handshake_timeout\":{\"nanos\":500000000,\"secs\":0}}"#));
     }
 
     #[tokio::test]
