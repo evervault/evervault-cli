@@ -1,3 +1,5 @@
+use std::num::{NonZeroU32, NonZeroU64};
+
 use clap::{ArgGroup, Parser};
 use common::api::BasicAuth;
 use common::{api::AuthMode, CliError};
@@ -95,16 +97,16 @@ pub struct InitArgs {
     pub port: Option<u16>,
 
     /// Cap on the number of in-flight connections the Enclave will accept concurrently.
-    #[arg(long = "max-concurrent-connections")]
-    pub max_concurrent_connections: Option<u32>,
+    #[arg(long)]
+    pub max_concurrent_connections: Option<NonZeroU32>,
 
     /// Cap on the number of in-flight TLS handshakes the Enclave will perform concurrently. Must not exceed --max-concurrent-connections.
-    #[arg(long = "max-concurrent-handshakes")]
-    pub max_concurrent_handshakes: Option<u32>,
+    #[arg(long)]
+    pub max_concurrent_handshakes: Option<NonZeroU32>,
 
     /// Per-handshake timeout in milliseconds for incoming TLS handshakes.
-    #[arg(long = "handshake-timeout")]
-    pub handshake_timeout: Option<u64>,
+    #[arg(long)]
+    pub handshake_timeout: Option<NonZeroU64>,
 }
 
 impl std::convert::From<InitArgs> for EnclaveConfig {
@@ -434,9 +436,9 @@ keyPath = "./key.pem"
             updated_at: "00:00:00".into(),
         };
         let mut init_args = default_init_args(&output_dir);
-        init_args.max_concurrent_connections = Some(100);
-        init_args.max_concurrent_handshakes = Some(10);
-        init_args.handshake_timeout = Some(10000);
+        init_args.max_concurrent_connections = NonZeroU32::new(100);
+        init_args.max_concurrent_handshakes = NonZeroU32::new(10);
+        init_args.handshake_timeout = NonZeroU64::new(10000);
         init_local_config(init_args, sample_enclave).await;
         let config_path = output_dir.path().join("enclave.toml");
         assert!(config_path.exists());

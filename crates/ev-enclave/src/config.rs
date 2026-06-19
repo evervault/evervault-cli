@@ -1,3 +1,4 @@
+use std::num::{NonZeroU32, NonZeroU64};
 use std::path::Path;
 
 use crate::cert::{get_cert_validity_period, CertValidityPeriod};
@@ -78,31 +79,16 @@ impl ScalingSettings {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AcceptorConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_concurrent_connections: Option<u32>,
+    pub max_concurrent_connections: Option<NonZeroU32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_concurrent_handshakes: Option<u32>,
+    pub max_concurrent_handshakes: Option<NonZeroU32>,
     /// Handshake timeout in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub handshake_timeout: Option<u64>,
+    pub handshake_timeout: Option<NonZeroU64>,
 }
 
 impl AcceptorConfig {
     pub fn validate(&self) -> Result<(), EnclaveConfigError> {
-        if let Some(0) = self.max_concurrent_connections {
-            return Err(EnclaveConfigError::InvalidAcceptorConfig(
-                "max_concurrent_connections must be greater than 0".to_string(),
-            ));
-        }
-        if let Some(0) = self.max_concurrent_handshakes {
-            return Err(EnclaveConfigError::InvalidAcceptorConfig(
-                "max_concurrent_handshakes must be greater than 0".to_string(),
-            ));
-        }
-        if let Some(0) = self.handshake_timeout {
-            return Err(EnclaveConfigError::InvalidAcceptorConfig(
-                "handshake_timeout must be greater than 0".to_string(),
-            ));
-        }
         if let (Some(connections), Some(handshakes)) = (
             self.max_concurrent_connections,
             self.max_concurrent_handshakes,
@@ -730,6 +716,7 @@ mod test {
     use common::enclave::types::AttestationCors;
 
     use super::{AcceptorConfig, BuildTimeConfig, EnclaveConfig, ValidatedEnclaveBuildConfig};
+    use std::num::{NonZeroU32, NonZeroU64};
 
     struct ExampleArgs {
         cert: String,
@@ -872,15 +859,15 @@ handshake_timeout = 10000
 "#;
         let config: EnclaveConfig = toml::de::from_str(toml).unwrap();
         let acceptor = config.acceptor.as_ref().expect("acceptor table present");
-        assert_eq!(acceptor.max_concurrent_connections, Some(100));
-        assert_eq!(acceptor.max_concurrent_handshakes, Some(10));
-        assert_eq!(acceptor.handshake_timeout, Some(10000));
+        assert_eq!(acceptor.max_concurrent_connections, NonZeroU32::new(100));
+        assert_eq!(acceptor.max_concurrent_handshakes, NonZeroU32::new(10));
+        assert_eq!(acceptor.handshake_timeout, NonZeroU64::new(10000));
 
         let validated: ValidatedEnclaveBuildConfig = (&config).try_into().unwrap();
         let acceptor = validated.acceptor().expect("acceptor threaded through");
-        assert_eq!(acceptor.max_concurrent_connections, Some(100));
-        assert_eq!(acceptor.max_concurrent_handshakes, Some(10));
-        assert_eq!(acceptor.handshake_timeout, Some(10000));
+        assert_eq!(acceptor.max_concurrent_connections, NonZeroU32::new(100));
+        assert_eq!(acceptor.max_concurrent_handshakes, NonZeroU32::new(10));
+        assert_eq!(acceptor.handshake_timeout, NonZeroU64::new(10000));
     }
 
     #[test]
@@ -905,34 +892,25 @@ keyPath = "./key.pem"
     }
 
     #[test]
-    fn acceptor_validate_rejects_zero_values() {
-        let zero_connections = AcceptorConfig {
-            max_concurrent_connections: Some(0),
-            max_concurrent_handshakes: None,
-            handshake_timeout: None,
-        };
-        assert!(zero_connections.validate().is_err());
-
-        let zero_handshakes = AcceptorConfig {
-            max_concurrent_connections: None,
-            max_concurrent_handshakes: Some(0),
-            handshake_timeout: None,
-        };
-        assert!(zero_handshakes.validate().is_err());
-
-        let zero_timeout = AcceptorConfig {
-            max_concurrent_connections: None,
-            max_concurrent_handshakes: None,
-            handshake_timeout: Some(0),
-        };
-        assert!(zero_timeout.validate().is_err());
+    fn acceptor_config_rejects_zero_values_on_deserialization() {
+        for field in [
+            "max_concurrent_connections",
+            "max_concurrent_handshakes",
+            "handshake_timeout",
+        ] {
+            let toml = format!("{field} = 0");
+            assert!(
+                toml::de::from_str::<AcceptorConfig>(&toml).is_err(),
+                "expected {field} = 0 to be rejected"
+            );
+        }
     }
 
     #[test]
     fn acceptor_validate_rejects_handshakes_exceeding_connections() {
         let acceptor = AcceptorConfig {
-            max_concurrent_connections: Some(10),
-            max_concurrent_handshakes: Some(11),
+            max_concurrent_connections: NonZeroU32::new(10),
+            max_concurrent_handshakes: NonZeroU32::new(11),
             handshake_timeout: None,
         };
         assert!(acceptor.validate().is_err());
@@ -941,15 +919,15 @@ keyPath = "./key.pem"
     #[test]
     fn acceptor_validate_accepts_valid_combinations() {
         let acceptor = AcceptorConfig {
-            max_concurrent_connections: Some(100),
-            max_concurrent_handshakes: Some(100),
-            handshake_timeout: Some(5000),
+            max_concurrent_connections: NonZeroU32::new(100),
+            max_concurrent_handshakes: NonZeroU32::new(100),
+            handshake_timeout: NonZeroU64::new(5000),
         };
         assert!(acceptor.validate().is_ok());
 
         let partial = AcceptorConfig {
             max_concurrent_connections: None,
-            max_concurrent_handshakes: Some(5),
+            max_concurrent_handshakes: NonZeroU32::new(5),
             handshake_timeout: None,
         };
         assert!(partial.validate().is_ok());

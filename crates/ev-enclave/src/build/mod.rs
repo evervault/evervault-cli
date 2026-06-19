@@ -255,7 +255,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
         // catch for edge case where port is defined in the toml, but was never exposed in docker
         if let Some(false) = is_configured_port_missing_in_docker {
             log::warn!(
-              "Found service port in enclave.toml which is not exposed in the supplied Dockerfile. This may suggest a misconfiguration. The build will continue using the service port defined in the enclave.toml file.", 
+              "Found service port in enclave.toml which is not exposed in the supplied Dockerfile. This may suggest a misconfiguration. The build will continue using the service port defined in the enclave.toml file.",
             );
             log::warn!(
                 "Service port from enclave.toml: {}",
@@ -350,6 +350,7 @@ async fn process_dockerfile<R: AsyncRead + std::marker::Unpin>(
             acc.insert("max_concurrent_handshakes".into(), json!(h));
         }
         if let Some(ms) = acceptor.handshake_timeout {
+            let ms = ms.get();
             acc.insert(
                 "handshake_timeout".into(),
                 json!({
@@ -535,6 +536,8 @@ mod test {
     use crate::version::EnclaveRuntime;
     use common::enclave::types::AttestationCors;
     use std::iter::zip;
+    use std::num::NonZeroU32;
+    use std::num::NonZeroU64;
     use tempfile::TempDir;
 
     fn get_config(egress_enabled: bool) -> ValidatedEnclaveBuildConfig {
@@ -1399,9 +1402,9 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
 
         let mut config = get_config(false);
         config.acceptor = Some(crate::config::AcceptorConfig {
-            max_concurrent_connections: Some(100),
-            max_concurrent_handshakes: Some(10),
-            handshake_timeout: Some(10000),
+            max_concurrent_connections: NonZeroU32::new(100),
+            max_concurrent_handshakes: NonZeroU32::new(10),
+            handshake_timeout: NonZeroU64::new(10000),
         });
 
         let enclave_runtime = EnclaveRuntime {
@@ -1436,7 +1439,7 @@ ENTRYPOINT ["sh", "/hello-script"]"#;
         config.acceptor = Some(crate::config::AcceptorConfig {
             max_concurrent_connections: None,
             max_concurrent_handshakes: None,
-            handshake_timeout: Some(500),
+            handshake_timeout: std::num::NonZeroU64::new(500),
         });
 
         let enclave_runtime = EnclaveRuntime {
