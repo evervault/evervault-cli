@@ -1,11 +1,13 @@
+use std::num::{NonZeroU32, NonZeroU64};
+
 use clap::{ArgGroup, Parser};
 use common::api::BasicAuth;
 use common::{api::AuthMode, CliError};
 use ev_enclave::api::enclave::{Enclave, EnclaveApi};
 use ev_enclave::cert::{create_new_cert, DesiredLifetime, DistinguishedName};
 use ev_enclave::config::{
-    default_dockerfile, EgressSettings, EnclaveConfig, HealthcheckConfig, ScalingSettings,
-    ServiceSettings, SigningInfo,
+    default_dockerfile, AcceptorConfig, EgressSettings, EnclaveConfig, HealthcheckConfig,
+    ScalingSettings, ServiceSettings, SigningInfo,
 };
 
 /// Initialize an Enclave.toml in the current directory
@@ -93,6 +95,18 @@ pub struct InitArgs {
     /// The port that all incoming traffic should be forwarded to within the Enclave.
     #[arg(long = "port")]
     pub port: Option<u16>,
+
+    /// Cap on the number of in-flight connections the Enclave will accept concurrently.
+    #[arg(long)]
+    pub max_concurrent_connections: Option<NonZeroU32>,
+
+    /// Cap on the number of in-flight TLS handshakes the Enclave will perform concurrently. Must not exceed --max-concurrent-connections.
+    #[arg(long)]
+    pub max_concurrent_handshakes: Option<NonZeroU32>,
+
+    /// Per-handshake timeout in milliseconds for incoming TLS handshakes.
+    #[arg(long)]
+    pub handshake_timeout: Option<NonZeroU64>,
 }
 
 impl std::convert::From<InitArgs> for EnclaveConfig {
@@ -113,6 +127,19 @@ impl std::convert::From<InitArgs> for EnclaveConfig {
             ))
         } else {
             val.healthcheck.map(HealthcheckConfig::from)
+        };
+
+        let acceptor = if val.max_concurrent_connections.is_none()
+            && val.max_concurrent_handshakes.is_none()
+            && val.handshake_timeout.is_none()
+        {
+            None
+        } else {
+            Some(AcceptorConfig {
+                max_concurrent_connections: val.max_concurrent_connections,
+                max_concurrent_handshakes: val.max_concurrent_handshakes,
+                handshake_timeout: val.handshake_timeout,
+            })
         };
 
         EnclaveConfig {
@@ -138,6 +165,7 @@ impl std::convert::From<InitArgs> for EnclaveConfig {
             healthcheck,
             service: val.port.map(ServiceSettings::new),
             attestation_cors: None,
+            acceptor,
         }
     }
 }
@@ -171,6 +199,14 @@ async fn init_local_config(init_args: InitArgs, created_enclave: Enclave) -> exi
     let config_path = output_path.join("enclave.toml");
 
     let mut initial_config: EnclaveConfig = init_args.into();
+
+    if let Some(acceptor) = initial_config.acceptor.as_ref() {
+        if let Err(e) = acceptor.validate() {
+            log::error!("{e}");
+            return e.exitcode();
+        }
+    }
+
     initial_config.annotate(created_enclave);
 
     if initial_config.signing.is_none() {
@@ -237,6 +273,9 @@ mod init_tests {
             healthcheck: None,
             healthcheck_port: None,
             port: None,
+            max_concurrent_connections: None,
+            max_concurrent_handshakes: None,
+            handshake_timeout: None,
         }
     }
 
@@ -379,6 +418,59 @@ desired_replicas = 2
 [signing]
 certPath = "./cert.pem"
 keyPath = "./key.pem"
+"#;
+        assert_eq!(config_content, expected_config_content);
+    }
+
+    #[tokio::test]
+    async fn init_local_config_test_with_acceptor_config() {
+        let output_dir = TempDir::new().unwrap();
+        let sample_enclave = Enclave {
+            uuid: "1234".into(),
+            name: "hello-enclave".into(),
+            team_uuid: "1234".into(),
+            app_uuid: "1234".into(),
+            domain: "hello.com".into(),
+            state: EnclaveState::Pending,
+            created_at: "00:00:00".into(),
+            updated_at: "00:00:00".into(),
+        };
+        let mut init_args = default_init_args(&output_dir);
+        init_args.max_concurrent_connections = NonZeroU32::new(100);
+        init_args.max_concurrent_handshakes = NonZeroU32::new(10);
+        init_args.handshake_timeout = NonZeroU64::new(10000);
+        init_local_config(init_args, sample_enclave).await;
+        let config_path = output_dir.path().join("enclave.toml");
+        assert!(config_path.exists());
+        let config_content = String::from_utf8(read(config_path).unwrap()).unwrap();
+        let expected_config_content = r#"version = 1
+name = "hello"
+uuid = "1234"
+app_uuid = "1234"
+team_uuid = "1234"
+debug = false
+dockerfile = "Dockerfile"
+api_key_auth = true
+trx_logging = true
+tls_termination = true
+forward_proxy_protocol = false
+trusted_headers = ["X-Evervault-*"]
+
+[egress]
+enabled = true
+destinations = ["evervault.com"]
+
+[scaling]
+desired_replicas = 2
+
+[signing]
+certPath = "./cert.pem"
+keyPath = "./key.pem"
+
+[acceptor]
+max_concurrent_connections = 100
+max_concurrent_handshakes = 10
+handshake_timeout = 10000
 "#;
         assert_eq!(config_content, expected_config_content);
     }
