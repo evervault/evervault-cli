@@ -18,9 +18,7 @@ on:
     secrets:
       aws-cloudfront-distribution-id:
         required: true
-      aws-access-key-id:
-        required: true
-      aws-secret-access-key:
+      aws-oidc-role-arn:
         required: true
 env:
   RUST_BACKTRACE: 1
@@ -29,6 +27,9 @@ env:
   # Directories to target during release
   BIN_DIR: bin
   RELEASE_DIR: release
+permissions:
+  id-token: write
+  contents: read
 jobs:
   compile-ubuntu:
     runs-on: ubuntu-latest
@@ -114,8 +115,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.aws-access-key-id }}
-          aws-secret-access-key: ${{ secrets.aws-secret-access-key }}
+          role-to-assume: ${{ secrets.aws-oidc-role-arn }}
           aws-region: us-east-1
       - name: Download MacOS Artifacts
         uses: actions/download-artifact@v4.1.8
