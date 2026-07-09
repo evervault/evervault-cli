@@ -25,6 +25,11 @@ pub struct RestartArgs {
     /// Perform the Enclave restart in the background
     #[arg(long)]
     pub background: bool,
+
+    /// Timeout in seconds to wait for the Enclave to finish deploying into the Trusted Execution Environment.
+    /// Does not affect the restart request itself, only the watch phase.
+    #[arg(long = "timeout", default_value_t = DEPLOY_WATCH_TIMEOUT_SECONDS)]
+    pub timeout: u64,
 }
 
 pub async fn run(restart_args: RestartArgs, (_, api_key): BasicAuth) -> i32 {
@@ -59,7 +64,7 @@ pub async fn run(restart_args: RestartArgs, (_, api_key): BasicAuth) -> i32 {
 
     match timed_operation(
         "Enclave Deployment",
-        DEPLOY_WATCH_TIMEOUT_SECONDS,
+        restart_args.timeout,
         watch_deployment(
             enclave_api,
             new_deployment.enclave_uuid(),
