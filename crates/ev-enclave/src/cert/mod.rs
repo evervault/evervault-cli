@@ -72,8 +72,8 @@ pub fn create_new_cert(
     distinguished_name: DistinguishedName,
     desired_lifetime: DesiredLifetime,
 ) -> Result<(PathBuf, PathBuf), CertError> {
-    let mut cert_params = CertificateParams::new(vec![]);
-    cert_params.alg = &rcgen::PKCS_ECDSA_P384_SHA384;
+    let mut cert_params = CertificateParams::new(vec![])?;
+    let key_pair = rcgen::KeyPair::generate_for(&rcgen::PKCS_ECDSA_P384_SHA384)?;
 
     add_distinguished_name_to_cert_params(&mut cert_params, distinguished_name);
 
@@ -95,9 +95,9 @@ pub fn create_new_cert(
         expiry_time.day() as u8,
     );
 
-    let cert = rcgen::Certificate::from_params(cert_params)?;
+    let cert = cert_params.self_signed(&key_pair)?;
 
-    let (cert_path, key_path) = write_cert_to_fs(output_dir, cert)?;
+    let (cert_path, key_path) = write_cert_to_fs(output_dir, &cert, &key_pair)?;
 
     Ok((cert_path, key_path))
 }
@@ -374,7 +374,8 @@ fn add_distinguished_name_to_cert_params(
 
 fn write_cert_to_fs(
     output_path: &Path,
-    cert: rcgen::Certificate,
+    cert: &rcgen::Certificate,
+    key_pair: &rcgen::KeyPair,
 ) -> Result<(PathBuf, PathBuf), CertError> {
     if !output_path.exists() {
         return Err(CertError::OutputPathDoesNotExist);
@@ -382,12 +383,12 @@ fn write_cert_to_fs(
 
     let cert_path = output_path.join("cert.pem");
     let mut cert_file = std::fs::File::create(cert_path.as_path())?;
-    let serialized_cert = cert.serialize_pem()?;
+    let serialized_cert = cert.pem();
     cert_file.write_all(serialized_cert.as_bytes())?;
 
     let key_path = output_path.join("key.pem");
     let mut key_file = std::fs::File::create(key_path.as_path())?;
-    let serialized_key = cert.serialize_private_key_pem();
+    let serialized_key = key_pair.serialize_pem();
     key_file.write_all(serialized_key.as_bytes())?;
 
     Ok((cert_path, key_path))

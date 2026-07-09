@@ -9,7 +9,7 @@ pub enum CertError {
     #[error("An error occurred while writing your cert to the file system - {0:?}")]
     FileWriteError(#[from] std::io::Error),
     #[error("An error occurred while serializing your cert - {0:?}")]
-    CertSerializationError(#[from] rcgen::RcgenError),
+    CertSerializationError(#[from] rcgen::Error),
     #[error("Failed to parse the subject provided")]
     InvalidCertSubjectProvided,
     #[error("Failed to parse the PEM file")]

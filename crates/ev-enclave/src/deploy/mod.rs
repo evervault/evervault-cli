@@ -29,6 +29,7 @@ pub async fn deploy_eif<T: EnclaveApi + Clone>(
     output_path: OutputPath,
     eif_measurements: &EIFMeasurements,
     enclave_runtime: &EnclaveRuntime,
+    watch_timeout: u64,
 ) -> Result<(), DeployError> {
     let progress_bar = get_tracker("Zipping Enclave...", None);
     create_zip_archive_for_eif(output_path.path())?;
@@ -102,7 +103,7 @@ pub async fn deploy_eif<T: EnclaveApi + Clone>(
 
     let deployment_complete = timed_operation(
         "Enclave Deployment",
-        DEPLOY_WATCH_TIMEOUT_SECONDS,
+        watch_timeout,
         watch_deployment(
             enclave_api,
             deployment_intent.enclave_uuid(),
@@ -217,7 +218,7 @@ fn create_zip_archive_for_eif(output_path: &std::path::Path) -> zip::result::Zip
 
     let mut zip = zip::ZipWriter::new(zip_file);
 
-    let zip_opts =
+    let zip_opts: zip::write::FileOptions<()> =
         zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
     let eif_path = output_path.join(ENCLAVE_FILENAME);
