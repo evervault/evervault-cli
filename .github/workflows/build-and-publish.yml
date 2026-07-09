@@ -66,7 +66,7 @@ jobs:
         run: |
           sha256sum ${{ env.RELEASE_DIR }}/ev-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz | cut -d ' ' -f 1 > ${{ env.RELEASE_DIR }}/linux.hash
       - name: Upload as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux
           path: ./${{ env.RELEASE_DIR }}
@@ -104,7 +104,7 @@ jobs:
         run: |
           shasum -a 256 ${{ env.RELEASE_DIR }}/ev-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz | cut -d ' ' -f 1 > ${{ env.RELEASE_DIR }}/macos.hash
       - name: Upload as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: macos
           path: ./${{ env.RELEASE_DIR }}
@@ -113,17 +113,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.aws-oidc-role-arn }}
           aws-region: us-east-1
       - name: Download MacOS Artifacts
-        uses: actions/download-artifact@v4.1.8
+        uses: actions/download-artifact@v6.0.0
         with:
           name: macos
           path: macos
       - name: Download Linux Artifacts
-        uses: actions/download-artifact@v4.1.8
+        uses: actions/download-artifact@v6.0.0
         with:
           name: linux
           path: linux
