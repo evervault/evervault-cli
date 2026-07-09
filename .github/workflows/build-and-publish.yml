@@ -30,7 +30,7 @@ permissions:
   contents: read
 jobs:
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ev-runner-x-large
     strategy:
       fail-fast: false
       matrix:
