@@ -1,8 +1,5 @@
 on:
-  push:
-    paths:
-      - crates/**
-      - .github/workflows/lint-and-test-cli.yml
+  push
 name: Lint and Test crates
 
 jobs:
