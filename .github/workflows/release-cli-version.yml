@@ -42,8 +42,7 @@ jobs:
       full-version: ${{ needs.get-version.outputs.full_version }}
       ev-domain: 'evervault.com'
     secrets:
-      aws-access-key-id: ${{ secrets.PUBLIC_REPO_AWS_ACCESS_KEY_ID }}
-      aws-secret-access-key: ${{ secrets.PUBLIC_REPO_AWS_SECRET_ACCESS_KEY }}
+      aws-oidc-role-arn: ${{ secrets.AWS_EV_CLI_PRODUCTION_OIDC_ROLE_ARN }}
       aws-cloudfront-distribution-id: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
   release-cli-version:
     needs: [build-and-deploy, get-version]
