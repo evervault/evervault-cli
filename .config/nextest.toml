@@ -1,0 +1,19 @@
+# cargo-nextest configuration
+# https://nexte.st/docs/configuration/
+#
+# A handful of enclave-build tests are annotated with `#[serial_test::serial]`
+# because they share process-wide state (they write `cert.pem`/`key.pem` into,
+# and build from, the crate's working directory). `serial_test` enforces this
+# with an in-process mutex, which works under `cargo test` because all tests run
+# in a single process.
+#
+# nextest runs each test in its own process, so that in-process mutex no longer
+# serializes anything. The `serial` test group below restores the guarantee by
+# allowing at most one of these tests to run at a time across the whole run,
+# mirroring the previous `cargo test` behaviour.
+[test-groups]
+serial = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = 'test(test_choose_output_dir) | test(test_reproducible_enclave_builds_with_pinned_version)'
+test-group = 'serial'
