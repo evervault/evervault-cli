@@ -9,7 +9,7 @@ jobs:
   clippy_check_cli:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions-hub/docker/cli@f5fdbfc3f9d2a9265ead8962c1314108a7b7ec5d
         env:
           SKIP_LOGIN: true
