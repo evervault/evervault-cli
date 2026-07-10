@@ -1,17 +1,21 @@
 #!/bin/sh
 
-pattern="s/{{version}}/$1/"
-major_pattern="s/{{major}}/$2/"
-domain_pattern="s/{{domain}}/$3/"
-macos_hash_pattern="s/{{macos_hash}}/$4/"
-linux_hash_pattern="s/{{linux_hash}}/$5/"
+version="$1"
+major="$2"
+domain="$3"
+darwin_arm64_hash="$4"
+darwin_x86_64_hash="$5"
+linux_x86_64_hash="$6"
+linux_aarch64_hash="$7"
 
-sed -e "$pattern" ./scripts/install.template > ./scripts/install-temp
-sed -e "$domain_pattern" ./scripts/install-temp > ./scripts/install-temp-domain
-sed -e "$major_pattern" ./scripts/install-temp-domain > ./scripts/install-temp-major
-sed -e "$macos_hash_pattern" ./scripts/install-temp-major > ./scripts/install-temp-macos
-sed -e "$linux_hash_pattern" ./scripts/install-temp-macos > ./scripts/install
+sed \
+  -e "s/{{version}}/$version/g" \
+  -e "s/{{major}}/$major/g" \
+  -e "s/{{domain}}/$domain/g" \
+  -e "s/{{darwin_arm64_hash}}/$darwin_arm64_hash/g" \
+  -e "s/{{darwin_x86_64_hash}}/$darwin_x86_64_hash/g" \
+  -e "s/{{linux_x86_64_hash}}/$linux_x86_64_hash/g" \
+  -e "s/{{linux_aarch64_hash}}/$linux_aarch64_hash/g" \
+  ./scripts/install.template > ./scripts/install
 
-sed -e "$pattern" ./scripts/version.template > ./scripts/version
-
-rm ./scripts/install-temp ./scripts/install-temp-domain ./scripts/install-temp-major ./scripts/install-temp-macos
+sed -e "s/{{version}}/$version/g" ./scripts/version.template > ./scripts/version
