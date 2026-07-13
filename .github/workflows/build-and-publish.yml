@@ -22,8 +22,6 @@ on:
         required: true
 env:
   RUST_BACKTRACE: 1
-  MACOS_TARGET: x86_64-apple-darwin
-  LINUX_TARGET: x86_64-unknown-linux-musl
   # Directories to target during release
   BIN_DIR: bin
   RELEASE_DIR: release
@@ -31,8 +29,14 @@ permissions:
   id-token: write
   contents: read
 jobs:
-  compile-ubuntu:
+  build-linux:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
     steps:
       - uses: actions/checkout@v5
       - name: Install musl-tools
@@ -43,11 +47,11 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-          target: ${{ env.LINUX_TARGET }}
+          target: ${{ matrix.target }}
       - name: Download cached dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: 'linux-cross-builds'
+          shared-key: 'linux-cross-${{ matrix.target }}'
       - name: Install cross
         run: cargo install cross
       - name: Inject Version
@@ -57,21 +61,27 @@ jobs:
         run: |
           mkdir ${{ env.BIN_DIR }}
           mkdir ${{ env.RELEASE_DIR }}
-          cross build -p ev-cli --release --target ${{ env.LINUX_TARGET }}
-          mv ./target/${{ env.LINUX_TARGET }}/release/ev ./${{ env.BIN_DIR }}/ev
-          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz
+          cross build -p ev-cli --release --target ${{ matrix.target }}
+          mv ./target/${{ matrix.target }}/release/ev ./${{ env.BIN_DIR }}/ev
+          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ./${{ env.RELEASE_DIR }}/ev-${{ matrix.target }}-${{ inputs.full-version }}.tar.gz
         env:
           CARGO_HOME: ${{ github.workspace }}/.cargo
       - name: Calculate Linux hash
         run: |
-          sha256sum ${{ env.RELEASE_DIR }}/ev-${{ env.LINUX_TARGET }}-${{ inputs.full-version }}.tar.gz | cut -d ' ' -f 1 > ${{ env.RELEASE_DIR }}/linux.hash
+          sha256sum ${{ env.RELEASE_DIR }}/ev-${{ matrix.target }}-${{ inputs.full-version }}.tar.gz | cut -d ' ' -f 1 > ${{ env.RELEASE_DIR }}/${{ matrix.target }}.hash
       - name: Upload as artifact
         uses: actions/upload-artifact@v5
         with:
-          name: linux
+          name: linux-${{ matrix.target }}
           path: ./${{ env.RELEASE_DIR }}
-  compile-macos:
+  build-macos:
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
     steps:
       - uses: actions/checkout@v5
       - name: Inject Version
@@ -80,16 +90,16 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          target: ${{ env.MACOS_TARGET }}
+          target: ${{ matrix.target }}
           override: true
       - name: Download cached dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: 'macos-cross-builds'
+          shared-key: 'macos-${{ matrix.target }}'
       - name: Build CLI MacOs Target
         run: |
-          cargo install cross
-          cross build --release --target ${{ env.MACOS_TARGET }}
+          rustup target add ${{ matrix.target }}
+          cargo build -p ev-cli --release --target ${{ matrix.target }}
       - name: Install 7z cli
         run: brew install p7zip
       - name: Setup directories
@@ -98,18 +108,18 @@ jobs:
           mkdir ${{ env.RELEASE_DIR }}
       - name: Compress binary
         run: |
-          mv target/${{env.MACOS_TARGET}}/release/ev ${{ env.BIN_DIR }}/ev
-          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ${{ env.RELEASE_DIR }}/ev-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz
+          mv target/${{ matrix.target }}/release/ev ${{ env.BIN_DIR }}/ev
+          7z a -ttar -so -an ./${{ env.BIN_DIR }} | 7z a -si ${{ env.RELEASE_DIR }}/ev-${{ matrix.target }}-${{ inputs.full-version }}.tar.gz
       - name: Calculate MacOS hash
         run: |
-          shasum -a 256 ${{ env.RELEASE_DIR }}/ev-${{ env.MACOS_TARGET }}-${{ inputs.full-version }}.tar.gz | cut -d ' ' -f 1 > ${{ env.RELEASE_DIR }}/macos.hash
+          shasum -a 256 ${{ env.RELEASE_DIR }}/ev-${{ matrix.target }}-${{ inputs.full-version }}.tar.gz | cut -d ' ' -f 1 > ${{ env.RELEASE_DIR }}/${{ matrix.target }}.hash
       - name: Upload as artifact
         uses: actions/upload-artifact@v5
         with:
-          name: macos
+          name: macos-${{ matrix.target }}
           path: ./${{ env.RELEASE_DIR }}
   upload-artifacts-to-s3:
-    needs: [compile-ubuntu, compile-macos]
+    needs: [build-linux, build-macos]
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -117,40 +127,48 @@ jobs:
         with:
           role-to-assume: ${{ secrets.aws-oidc-role-arn }}
           aws-region: us-east-1
-      - name: Download MacOS Artifacts
+      - name: Download all build artifacts
         uses: actions/download-artifact@v6.0.0
         with:
-          name: macos
-          path: macos
-      - name: Download Linux Artifacts
-        uses: actions/download-artifact@v6.0.0
-        with:
-          name: linux
-          path: linux
+          pattern: '{linux,macos}-*'
+          path: dist
       - name: Read hashes
         id: read-hashes
         run: |
-          echo "macos_hash=$(cat macos/macos.hash)" >> $GITHUB_OUTPUT
-          echo "linux_hash=$(cat linux/linux.hash)" >> $GITHUB_OUTPUT
-      - name: Upload MacOS CLI to S3
-        run:
-          aws s3 cp ./macos/ev-${{ env.MACOS_TARGET }}-${{ inputs.full-version
-          }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{
-          inputs.major-version }}/${{ inputs.full-version }}/${{
-          env.MACOS_TARGET }}/ev.tar.gz
-      - name: Upload Ubuntu CLI to S3
-        run:
-          aws s3 cp ./linux/ev-${{ env.LINUX_TARGET }}-${{ inputs.full-version
-          }}.tar.gz s3://cli-assets-bucket-${{ inputs.stage }}/${{
-          inputs.major-version }}/${{ inputs.full-version }}/${{
-          env.LINUX_TARGET }}/ev.tar.gz
+          echo "darwin_arm64_hash=$(cat dist/macos-aarch64-apple-darwin/aarch64-apple-darwin.hash)" >> $GITHUB_OUTPUT
+          echo "darwin_x86_64_hash=$(cat dist/macos-x86_64-apple-darwin/x86_64-apple-darwin.hash)" >> $GITHUB_OUTPUT
+          echo "linux_x86_64_hash=$(cat dist/linux-x86_64-unknown-linux-musl/x86_64-unknown-linux-musl.hash)" >> $GITHUB_OUTPUT
+          echo "linux_aarch64_hash=$(cat dist/linux-aarch64-unknown-linux-musl/aarch64-unknown-linux-musl.hash)" >> $GITHUB_OUTPUT
+      - name: Upload macOS arm64 CLI to S3
+        run: |
+          aws s3 cp ./dist/macos-aarch64-apple-darwin/ev-aarch64-apple-darwin-${{ inputs.full-version }}.tar.gz \
+            s3://cli-assets-bucket-${{ inputs.stage }}/${{ inputs.major-version }}/${{ inputs.full-version }}/aarch64-apple-darwin/ev.tar.gz
+      - name: Upload macOS x86_64 CLI to S3
+        run: |
+          aws s3 cp ./dist/macos-x86_64-apple-darwin/ev-x86_64-apple-darwin-${{ inputs.full-version }}.tar.gz \
+            s3://cli-assets-bucket-${{ inputs.stage }}/${{ inputs.major-version }}/${{ inputs.full-version }}/x86_64-apple-darwin/ev.tar.gz
+      - name: Upload Linux x86_64 CLI to S3
+        run: |
+          aws s3 cp ./dist/linux-x86_64-unknown-linux-musl/ev-x86_64-unknown-linux-musl-${{ inputs.full-version }}.tar.gz \
+            s3://cli-assets-bucket-${{ inputs.stage }}/${{ inputs.major-version }}/${{ inputs.full-version }}/x86_64-unknown-linux-musl/ev.tar.gz
+      - name: Upload Linux aarch64 CLI to S3
+        run: |
+          aws s3 cp ./dist/linux-aarch64-unknown-linux-musl/ev-aarch64-unknown-linux-musl-${{ inputs.full-version }}.tar.gz \
+            s3://cli-assets-bucket-${{ inputs.stage }}/${{ inputs.major-version }}/${{ inputs.full-version }}/aarch64-unknown-linux-musl/ev.tar.gz
       - uses: actions/checkout@v5
       - name: Update install script in S3
         working-directory: crates/ev-cli
         run: |
-          sh ./scripts/generate-installer.sh ${{ inputs.full-version }} ${{ inputs.major-version }} ${{ inputs.ev-domain }} ${{ steps.read-hashes.outputs.macos_hash }} ${{ steps.read-hashes.outputs.linux_hash }}
+          sh ./scripts/generate-installer.sh \
+            ${{ inputs.full-version }} \
+            ${{ inputs.major-version }} \
+            ${{ inputs.ev-domain }} \
+            ${{ steps.read-hashes.outputs.darwin_arm64_hash }} \
+            ${{ steps.read-hashes.outputs.darwin_x86_64_hash }} \
+            ${{ steps.read-hashes.outputs.linux_x86_64_hash }} \
+            ${{ steps.read-hashes.outputs.linux_aarch64_hash }}
           sh ./scripts/update-versions.sh ${{ inputs.full-version }} ${{ inputs.ev-domain }}
-          
+
           # Calculate hash of the install script
           INSTALL_SCRIPT_HASH=$(shasum -a 256 ./scripts/install | cut -d ' ' -f 1)
           echo "Install script hash: $INSTALL_SCRIPT_HASH"
@@ -167,4 +185,3 @@ jobs:
           aws s3 cp scripts/version s3://cli-assets-bucket-${{ inputs.stage }}/version
           aws s3 cp scripts/versions s3://cli-assets-bucket-${{ inputs.stage }}/versions
           aws cloudfront create-invalidation --distribution-id ${{ secrets.aws-cloudfront-distribution-id }} --paths "/v4/install" "/version" "/versions"
-
