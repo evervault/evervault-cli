@@ -38,7 +38,7 @@ jobs:
           - x86_64-unknown-linux-musl
           - aarch64-unknown-linux-musl
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Install musl-tools
         run: sudo apt-get install musl-tools
       - name: Set up Rust
@@ -83,7 +83,7 @@ jobs:
           - x86_64-apple-darwin
           - aarch64-apple-darwin
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Inject Version
         working-directory: crates/ev-cli
         run: sh ./scripts/insert-cli-version.sh ${{ inputs.full-version }}
@@ -155,7 +155,7 @@ jobs:
         run: |
           aws s3 cp ./dist/linux-aarch64-unknown-linux-musl/ev-aarch64-unknown-linux-musl-${{ inputs.full-version }}.tar.gz \
             s3://cli-assets-bucket-${{ inputs.stage }}/${{ inputs.major-version }}/${{ inputs.full-version }}/aarch64-unknown-linux-musl/ev.tar.gz
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Update install script in S3
         working-directory: crates/ev-cli
         run: |
