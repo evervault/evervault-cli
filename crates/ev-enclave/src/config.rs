@@ -567,8 +567,8 @@ impl EnclaveConfig {
             return Err(EnclaveConfigError::MissingConfigFile(path.to_string()));
         }
 
-        let enclave_config_content = std::fs::read(config_path)?;
-        Ok(toml::de::from_slice(enclave_config_content.as_slice())?)
+        let enclave_config_content = std::fs::read_to_string(config_path)?;
+        Ok(toml::from_str(&enclave_config_content)?)
     }
 
     pub fn get_enclave_domain(&self) -> Result<String, EnclaveConfigError> {
