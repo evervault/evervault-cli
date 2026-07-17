@@ -24,9 +24,9 @@ pub fn migrate_toml(config_path: &str) -> Result<Vec<u8>, MigrateError> {
         return Err(MigrateError::MissingConfigFile(path.display().to_string()));
     }
 
-    let enclave_config_content = std::fs::read(config_path)?;
-    let v0_config: EnclaveConfigV0 = toml::de::from_slice(enclave_config_content.as_slice())?;
+    let enclave_config_content = std::fs::read_to_string(config_path)?;
+    let v0_config: EnclaveConfigV0 = toml::from_str(&enclave_config_content)?;
     let v1_config: EnclaveConfig = v0_config.into();
     let _: ValidatedEnclaveBuildConfig = v1_config.as_ref().try_into()?;
-    Ok(toml::ser::to_vec(&v1_config)?)
+    Ok(toml::to_string(&v1_config)?.into_bytes())
 }
