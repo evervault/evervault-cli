@@ -55,7 +55,7 @@ jobs:
           tag_name: ${{ needs.get-version.outputs.full_version }}
           release_name: ${{ needs.get-version.outputs.full_version }}
       - name: Download all build artifacts
-        uses: actions/download-artifact@v6.0.0
+        uses: actions/download-artifact@v8.0.1
         with:
           pattern: '{linux,macos}-*'
           path: dist
