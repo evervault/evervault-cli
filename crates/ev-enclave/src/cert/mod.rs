@@ -279,8 +279,7 @@ pub async fn lock_enclave_to_certs(
             sorted_certs_for_select
                 .iter()
                 .map(|cert| (cert.formatted.as_str(), cert.locked))
-                .collect::<Vec<(&str, bool)>>()
-                .as_slice(),
+                .collect::<Vec<(&str, bool)>>(),
         )
         .interact()?;
 
