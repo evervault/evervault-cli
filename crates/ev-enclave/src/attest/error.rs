@@ -19,7 +19,7 @@ pub enum AttestCommandError {
     #[error(transparent)]
     Attestation(#[from] attestation_doc_validation::error::AttestationError),
     #[error(transparent)]
-    InvalidHostname(#[from] tokio_rustls::rustls::client::InvalidDnsNameError),
+    InvalidHostname(#[from] tokio_rustls::rustls::pki_types::InvalidDnsNameError),
     #[error(transparent)]
     DNSLookupFailure(#[from] tokio::time::error::Elapsed),
     #[error(transparent)]
