@@ -34,7 +34,8 @@ macro_rules! to_rustls_general_error {
 
 impl std::fmt::Debug for SubjectAltNameAttestationValidator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SubjectAltNameAttestationValidator").finish()
+        f.debug_struct("SubjectAltNameAttestationValidator")
+            .finish()
     }
 }
 
@@ -73,7 +74,12 @@ impl ServerCertVerifier for SubjectAltNameAttestationValidator {
     ) -> Result<HandshakeSignatureValid, Error> {
         let provider = CryptoProvider::get_default()
             .ok_or_else(|| Error::General("no crypto provider installed".into()))?;
-        verify_tls12_signature(message, cert, dss, &provider.signature_verification_algorithms)
+        verify_tls12_signature(
+            message,
+            cert,
+            dss,
+            &provider.signature_verification_algorithms,
+        )
     }
 
     fn verify_tls13_signature(
@@ -84,12 +90,21 @@ impl ServerCertVerifier for SubjectAltNameAttestationValidator {
     ) -> Result<HandshakeSignatureValid, Error> {
         let provider = CryptoProvider::get_default()
             .ok_or_else(|| Error::General("no crypto provider installed".into()))?;
-        verify_tls13_signature(message, cert, dss, &provider.signature_verification_algorithms)
+        verify_tls13_signature(
+            message,
+            cert,
+            dss,
+            &provider.signature_verification_algorithms,
+        )
     }
 
     fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
         CryptoProvider::get_default()
-            .map(|p| p.signature_verification_algorithms.supported_schemes().to_vec())
+            .map(|p| {
+                p.signature_verification_algorithms
+                    .supported_schemes()
+                    .to_vec()
+            })
             .unwrap_or_default()
     }
 }
