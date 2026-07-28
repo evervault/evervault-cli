@@ -6,7 +6,7 @@ on:
 
 jobs:
   clippy_check_cli:
-    runs-on: ubuntu-latest
+    runs-on: ev-runner-x-large
     steps:
       - uses: actions/checkout@v7
       - uses: actions-hub/docker/cli@f5fdbfc3f9d2a9265ead8962c1314108a7b7ec5d
@@ -17,10 +17,12 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
       - name: Compile project
         run: cargo build
       - name: Test project
-        run: cargo test -p ev-cli -p ev-enclave
+        run: cargo nextest run -p ev-cli -p ev-enclave
       - name: Format project
         run: cargo fmt --check
       - name: Lint project
