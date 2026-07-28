@@ -93,6 +93,7 @@ where
         .allow_empty(allow_empty)
         .validate_with(validator)
         .interact()
+        .map_err(std::io::Error::other)
 }
 
 pub fn select<T>(options: &Vec<String>, default: usize, prompt: T) -> Option<usize>
@@ -100,9 +101,13 @@ where
     T: std::fmt::Display,
 {
     let theme = CliTheme::default();
-    let mut select_obj = Select::with_theme(&theme);
-    select_obj.with_prompt(prompt.to_string());
-    select_obj.items(options).default(default).interact().ok()
+    let select_obj = Select::with_theme(&theme);
+    select_obj
+        .with_prompt(prompt.to_string())
+        .items(options)
+        .default(default)
+        .interact()
+        .ok()
 }
 
 pub fn preset_input<S, T>(prompt: S, preset: T) -> Option<String>

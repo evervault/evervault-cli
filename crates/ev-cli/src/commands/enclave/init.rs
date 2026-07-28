@@ -227,7 +227,7 @@ async fn init_local_config(init_args: InitArgs, created_enclave: Enclave) -> exi
         }
     }
 
-    let serialized_config = match toml::ser::to_vec(&initial_config) {
+    let serialized_config = match toml::to_string(&initial_config) {
         Ok(bytes) => bytes,
         Err(e) => {
             log::error!("Error serializing enclave.toml — {:?}", e);

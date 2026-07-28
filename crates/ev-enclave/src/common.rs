@@ -72,7 +72,7 @@ pub fn resolve_output_path(
 }
 
 pub fn save_enclave_config(enclave_config: &EnclaveConfig, config_path: &str) {
-    if let Ok(serialized_config) = toml::ser::to_vec(&enclave_config) {
+    if let Ok(serialized_config) = toml::to_string(&enclave_config) {
         match std::fs::write(config_path, serialized_config) {
             Ok(_) => log::debug!("Enclave config updated"),
             Err(e) => log::error!("Failed to update Enclave config — {e:?}"),

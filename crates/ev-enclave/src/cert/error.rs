@@ -34,6 +34,8 @@ pub enum CertError {
     NoCertsFound,
     #[error("Provided cert expiry is in the past: {0}")]
     CertExpiryIsInThePast(chrono::DateTime<Utc>),
+    #[error("An error occurred during an interactive prompt - {0:?}")]
+    DialoguerError(#[from] dialoguer::Error),
 }
 
 impl CliError for CertError {
@@ -51,6 +53,7 @@ impl CliError for CertError {
             | Self::CertPathDoesNotExist(_)
             | Self::TimstampParseError(_) => exitcode::DATAERR,
             Self::ApiError(inner) => inner.exitcode(),
+            Self::DialoguerError(_) => exitcode::IOERR,
             Self::NoCertsFound | Self::CertExpiryIsInThePast(_) => exitcode::USAGE,
         }
     }
