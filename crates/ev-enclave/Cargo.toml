@@ -20,7 +20,7 @@ atty = "0.2.14"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.91"
 thiserror = "2.0.17"
-rcgen = { version = "0.13.2", features = ["pem"] }
+rcgen = { version = "0.14.9", features = ["pem"] }
 chrono = "0.4.19"
 toml = "0.9.6"
 reqwest = { version = "0.12.12", features = ["json", "stream"] }
