@@ -135,12 +135,9 @@ fn setup_logger(verbose_logging: bool) {
                 record.args()
             )
         } else {
-            writeln!(
-                buf,
-                "[{}] {}",
-                buf.default_styled_level(record.metadata().level()),
-                record.args()
-            )
+            let level = record.metadata().level();
+            let style = buf.default_level_style(level);
+            writeln!(buf, "[{style}{level}{style:#}] {}", record.args())
         }
     };
 
