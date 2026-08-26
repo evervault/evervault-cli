@@ -6,6 +6,8 @@ target
 enclave.Dockerfile
 *.eif
 .metals/
+.direnv
+.env
 
 # Test Fixtures
 !/fixtures/*
