@@ -1327,7 +1327,7 @@ dependencies = [
  "atty",
  "aws-nitro-enclaves-image-format",
  "axum",
- "base64 0.13.1",
+ "base64 0.22.1",
  "bytes",
  "chrono",
  "clap 4.5.38",
