@@ -1332,7 +1332,7 @@ dependencies = [
  "atty",
  "aws-nitro-enclaves-image-format",
  "axum",
- "base64 0.13.1",
+ "base64 0.22.1",
  "bytes",
  "chrono",
  "clap 4.5.38",
@@ -3266,9 +3266,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.25"
+version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f79dfe2d285b0488816f30e700a7438c5a73d816b5b7d3ac72fbc48b0d185e03"
+checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
 
 [[package]]
 name = "sentry"
