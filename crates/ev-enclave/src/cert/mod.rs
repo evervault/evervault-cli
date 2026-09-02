@@ -1,4 +1,3 @@
-use aws_nitro_enclaves_image_format::defs::eif_hasher::EifHasher;
 use chrono::{DateTime, Datelike, Local, TimeZone, Utc};
 use dialoguer::{Confirm, MultiSelect};
 use itertools::Itertools;
@@ -110,17 +109,17 @@ pub fn get_cert_pcr(cert_path: &Path) -> Result<String, CertError> {
     let cert_contents = read_cert_bytes_from_fs(cert_path)?;
     let (_, pem) = parse_x509_pem(&cert_contents).map_err(CertError::PEMError)?;
 
-    let mut hasher = EifHasher::new_without_cache(Sha384::new()).map_err(CertError::HashError)?;
+    // PCR8 is a TPM-style extend of the cert digest into a zeroed register:
+    // SHA384(0u8 * 48 || SHA384(cert)).
+    let mut hasher = Sha384::new();
+    hasher.update(&pem.contents);
+    let cert_digest = hasher.finalize();
 
-    hasher
-        .write_all(&pem.contents)
-        .map_err(|err| CertError::HashError(err.to_string()))?;
+    let mut hasher = Sha384::new();
+    hasher.update([0u8; 48]);
+    hasher.update(cert_digest);
 
-    let hash_bytes = hasher
-        .tpm_extend_finalize_reset()
-        .map_err(|err| CertError::HashError(err.to_string()))?;
-
-    let hash = hex::encode(hash_bytes);
+    let hash = hex::encode(hasher.finalize());
 
     Ok(hash)
 }
