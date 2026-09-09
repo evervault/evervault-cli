@@ -14,8 +14,6 @@ pub mod validators {
         InvalidDestinationDomain,
         #[error("Invalid function name. Must be between 2 and 40 characters, and contain only alphanumeric characters, dashes, and underscores")]
         InvalidFunctionName,
-        #[error("Invalid function language. Must be one of: (node|python)@version. eg node@18, python@3.11. See https://docs.evervault.com/primitives/functions#function.toml for supported language versions.")]
-        InvalidFunctionLanguage,
     }
 
     pub type GenericValidator = dyn Fn(&String) -> Result<(), ValidationError>;
@@ -41,18 +39,6 @@ pub mod validators {
         if !((length >= 2) & (length <= 40) & regex_result) {
             return Err(ValidationError::InvalidFunctionName);
         }
-        Ok(())
-    }
-
-    pub fn validate_function_language(language: &String) -> Result<(), ValidationError> {
-        lazy_static::lazy_static!(
-            static ref LANGUAGE_REGEX: Regex = Regex::new(r"\b(?:node|python)@\d+(\.\d+)?\b").unwrap();
-        );
-        let regex_result = LANGUAGE_REGEX.is_match(language);
-        if !regex_result {
-            return Err(ValidationError::InvalidFunctionLanguage);
-        }
-
         Ok(())
     }
 }

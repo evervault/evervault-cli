@@ -1,15 +1,16 @@
-use std::collections::HashMap;
-
 use crate::{
     commands::interact::{
         self,
-        validators::{self, validate_function_language, validate_function_name},
+        validators::{self, validate_function_name},
     },
     fs::zip_current_directory,
-    function::FunctionToml,
+    function::{
+        runtime::{FunctionRuntime, Lifecycle},
+        FunctionToml,
+    },
     BaseArgs,
 };
-use chrono::{NaiveDate, Utc};
+use chrono::NaiveDate;
 use clap::Parser;
 use common::{
     api::{
@@ -24,10 +25,6 @@ use tempfile::TempDir;
 use thiserror::Error;
 
 mod output;
-
-lazy_static::lazy_static! {
-    pub static ref LANGUAGE_DEPRECATION_DATE_MAP:HashMap<String, NaiveDate> = HashMap::new();
-}
 
 /// Deploy a function
 #[derive(Parser, Debug)]
@@ -50,10 +47,12 @@ pub enum DeployError {
     Validation(#[from] validators::ValidationError),
     #[error("An IO error occurred: {0}")]
     Io(#[from] std::io::Error),
-    #[error("{1} was deprecated on {0}. ")]
-    VersionDeprecated(NaiveDate, String),
-    #[error("{1} will be deprecated on {0}.")]
-    VersionWillBeDeprecated(NaiveDate, String),
+    #[error("{runtime} became obsolete on {on}: {reason}. Update the language in your function.toml to a runtime that's still supported and deploy again.")]
+    RuntimeObsolete {
+        runtime: FunctionRuntime,
+        on: NaiveDate,
+        reason: &'static str,
+    },
     #[error("An error occured creating your Function record: {0}")]
     RecordCreate(ApiError),
     #[error("The zipped Function source was not found.")]
@@ -66,6 +65,20 @@ pub enum DeployError {
     DeploymentStatusFetch(ApiError),
     #[error("An error occured deploying your Function. The deployment was found to be in a cancelled state.")]
     DeploymentCancelled,
+}
+
+/// Printed before the deployment starts, rather than returned, as a deprecated
+/// runtime still deploys.
+#[derive(strum_macros::Display, Debug)]
+pub enum DeployWarning {
+    #[strum(
+        to_string = "{runtime} was deprecated on {on}: {reason}. Move your Function to a runtime that's still supported."
+    )]
+    RuntimeDeprecated {
+        runtime: FunctionRuntime,
+        on: NaiveDate,
+        reason: &'static str,
+    },
 }
 
 #[derive(strum_macros::Display, Debug)]
@@ -87,20 +100,28 @@ pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, Dep
 
     let name = function_toml.function.name;
     validate_function_name(&name)?;
-    let language = function_toml.function.language;
-    validate_function_language(&language)?;
+    let runtime = function_toml.function.language;
 
-    let current_date: NaiveDate = Utc::now().date_naive();
-
-    if let Some(&deprecation_date) = LANGUAGE_DEPRECATION_DATE_MAP.get(&language) {
-        if current_date > deprecation_date {
-            return Err(DeployError::VersionDeprecated(deprecation_date, language));
+    match runtime.lifecycle() {
+        Lifecycle::Active => {}
+        Lifecycle::Deprecated { on, reason } => {
+            if !base_args.json {
+                println!(
+                    "{}",
+                    DeployWarning::RuntimeDeprecated {
+                        runtime,
+                        on,
+                        reason
+                    }
+                );
+            }
         }
-        if !base_args.json {
-            println!(
-                "{}",
-                DeployError::VersionWillBeDeprecated(deprecation_date, language)
-            );
+        Lifecycle::Obsolete { on, reason } => {
+            return Err(DeployError::RuntimeObsolete {
+                runtime,
+                on,
+                reason,
+            })
         }
     }
 
