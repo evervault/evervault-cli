@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::commands::interact::validators;
 use crate::fs::copy_folder;
-use crate::function::{write_toml, FunctionProps, FunctionToml};
+use crate::function::{runtime::Language, write_toml, FunctionProps, FunctionToml};
 use crate::CmdOutput;
 use crate::{commands::interact, fs::extract_zip};
 use clap::Parser;
@@ -95,20 +95,21 @@ pub async fn run(args: InitArgs, auth: BasicAuth) -> Result<InitMessage, InitErr
     let api_client = papi::EvApiClient::new(auth);
     let base_args = crate::commands::BaseArgs::parse();
 
-    let valid_languages: [&str; 2] = ["node", "python"];
     let name = interact::input(InitPrompt::Name, false);
 
     validators::validate_function_name(&name)?;
 
-    let langs = valid_languages
+    let langs = Language::ALL
         .iter()
         .map(|lang| lang.to_string())
         .collect::<Vec<String>>();
-    let language = interact::select(&langs, 0, InitPrompt::Language).unwrap();
-    let lang = valid_languages[language].to_string();
+    let selection = interact::select(&langs, 0, InitPrompt::Language).unwrap();
+    let lang = Language::ALL[selection];
 
     let progress = interact::start_spinner("Downloading function template...", !base_args.json);
-    let file = api_client.get_hello_function_template(lang.clone()).await?;
+    let file = api_client
+        .get_hello_function_template(lang.to_string())
+        .await?;
     progress.finish();
 
     let tmp_target_dir = PathBuf::from("/tmp/hello-function-template");

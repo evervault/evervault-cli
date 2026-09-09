@@ -33,7 +33,7 @@ pub struct FunctionToml {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct FunctionProps {
     pub name: String,
-    pub language: String,
+    pub language: runtime::FunctionRuntime,
     #[serde(default = "default_handler")]
     pub handler: String,
 }
@@ -112,4 +112,44 @@ pub async fn resolve_function_by_name_or_pwd(
         .find(|f| f.name == function_toml.function.name)
         .cloned()
         .ok_or(ResolveFunctionError::Unknown(function_toml.function.name))
+}
+
+pub mod runtime;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn round_trips_a_function_toml() {
+        let contents = r#"
+[function]
+name = "my-function"
+language = "python@3.11"
+handler = "index.handler"
+"#;
+
+        let parsed: FunctionToml = toml::from_str(contents).unwrap();
+        assert_eq!(parsed.function.language.to_string(), "python@3.11");
+        assert!(toml::to_string(&parsed)
+            .unwrap()
+            .contains(r#"language = "python@3.11""#));
+    }
+
+    #[test]
+    fn rejects_a_function_toml_with_an_unusable_language() {
+        let contents = r#"
+[function]
+name = "my-function"
+language = "python@3"
+"#;
+
+        let error = toml::from_str::<FunctionToml>(contents)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("Python versions are given as a major and minor version"),
+            "unhelpful error: {error}"
+        );
+    }
 }
