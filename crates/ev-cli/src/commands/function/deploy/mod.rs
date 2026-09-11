@@ -5,7 +5,7 @@ use crate::{
     },
     fs::zip_current_directory,
     function::{
-        runtime::{FunctionRuntime, Lifecycle},
+        runtime::{recommended_list, FunctionRuntime, Lifecycle},
         FunctionToml,
     },
     BaseArgs,
@@ -79,6 +79,13 @@ pub enum DeployWarning {
         on: NaiveDate,
         reason: &'static str,
     },
+    #[strum(
+        to_string = "{runtime} is not a runtime this CLI knows about. Known runtimes are: {runtimes}. Deploying anyway - the API has the final say."
+    )]
+    RuntimeUnknown {
+        runtime: FunctionRuntime,
+        runtimes: String,
+    },
 }
 
 #[derive(strum_macros::Display, Debug)]
@@ -101,6 +108,16 @@ pub async fn run(args: DeployArgs, auth: BasicAuth) -> Result<DeployMessage, Dep
     let name = function_toml.function.name;
     validate_function_name(&name)?;
     let runtime = function_toml.function.language;
+
+    if !runtime.is_supported() && !base_args.json {
+        println!(
+            "{}",
+            DeployWarning::RuntimeUnknown {
+                runtime,
+                runtimes: recommended_list(),
+            }
+        );
+    }
 
     match runtime.lifecycle() {
         Lifecycle::Active => {}
