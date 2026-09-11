@@ -4,7 +4,7 @@ use chrono::NaiveDate;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
-const DOCS_URL: &str = "https://docs.evervault.com/primitives/functions#function.toml";
+const DOCS_URL: &str = "https://docs.evervault.com/functions#configuration";
 
 /// The languages a Function can be written in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,6 +78,8 @@ pub enum Lifecycle {
     /// Still deploys, with a warning.
     Deprecated { on: NaiveDate, reason: &'static str },
     /// The platform no longer accepts deployments using it.
+    // Constructed once a runtime the CLI lists is actually dropped by the API.
+    #[allow(dead_code)]
     Obsolete { on: NaiveDate, reason: &'static str },
 }
 
@@ -92,18 +94,46 @@ impl SupportedRuntime {
     }
 }
 
-/// Ordered as it's presented to the user when selecting a runtime.
+/// `NaiveDate::from_ymd_opt` is const, but returns an `Option` the runtime
+/// table can't unwrap in a const context.
+const fn date(year: i32, month: u32, day: u32) -> NaiveDate {
+    match NaiveDate::from_ymd_opt(year, month, day) {
+        Some(date) => date,
+        None => panic!("runtime lifecycle date is not a real date"),
+    }
+}
+
+/// The older Node and Python releases are being retired together.
+const UPSTREAM_EOL: Lifecycle = Lifecycle::Deprecated {
+    on: date(2026, 9, 9),
+    reason: "it is past its upstream end of life and the API will reject it from 2026-12-31",
+};
+
+/// Ordered newest first within each language, as it's presented to the user
+/// when selecting a runtime - `create-toml` pre-selects the first entry.
 const SUPPORTED_RUNTIMES: &[SupportedRuntime] = &[
-    SupportedRuntime::new(FunctionRuntime::Node { major: 18 }, Lifecycle::Active),
-    SupportedRuntime::new(FunctionRuntime::Node { major: 20 }, Lifecycle::Active),
+    SupportedRuntime::new(FunctionRuntime::Node { major: 24 }, Lifecycle::Active),
+    SupportedRuntime::new(FunctionRuntime::Node { major: 22 }, Lifecycle::Active),
+    SupportedRuntime::new(FunctionRuntime::Node { major: 20 }, UPSTREAM_EOL),
+    SupportedRuntime::new(FunctionRuntime::Node { major: 18 }, UPSTREAM_EOL),
     SupportedRuntime::new(
-        FunctionRuntime::Python { major: 3, minor: 9 },
+        FunctionRuntime::Python {
+            major: 3,
+            minor: 14,
+        },
         Lifecycle::Active,
     ),
     SupportedRuntime::new(
         FunctionRuntime::Python {
             major: 3,
-            minor: 10,
+            minor: 13,
+        },
+        Lifecycle::Active,
+    ),
+    SupportedRuntime::new(
+        FunctionRuntime::Python {
+            major: 3,
+            minor: 12,
         },
         Lifecycle::Active,
     ),
@@ -112,14 +142,33 @@ const SUPPORTED_RUNTIMES: &[SupportedRuntime] = &[
             major: 3,
             minor: 11,
         },
-        Lifecycle::Active,
+        UPSTREAM_EOL,
     ),
+    SupportedRuntime::new(
+        FunctionRuntime::Python {
+            major: 3,
+            minor: 10,
+        },
+        UPSTREAM_EOL,
+    ),
+    SupportedRuntime::new(FunctionRuntime::Python { major: 3, minor: 9 }, UPSTREAM_EOL),
 ];
 
 impl FunctionRuntime {
     /// Every runtime the CLI knows the platform supports.
     pub fn supported() -> impl Iterator<Item = FunctionRuntime> {
         SUPPORTED_RUNTIMES.iter().map(|supported| supported.runtime)
+    }
+
+    /// The runtimes to start a new Function on: the ones with no end of life
+    /// announced.
+    pub fn recommended() -> impl Iterator<Item = FunctionRuntime> {
+        Self::supported().filter(|runtime| runtime.lifecycle() == Lifecycle::Active)
+    }
+
+    /// Whether this runtime is one the platform supports.
+    pub fn is_supported(&self) -> bool {
+        Self::supported().any(|supported| supported == *self)
     }
 
     /// Where this runtime is in its life. A runtime the CLI doesn't know about
@@ -143,17 +192,25 @@ impl fmt::Display for FunctionRuntime {
     }
 }
 
+/// The recommended runtimes, rendered for a warning or error message.
+pub fn recommended_list() -> String {
+    FunctionRuntime::recommended()
+        .map(|runtime| runtime.to_string())
+        .collect::<Vec<String>>()
+        .join(", ")
+}
+
 #[derive(Debug, Error)]
 pub enum InvalidFunctionRuntime {
-    #[error("Invalid function language \"{0}\". Must be one of: (node|python)@version. eg node@18, python@3.11. See {DOCS_URL} for supported language versions.")]
+    #[error("Invalid function language \"{0}\". Must be one of: (node|python)@version. eg node@24, python@3.11. See {DOCS_URL} for supported language versions.")]
     Malformed(String),
-    #[error("Invalid function language \"{0}\". Node versions are given as a major version only. eg node@18. See {DOCS_URL} for supported language versions.")]
+    #[error("Invalid function language \"{0}\". Node versions are given as a major version only. eg node@24. See {DOCS_URL} for supported language versions.")]
     NodeVersion(String),
     #[error("Invalid function language \"{0}\". Python versions are given as a major and minor version. eg python@3.11. See {DOCS_URL} for supported language versions.")]
     PythonVersion(String),
 }
 
-/// Splits `18` into `(18, None)` and `3.11` into `(3, Some(11))`. Anything else
+/// Splits `18` into `(18, None)` and `3.13` into `(3, Some(13))`. Anything else
 /// - empty components, non-digits, a third component - isn't a version.
 fn split_version(version: &str) -> Option<(u32, Option<u32>)> {
     fn component(component: &str) -> Option<u32> {
@@ -211,14 +268,14 @@ mod tests {
 
     #[test]
     fn renders_each_language_with_the_versions_it_is_pinned_to() {
-        assert_eq!(FunctionRuntime::Node { major: 20 }.to_string(), "node@20");
+        assert_eq!(FunctionRuntime::Node { major: 24 }.to_string(), "node@24");
         assert_eq!(
             FunctionRuntime::Python {
                 major: 3,
-                minor: 11
+                minor: 13
             }
             .to_string(),
-            "python@3.11"
+            "python@3.13"
         );
     }
 
@@ -226,11 +283,36 @@ mod tests {
     fn parses_runtimes_the_cli_doesnt_know_about() {
         // A function.toml can name a runtime released after this version of the
         // CLI, so an unrecognised runtime isn't an invalid one - the API has the
-        // final say on what it will accept.
+        // final say on what it will accept. Deploy warns rather than refusing.
         let runtime: FunctionRuntime = "node@99".parse().unwrap();
         assert_eq!(runtime, FunctionRuntime::Node { major: 99 });
+        assert!(!runtime.is_supported());
         assert_eq!(runtime.lifecycle(), Lifecycle::Active);
-        assert!(!FunctionRuntime::supported().any(|supported| supported == runtime));
+    }
+
+    #[test]
+    fn recommends_only_runtimes_that_are_not_deprecated() {
+        // `create-toml` offers this list and pre-selects the first entry, so an
+        // empty list would leave nothing to pick.
+        let recommended: Vec<FunctionRuntime> = FunctionRuntime::recommended().collect();
+        assert!(!recommended.is_empty(), "nothing left to offer");
+        assert!(recommended.iter().all(|runtime| runtime.is_supported()));
+        assert!(recommended
+            .iter()
+            .all(|runtime| runtime.lifecycle() == Lifecycle::Active));
+
+        assert_eq!(
+            recommended.first(),
+            Some(&FunctionRuntime::Node { major: 24 }),
+            "create-toml pre-selects the first entry"
+        );
+
+        let list = recommended_list();
+        assert!(
+            list.contains("node@24"),
+            "missing a current runtime: {list}"
+        );
+        assert!(!list.contains("node@18"), "offers a doomed runtime: {list}");
     }
 
     #[test]

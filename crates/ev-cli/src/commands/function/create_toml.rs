@@ -94,7 +94,7 @@ pub async fn run(_: CreateTomlArgs) -> Result<CreateTomlMessage, CreateTomlError
         Box::new(validators::validate_function_name),
     )?;
 
-    let runtimes: Vec<FunctionRuntime> = FunctionRuntime::supported().collect();
+    let runtimes: Vec<FunctionRuntime> = FunctionRuntime::recommended().collect();
     let labels = runtimes
         .iter()
         .map(|runtime| runtime.to_string())
