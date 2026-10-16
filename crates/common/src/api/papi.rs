@@ -1,6 +1,7 @@
 use std::fs::File;
 
 use self::client::{ApiError, ApiErrorKind, ApiResult, HandleResponse};
+use crate::browser_tokens::CreateBrowserTokens;
 use crate::function::{
     CreateFunctionResponse, Function, FunctionDeployment, FunctionDeploymentCredentials,
     GetFunctionEnvironmentResponse, GetFunctionResponse,
@@ -97,6 +98,10 @@ pub trait EvApi {
     ) -> ApiResult<serde_json::Value>;
     async fn encrypt(&self, value: Value) -> ApiResult<serde_json::Value>;
     async fn decrypt(&self, value: Value) -> ApiResult<serde_json::Value>;
+    async fn create_browser_tokens(
+        &self,
+        request: &CreateBrowserTokens,
+    ) -> ApiResult<serde_json::Value>;
 }
 
 #[async_trait::async_trait]
@@ -372,6 +377,21 @@ impl EvApi for EvApiClient {
         self.post(&url)
             .header("content-type", "application/json")
             .json(&value)
+            .send()
+            .await
+            .handle_json_response()
+            .await
+    }
+
+    async fn create_browser_tokens(
+        &self,
+        request: &CreateBrowserTokens,
+    ) -> ApiResult<serde_json::Value> {
+        let url = format!("{}/browser-tokens", self.base_url());
+
+        self.post(&url)
+            .header("content-type", "application/json")
+            .json(request)
             .send()
             .await
             .handle_json_response()

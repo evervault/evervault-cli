@@ -1,11 +1,12 @@
 use self::{
-    decrypt::DecryptArgs, enclave::EnclaveArgs, encrypt::EncryptArgs, function::FunctionArgs,
-    relay::RelayArgs, update::UpdateArgs,
+    browser_tokens::BrowserTokensArgs, decrypt::DecryptArgs, enclave::EnclaveArgs,
+    encrypt::EncryptArgs, function::FunctionArgs, relay::RelayArgs, update::UpdateArgs,
 };
 use super::run_cmd;
 use crate::{print_and_exit, BaseArgs};
 use clap::Parser;
 
+mod browser_tokens;
 mod decrypt;
 mod enclave;
 mod encrypt;
@@ -22,6 +23,7 @@ pub enum Command {
     Update(UpdateArgs),
     Encrypt(EncryptArgs),
     Decrypt(DecryptArgs),
+    BrowserTokens(BrowserTokensArgs),
 }
 
 pub async fn run(base_args: BaseArgs) {
@@ -42,6 +44,9 @@ pub async fn run(base_args: BaseArgs) {
         Command::Function(function_args) => function::run(function_args, auth).await,
         Command::Encrypt(encrypt_args) => run_cmd(encrypt::run(encrypt_args, auth).await),
         Command::Decrypt(decrypt_args) => run_cmd(decrypt::run(decrypt_args, auth).await),
+        Command::BrowserTokens(browser_tokens_args) => {
+            run_cmd(browser_tokens::run(browser_tokens_args, auth).await)
+        }
         Command::Update(_) => unreachable!("infallible: matched previously"),
     }
 }

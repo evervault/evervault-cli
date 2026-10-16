@@ -128,20 +128,48 @@ pub trait HandleResponse {
     fn handle_no_op_response(self) -> ApiResult<()>;
 }
 
+/// Logs where a response came from and the ids support needs to trace it, visible with `--verbose`
+fn log_response(res: &ReqwestResult<Response>) {
+    if let Ok(res) = res {
+        let header = |name: &str| {
+            res.headers()
+                .get(name)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or("-")
+                .to_string()
+        };
+        log::debug!(
+            "{} responded {} (request id: {}, region: {})",
+            res.url(),
+            res.status(),
+            header("x-evervault-request-id"),
+            header("x-evervault-region"),
+        );
+    }
+}
+
 #[async_trait]
 impl HandleResponse for ReqwestResult<Response> {
     async fn handle_json_response<T: DeserializeOwned>(self) -> ApiResult<T> {
+        log_response(&self);
         match self {
-            Ok(res) if res.status().is_success() => res
-                .json()
-                .await
-                .map_err(|e| ApiError::new(ApiErrorKind::ParsingError(e.to_string()))),
+            Ok(res) if res.status().is_success() => {
+                // Parse with serde_json directly rather than `res.json()`, whose error hides which
+                // field failed behind "error decoding response body"
+                let body = res
+                    .text()
+                    .await
+                    .map_err(|e| ApiError::new(ApiErrorKind::ParsingError(e.to_string())))?;
+                serde_json::from_str(&body)
+                    .map_err(|e| ApiError::new(ApiErrorKind::ParsingError(e.to_string())))
+            }
             Ok(res) => Err(ApiError::get_error_detais_from_res(res).await),
             Err(e) => Err(e.into()),
         }
     }
 
     async fn handle_text_response(self) -> ApiResult<String> {
+        log_response(&self);
         match self {
             Ok(res) if res.status().is_success() => res
                 .text()
@@ -153,6 +181,7 @@ impl HandleResponse for ReqwestResult<Response> {
     }
 
     fn handle_no_op_response(self) -> ApiResult<()> {
+        log_response(&self);
         match self {
             Ok(res) if res.status().is_success() => Ok(()),
             Ok(res) => Err(res.status().into()),
@@ -182,7 +211,7 @@ pub type ApiResult<T> = core::result::Result<T, ApiError>;
 
 impl std::fmt::Display for ApiErrorKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.to_msg())
+        write!(f, "{}", self.to_msg())
     }
 }
 
@@ -210,7 +239,7 @@ impl ApiErrorKind {
             Self::Internal => "500: Internal Server Error".to_owned(),
             Self::Unknown(e) => format!("An unexpected error occured: {:?}", e),
             Self::ParsingError(e) => {
-                format!("An error occurred while parsing the server's response: {e:?}")
+                format!("An error occurred while parsing the server's response: {e}")
             }
         }
     }
@@ -244,9 +273,14 @@ impl From<Error> for ApiError {
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.details {
-            Some(details) => {
-                write!(f, "{}", details.title)
+            Some(details) if !details.fields.is_empty() => {
+                write!(f, "{}", details.title)?;
+                for field in &details.fields {
+                    write!(f, "\n  {}: {}", field.pointer, field.reason)?;
+                }
+                Ok(())
             }
+            Some(details) => write!(f, "{}: {}", details.title, details.detail),
             None => self.kind.fmt(f),
         }
     }
@@ -267,6 +301,16 @@ pub struct ApiErrorDetails {
     pub title: String,
     pub detail: String,
     pub code: Option<String>,
+    /// The invalid fields in a rejected request, if the API reported any.
+    #[serde(default)]
+    pub fields: Vec<ApiErrorField>,
+}
+
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct ApiErrorField {
+    /// JSON pointer to the invalid field, e.g. `/proxySettings/hostname`
+    pub pointer: String,
+    pub reason: String,
 }
 
 impl ApiError {
@@ -294,5 +338,51 @@ impl ApiError {
         api_error.details = res.json::<ApiErrorDetails>().await.ok();
 
         api_error
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn error_with_details(details: serde_json::Value) -> ApiError {
+        ApiError {
+            kind: ApiErrorKind::BadRequest,
+            details: Some(serde_json::from_value(details).unwrap()),
+        }
+    }
+
+    #[test]
+    fn test_display_includes_detail() {
+        let error = error_with_details(json!({
+            "status": 401,
+            "code": "unauthorized",
+            "title": "Unauthorized",
+            "detail": "The API key is invalid."
+        }));
+
+        assert_eq!(error.to_string(), "Unauthorized: The API key is invalid.");
+    }
+
+    #[test]
+    fn test_display_lists_invalid_fields() {
+        let error = error_with_details(json!({
+            "status": 400,
+            "code": "invalid-request",
+            "title": "Invalid Request",
+            "detail": "The request is invalid.",
+            "fields": [
+                { "pointer": "/ttl", "reason": "This field is out of range." },
+                { "pointer": "/proxySettings/hostname", "reason": "This field is required." }
+            ]
+        }));
+
+        assert_eq!(
+            error.to_string(),
+            "Invalid Request\n  \
+             /ttl: This field is out of range.\n  \
+             /proxySettings/hostname: This field is required."
+        );
     }
 }
