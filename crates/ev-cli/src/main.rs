@@ -53,6 +53,8 @@ where
         if let Some(Ok(data)) = output.data().map(|d| serde_json::to_string_pretty(&d)) {
             eprintln!("{msg}");
             println!("{data}");
+        } else if is_error {
+            eprintln!("{msg}");
         } else {
             println!("{msg}");
         }
@@ -86,6 +88,53 @@ where
     }
 }
 
+/// An argument parsing error, reported in the same shape as any other error when `--json` is passed
+#[derive(Debug)]
+struct ParseError(clap::Error);
+
+impl std::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Only the first paragraph: the rest is the usage line and a pointer to `--help`
+        let rendered = self.0.to_string();
+        let message = rendered.split("\n\n").next().unwrap_or(&rendered);
+        write!(f, "{}", message.trim_start_matches("error: ").trim_end())
+    }
+}
+
+impl CmdOutput for ParseError {
+    fn code(&self) -> String {
+        "generic/invalid-arguments".to_string()
+    }
+
+    fn exitcode(&self) -> crate::errors::ExitCode {
+        self.0.exit_code()
+    }
+
+    fn data(&self) -> Option<Value> {
+        None
+    }
+}
+
+/// `--json` can't be read off the parsed args when parsing failed, so it's looked for directly
+fn exit_with_parse_error(error: clap::Error) -> ! {
+    use clap::error::ErrorKind;
+
+    let wants_json = std::env::args_os().any(|arg| arg == "--json");
+    let is_help_or_version = matches!(
+        error.kind(),
+        ErrorKind::DisplayHelp
+            | ErrorKind::DisplayVersion
+            | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
+    );
+    if !wants_json || is_help_or_version {
+        error.exit();
+    }
+
+    let output = ParseError(error);
+    println!("{}", fmt_json(&output, true));
+    std::process::exit(output.exitcode());
+}
+
 #[derive(Debug, Parser)]
 #[clap(name = "Evervault CLI", version)]
 pub struct BaseArgs {
@@ -111,19 +160,29 @@ async fn main() {
         homepage: "https://github.com/evervault/cages".into(),
     });
 
-    let base_args: BaseArgs = BaseArgs::parse();
-    setup_logger(base_args.verbose);
+    let base_args = BaseArgs::try_parse().unwrap_or_else(|e| exit_with_parse_error(e));
+    setup_logger(base_args.verbose, base_args.json);
     setup_sentry();
     commands::run(base_args).await;
 }
 
-fn setup_logger(verbose_logging: bool) {
+fn setup_logger(verbose_logging: bool, json: bool) {
     let env = Env::new()
         .filter_or("EV_LOG", "INFO")
         .write_style("EV_LOG_STYLE");
     let mut builder = Builder::from_env(env);
 
-    let log_formatter = |buf: &mut Formatter, record: &Record| {
+    let log_formatter = move |buf: &mut Formatter, record: &Record| {
+        // One JSON object per line, so logs can be parsed alongside `--json` output
+        if json {
+            let line = serde_json::json!({
+                "timestamp": buf.timestamp_millis().to_string(),
+                "level": record.metadata().level().to_string(),
+                "message": record.args().to_string(),
+            });
+            return writeln!(buf, "{line}");
+        }
+
         // If stderr is being piped elsewhere, add timestamps and remove colors
         if atty::isnt(Stream::Stderr) {
             let timestamp = buf.timestamp_millis();
@@ -145,10 +204,12 @@ fn setup_logger(verbose_logging: bool) {
         .format_timestamp(None)
         .format_module_path(false)
         .format_target(false);
+    // Log targets are module paths, so crate names are spelled with underscores here
+    // Without `--verbose`, EV_LOG (INFO by default) decides
     if verbose_logging {
-        builder.filter(Some("ev-enclave"), log::LevelFilter::Debug);
-    } else {
-        builder.filter(Some("ev-enclave"), log::LevelFilter::Info);
+        for target in ["ev", "common", "ev_enclave"] {
+            builder.filter(Some(target), log::LevelFilter::Debug);
+        }
     }
     builder.format(log_formatter).init();
 }
