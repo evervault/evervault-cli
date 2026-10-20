@@ -97,6 +97,7 @@ pub async fn check_version() -> Result<Option<VersionMessage>, VersionError> {
     let current_version = cli_versions
         .versions
         .get(&installed_major_version.to_string())
+        .and_then(Option::as_ref)
         .ok_or(VersionError::FailedVersionCheck)?;
 
     let latest_semver = Version::parse(current_version.latest.as_str())?;

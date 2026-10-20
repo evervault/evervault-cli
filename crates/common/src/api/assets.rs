@@ -8,7 +8,8 @@ use std::collections::HashMap;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CLIVersions {
     pub latest: String,
-    pub versions: HashMap<String, CLIMajorVersion>,
+    /// Keyed by major version. A major can be listed with no releases (`null`)
+    pub versions: HashMap<String, Option<CLIMajorVersion>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -64,9 +65,13 @@ impl AssetsClient {
             .await
     }
 
-    pub async fn get_cli_install_script(&self) -> ApiResult<String> {
-        let cli_install_url = format!("{}/v4/install", self.base_url());
-        self.get(&cli_install_url)
+    /// The install script for the latest release of a major version of the CLI
+    pub fn cli_install_script_url(&self, major_version: u64) -> String {
+        format!("{}/v{major_version}/install", self.base_url())
+    }
+
+    pub async fn get_cli_install_script(&self, major_version: u64) -> ApiResult<String> {
+        self.get(&self.cli_install_script_url(major_version))
             .send()
             .await
             .handle_text_response()
