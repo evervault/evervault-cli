@@ -1,6 +1,7 @@
 use crate::{errors, CmdOutput};
 use clap::Parser;
-use common::api::{self, client::ApiError};
+use common::api::{self, assets::AssetsClient, client::ApiError};
+use semver::Version;
 use thiserror::Error;
 
 /// Check for new versions of the CLI and install them
@@ -12,6 +13,8 @@ pub struct UpdateArgs {}
 pub enum UpdateError {
     #[error("Failed to fetch information about the latest version of the CLI - {0}")]
     FetchLatestVersion(ApiError),
+    #[error("No releases were found for version {0}.x of the CLI")]
+    UnknownMajorVersion(u64),
     #[error("Failed to fetch the CLI install script - {0}")]
     FetchInstallScript(ApiError),
     #[error("Failed to create tempfile to use during new version installation - {0}")]
@@ -25,7 +28,9 @@ pub enum UpdateError {
 impl CmdOutput for UpdateError {
     fn exitcode(&self) -> i32 {
         match self {
-            Self::FetchLatestVersion(_) | Self::FetchInstallScript(_) => errors::SOFTWARE,
+            Self::FetchLatestVersion(_)
+            | Self::UnknownMajorVersion(_)
+            | Self::FetchInstallScript(_) => errors::SOFTWARE,
             Self::TempFileError(_) => errors::CANTCREAT,
             Self::WriteError(_) => errors::IOERR,
             Self::ScriptExec(_) => errors::SOFTWARE,
@@ -34,7 +39,9 @@ impl CmdOutput for UpdateError {
 
     fn code(&self) -> String {
         match self {
-            Self::FetchLatestVersion(_) | Self::FetchInstallScript(_) => "generic/api-error",
+            Self::FetchLatestVersion(_)
+            | Self::UnknownMajorVersion(_)
+            | Self::FetchInstallScript(_) => "generic/api-error",
             Self::TempFileError(_) => "generic/temp-file-error",
             Self::ScriptExec(_) | Self::WriteError(_) => "generic/io-error",
         }
@@ -70,13 +77,29 @@ impl CmdOutput for UpdateMessage {
 
 pub async fn run(_: UpdateArgs) -> Result<UpdateMessage, UpdateError> {
     let assets_client = api::assets::AssetsClient::new();
-    let new_version = assets_client
-        .get_latest_cli_version()
+    let versions = assets_client
+        .get_cli_versions()
         .await
         .map_err(UpdateError::FetchLatestVersion)?;
 
     let current_version = env!("CARGO_PKG_VERSION");
+    let current_major = env!("CARGO_PKG_VERSION_MAJOR")
+        .parse::<u64>()
+        .expect("infallible: cargo sets a numeric major version");
+    let new_version = versions
+        .versions
+        .get(&current_major.to_string())
+        .and_then(Option::as_ref)
+        .map(|major| major.latest.clone())
+        .ok_or(UpdateError::UnknownMajorVersion(current_major))?;
+    let newer_major = Version::parse(&versions.latest)
+        .ok()
+        .filter(|latest| latest.major > current_major);
+
     if new_version.as_str() == current_version {
+        if let Some(newer_major) = &newer_major {
+            log_newer_major(&assets_client, newer_major);
+        }
         return Ok(UpdateMessage::AlreadyUpToDate {
             version: current_version.to_string(),
         });
@@ -89,7 +112,7 @@ pub async fn run(_: UpdateArgs) -> Result<UpdateMessage, UpdateError> {
     );
 
     let install_script = assets_client
-        .get_cli_install_script()
+        .get_cli_install_script(current_major)
         .await
         .map_err(UpdateError::FetchInstallScript)?;
 
@@ -110,5 +133,16 @@ pub async fn run(_: UpdateArgs) -> Result<UpdateMessage, UpdateError> {
         .status()
         .map_err(UpdateError::ScriptExec)?;
 
+    if let Some(newer_major) = &newer_major {
+        log_newer_major(&assets_client, newer_major);
+    }
+
     Ok(UpdateMessage::Updated)
+}
+
+fn log_newer_major(assets_client: &AssetsClient, newer_major: &Version) {
+    log::info!(
+        "Version {newer_major} of the CLI is available and has breaking changes, see https://github.com/evervault/evervault-cli/releases. To install it, run: curl {} -sL | CLI_FORCE_INSTALL=1 sh",
+        assets_client.cli_install_script_url(newer_major.major)
+    );
 }
