@@ -7,7 +7,7 @@ The Evervault CLI helps you manage your Evervault resources from the terminal.
 # Installation
 Run the following command to install the Evervault CLI:
 ```
-curl https://cli.evervault.com/v4/install -sL | sh
+curl https://cli.evervault.com/v5/install -sL | sh
 ```
 
 # [Documentation](https://docs.evervault.com/sdks/cli)

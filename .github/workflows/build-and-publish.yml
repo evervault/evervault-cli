@@ -184,4 +184,4 @@ jobs:
           aws s3 cp scripts/version s3://cli-assets-bucket-${{ inputs.stage }}/v${{ inputs.major-version }}/version
           aws s3 cp scripts/version s3://cli-assets-bucket-${{ inputs.stage }}/version
           aws s3 cp scripts/versions s3://cli-assets-bucket-${{ inputs.stage }}/versions
-          aws cloudfront create-invalidation --distribution-id ${{ secrets.aws-cloudfront-distribution-id }} --paths "/v4/install" "/version" "/versions"
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.aws-cloudfront-distribution-id }} --paths "/v${{ inputs.major-version }}/install" "/version" "/versions"
