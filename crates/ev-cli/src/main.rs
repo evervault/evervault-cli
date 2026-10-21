@@ -162,7 +162,6 @@ async fn main() {
 
     let base_args = BaseArgs::try_parse().unwrap_or_else(|e| exit_with_parse_error(e));
     setup_logger(base_args.verbose, base_args.json);
-    setup_sentry();
     commands::run(base_args).await;
 }
 
@@ -212,16 +211,4 @@ fn setup_logger(verbose_logging: bool, json: bool) {
         }
     }
     builder.format(log_formatter).init();
-}
-
-fn setup_sentry() {
-    if cfg!(not(debug_assertions)) {
-        let _ = sentry::init((
-            "https://7930c2e61c1642bca8518bdadf37b78b@o359326.ingest.sentry.io/5799012",
-            sentry::ClientOptions {
-                release: sentry::release_name!(),
-                ..Default::default()
-            },
-        ));
-    }
 }
