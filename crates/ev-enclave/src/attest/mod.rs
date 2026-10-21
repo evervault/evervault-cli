@@ -9,8 +9,10 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_rustls::rustls::{
-    client::{ClientConfig, ServerCertVerified, ServerCertVerifier},
-    RootCertStore,
+    client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier},
+    crypto::{self, aws_lc_rs, WebPkiSupportedAlgorithms},
+    pki_types::{CertificateDer, ServerName, UnixTime},
+    ClientConfig, DigitallySignedStruct, SignatureScheme,
 };
 use x509_parser::{certificate::X509Certificate, prelude::FromDer};
 
@@ -22,6 +24,14 @@ struct SubjectAltNameAttestationValidator {
     context_sender: mpsc::Sender<Result<(), AttestationError>>,
     expected_pcrs: PCRs,
     attestation_doc: Vec<u8>,
+    signature_algorithms: WebPkiSupportedAlgorithms,
+}
+
+impl std::fmt::Debug for SubjectAltNameAttestationValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SubjectAltNameAttestationValidator")
+            .finish_non_exhaustive()
+    }
 }
 
 macro_rules! to_rustls_general_error {
@@ -33,12 +43,11 @@ macro_rules! to_rustls_general_error {
 impl ServerCertVerifier for SubjectAltNameAttestationValidator {
     fn verify_server_cert(
         &self,
-        certificate: &tokio_rustls::rustls::Certificate,
-        _intermediates: &[tokio_rustls::rustls::Certificate],
-        _server_name: &tokio_rustls::rustls::ServerName,
-        _scts: &mut dyn Iterator<Item = &[u8]>,
+        certificate: &CertificateDer<'_>,
+        _intermediates: &[CertificateDer<'_>],
+        _server_name: &ServerName<'_>,
         _ocsp_response: &[u8],
-        _now: std::time::SystemTime,
+        _now: UnixTime,
     ) -> std::result::Result<ServerCertVerified, tokio_rustls::rustls::Error> {
         let (_, certificate_parsed) = X509Certificate::from_der(certificate.as_ref())
             .map_err(|e| to_rustls_general_error!(e))?;
@@ -57,6 +66,28 @@ impl ServerCertVerifier for SubjectAltNameAttestationValidator {
 
         verification_result
     }
+
+    fn verify_tls12_signature(
+        &self,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &DigitallySignedStruct,
+    ) -> std::result::Result<HandshakeSignatureValid, tokio_rustls::rustls::Error> {
+        crypto::verify_tls12_signature(message, cert, dss, &self.signature_algorithms)
+    }
+
+    fn verify_tls13_signature(
+        &self,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &DigitallySignedStruct,
+    ) -> std::result::Result<HandshakeSignatureValid, tokio_rustls::rustls::Error> {
+        crypto::verify_tls13_signature(message, cert, dss, &self.signature_algorithms)
+    }
+
+    fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
+        self.signature_algorithms.supported_schemes()
+    }
 }
 
 pub async fn attest_connection_to_enclave(
@@ -70,24 +101,26 @@ pub async fn attest_connection_to_enclave(
     .await??
     .collect::<Vec<_>>();
     let stream = tokio::net::TcpStream::connect(&destinations[..]).await?;
-    let mut client_config = ClientConfig::builder()
-        .with_safe_defaults()
-        .with_root_certificates(RootCertStore::empty())
-        .with_no_client_auth();
+    let provider = Arc::new(aws_lc_rs::default_provider());
     let attestation_doc = get_attestation_doc(domain).await?;
     let (tx, _rx) = mpsc::channel(1);
     let validator = Arc::new(SubjectAltNameAttestationValidator {
         context_sender: tx,
         expected_pcrs,
         attestation_doc,
+        signature_algorithms: provider.signature_verification_algorithms,
     });
-    client_config
+    let client_config = ClientConfig::builder_with_provider(provider)
+        .with_safe_default_protocol_versions()?
         .dangerous()
-        .set_certificate_verifier(validator);
+        .with_custom_certificate_verifier(validator)
+        .with_no_client_auth();
     let tls_connector: tokio_rustls::TlsConnector = Arc::new(client_config).into();
 
     // a successful connection means the validator has successfully validated the attestation doc
-    let mut connection = tls_connector.connect(domain.try_into()?, stream).await?;
+    let mut connection = tls_connector
+        .connect(ServerName::try_from(domain.to_owned())?, stream)
+        .await?;
     let (_io, session) = connection.get_mut();
     session.send_close_notify();
     Ok(())
