@@ -2853,7 +2853,7 @@ name = "pcr-sign"
 version = "0.1.0"
 dependencies = [
  "p384 0.13.1",
- "rand_core 0.6.4",
+ "rand_core 0.10.1",
 ]
 
 [[package]]
