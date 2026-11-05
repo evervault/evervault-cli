@@ -11,7 +11,15 @@ pub struct BrowserTokenData {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct BrowserTokenPermission {
     pub action: String,
-    pub target: String,
+    #[serde(flatten)]
+    pub resource: Resource,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum Resource {
+    Target(String),
+    AllowList(String),
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]

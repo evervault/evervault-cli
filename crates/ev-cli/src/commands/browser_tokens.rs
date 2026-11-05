@@ -4,7 +4,7 @@ use common::api::{client::ApiError, papi::EvApiClient};
 use common::api::{papi::EvApi, BasicAuth};
 use common::browser_tokens::{
     BrowserTokenData, BrowserTokenPermission, CreateBrowserTokens, CustomProxy, ProxyScheme,
-    ProxySettings,
+    ProxySettings, Resource,
 };
 use percent_encoding::percent_decode_str;
 use std::{ffi::OsStr, num::NonZeroU64};
@@ -33,6 +33,8 @@ pub struct BrowserTokensArgs {
     /// ACTION is what's allowed, e.g. decrypt.
     ///
     /// TARGET is the hostname that receives the plaintext: an exact hostname, a subdomain wildcard like `*.shopify.com`, or `*` for any host.
+    ///
+    /// A TARGET starting with `ev:` is an Evervault-managed allow list instead, e.g. decrypt:ev:psps@1.
     #[arg(
         short,
         long = "permission",
@@ -101,9 +103,14 @@ fn parse_data(s: &str) -> Result<BrowserTokenData, String> {
 fn parse_permission(s: &str) -> Result<BrowserTokenPermission, String> {
     match s.split_once(':') {
         Some((action, target)) if !action.is_empty() && !target.is_empty() => {
+            let resource = if target.starts_with("ev:") {
+                Resource::AllowList(target.to_string())
+            } else {
+                Resource::Target(target.to_string())
+            };
             Ok(BrowserTokenPermission {
                 action: action.to_string(),
-                target: target.to_string(),
+                resource,
             })
         }
         _ => Err("expected the form <ACTION>:<TARGET>".to_string()),
@@ -184,7 +191,10 @@ fn summarize(request: &CreateBrowserTokens) -> String {
     let permissions = request
         .permissions
         .iter()
-        .map(|permission| format!("{}:{}", permission.action, permission.target))
+        .map(|permission| {
+            let (Resource::Target(target) | Resource::AllowList(target)) = &permission.resource;
+            format!("{}:{target}", permission.action)
+        })
         .collect::<Vec<_>>()
         .join(", ");
     let ttl = request
@@ -481,9 +491,15 @@ mod tests {
     fn test_parse_permission() {
         let permission = parse_permission("decrypt:*.shopify.com").unwrap();
         assert_eq!(permission.action, "decrypt");
-        assert_eq!(permission.target, "*.shopify.com");
+        assert_eq!(
+            permission.resource,
+            Resource::Target("*.shopify.com".to_string())
+        );
 
-        assert_eq!(parse_permission("decrypt:*").unwrap().target, "*");
+        assert_eq!(
+            parse_permission("decrypt:*").unwrap().resource,
+            Resource::Target("*".to_string())
+        );
         // Which actions exist is left to the API, so a CLI release isn't needed when one is added
         assert_eq!(
             parse_permission("encrypt:api.stripe.com").unwrap().action,
@@ -493,5 +509,46 @@ mod tests {
         assert!(parse_permission("api.stripe.com").is_err());
         assert!(parse_permission("decrypt:").is_err());
         assert!(parse_permission(":api.stripe.com").is_err());
+    }
+
+    #[test]
+    fn test_parse_permission_allow_list() {
+        let permission = parse_permission("decrypt:ev:psps@1").unwrap();
+        assert_eq!(permission.action, "decrypt");
+        assert_eq!(
+            permission.resource,
+            Resource::AllowList("ev:psps@1".to_string())
+        );
+
+        assert_eq!(
+            parse_permission("decrypt:ev.example.com").unwrap().resource,
+            Resource::Target("ev.example.com".to_string())
+        );
+    }
+
+    #[test]
+    fn test_request_body_with_allow_list() {
+        let args = BrowserTokensArgs::try_parse_from([
+            "browser-tokens",
+            "-d",
+            "card.cvv:cvv:123",
+            "-p",
+            "decrypt:ev:psps@1",
+            "-p",
+            "decrypt:api.stripe.com",
+        ])
+        .unwrap();
+        let request = args.into_request();
+
+        assert_eq!(
+            serde_json::to_value(&request).unwrap()["permissions"],
+            json!([
+                { "action": "decrypt", "allowList": "ev:psps@1" },
+                { "action": "decrypt", "target": "api.stripe.com" }
+            ])
+        );
+        assert!(
+            summarize(&request).contains("permissions: decrypt:ev:psps@1, decrypt:api.stripe.com;")
+        );
     }
 }
