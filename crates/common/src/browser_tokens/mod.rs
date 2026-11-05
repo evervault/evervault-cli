@@ -34,6 +34,21 @@ pub enum ProxyScheme {
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum ProxySettings {
     Custom(CustomProxy),
+    Residential(ExitLocation),
+    Datacenter {},
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ExitLocation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub country: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub region: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub city: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub postal_code: Option<String>,
 }
 
 /// A proxy run by the customer

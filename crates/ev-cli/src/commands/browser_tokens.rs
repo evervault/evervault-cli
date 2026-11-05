@@ -1,10 +1,10 @@
 use crate::{errors, CmdOutput};
-use clap::{builder::TypedValueParser, error::ErrorKind, Arg, Command, Parser};
+use clap::{builder::TypedValueParser, error::ErrorKind, Arg, ArgGroup, Command, Parser};
 use common::api::{client::ApiError, papi::EvApiClient};
 use common::api::{papi::EvApi, BasicAuth};
 use common::browser_tokens::{
-    BrowserTokenData, BrowserTokenPermission, CreateBrowserTokens, CustomProxy, ProxyScheme,
-    ProxySettings, Resource,
+    BrowserTokenData, BrowserTokenPermission, CreateBrowserTokens, CustomProxy, ExitLocation,
+    ProxyScheme, ProxySettings, Resource,
 };
 use percent_encoding::percent_decode_str;
 use std::{ffi::OsStr, num::NonZeroU64};
@@ -13,6 +13,11 @@ use thiserror::Error;
 /// Create browser tokens using the Evervault API
 #[derive(Debug, Parser)]
 #[command(name = "browser-tokens", about)]
+#[command(group(
+    ArgGroup::new("exit_area")
+        .args(["exit_region", "exit_city", "exit_postal_code"])
+        .multiple(false)
+))]
 pub struct BrowserTokensArgs {
     /// A sensitive value to tokenize, in the form <CATEGORY>:<ID>:<VALUE> (e.g. card.number:primary-card-pan:ev:encrypted:...). Can be repeated.
     ///
@@ -48,11 +53,31 @@ pub struct BrowserTokensArgs {
     #[arg(long)]
     ttl: Option<NonZeroU64>,
 
-    /// Route through your own egress proxy, given as <http|https>://<USERNAME>:<PASSWORD>@<HOST>:<PORT>
+    /// How the session's traffic leaves Evervault: residential, datacenter, or your own egress proxy given as <http|https>://<USERNAME>:<PASSWORD>@<HOST>:<PORT>
     ///
-    /// Percent-encode special characters in USERNAME and PASSWORD (e.g. `#` as `%23`, `/` as `%2F`).
-    #[arg(long, value_name = "URL", value_parser = Redacted(parse_custom_proxy))]
-    proxy: Option<CustomProxy>,
+    /// residential uses an Evervault-managed residential proxy; narrow where it exits with the --exit-* options.
+    ///
+    /// datacenter egresses directly from Evervault's infrastructure, the same as leaving --proxy out.
+    ///
+    /// For your own proxy, percent-encode special characters in USERNAME and PASSWORD (e.g. `#` as `%23`, `/` as `%2F`).
+    #[arg(long, value_name = "residential|datacenter|URL", value_parser = Redacted(parse_proxy))]
+    proxy: Option<ProxySettings>,
+
+    /// Country a residential session exits from, as an ISO 3166-1 alpha-2 code (e.g. GB). Defaults to the deployment's country.
+    #[arg(long, value_name = "CODE")]
+    exit_country: Option<String>,
+
+    /// Region within --exit-country, as an ISO 3166-2 code (e.g. US-CA)
+    #[arg(long, value_name = "CODE", requires = "exit_country")]
+    exit_region: Option<String>,
+
+    /// City within --exit-country, by its English name (e.g. London)
+    #[arg(long, value_name = "NAME", requires = "exit_country")]
+    exit_city: Option<String>,
+
+    /// Postal code within --exit-country (e.g. 90210)
+    #[arg(long, value_name = "CODE", requires = "exit_country")]
+    exit_postal_code: Option<String>,
 }
 
 /// Wraps a value parser so a rejected value is never echoed back. Clap's own errors repeat the
@@ -117,6 +142,22 @@ fn parse_permission(s: &str) -> Result<BrowserTokenPermission, String> {
     }
 }
 
+fn parse_proxy(s: &str) -> Result<ProxySettings, String> {
+    match s.to_lowercase().as_str() {
+        "datacenter" => Ok(ProxySettings::Datacenter {}),
+        "residential" => Ok(ProxySettings::Residential(ExitLocation::default())),
+        _ => parse_custom_proxy(s)
+            .map(ProxySettings::Custom)
+            .map_err(|reason| {
+                if s.contains("://") {
+                    reason
+                } else {
+                    "expected residential, datacenter or <http|https>://<USERNAME>:<PASSWORD>@<HOST>:<PORT>".to_string()
+                }
+            }),
+    }
+}
+
 fn parse_custom_proxy(s: &str) -> Result<CustomProxy, String> {
     const EXPECTED: &str = "expected the form <http|https>://<USERNAME>:<PASSWORD>@<HOST>:<PORT>";
 
@@ -170,13 +211,25 @@ fn has_explicit_port(s: &str) -> bool {
 }
 
 impl BrowserTokensArgs {
-    fn into_request(self) -> CreateBrowserTokens {
-        CreateBrowserTokens {
+    fn into_request(self) -> Result<CreateBrowserTokens, BrowserTokensError> {
+        let location = ExitLocation {
+            country: self.exit_country,
+            region: self.exit_region,
+            city: self.exit_city,
+            postal_code: self.exit_postal_code,
+        };
+        let proxy_settings = match self.proxy {
+            Some(ProxySettings::Residential(_)) => Some(ProxySettings::Residential(location)),
+            proxy if location == ExitLocation::default() => proxy,
+            _ => return Err(BrowserTokensError::ExitLocationRequiresResidential),
+        };
+
+        Ok(CreateBrowserTokens {
             data: self.data,
             permissions: self.permissions,
             ttl: self.ttl,
-            proxy_settings: self.proxy.map(ProxySettings::Custom),
-        }
+            proxy_settings,
+        })
     }
 }
 
@@ -208,6 +261,25 @@ fn summarize(request: &CreateBrowserTokens) -> String {
             };
             format!("{scheme}://{}:{}", proxy.hostname, proxy.port)
         }
+        Some(ProxySettings::Residential(location)) => {
+            let parts = [
+                &location.country,
+                &location.region,
+                &location.city,
+                &location.postal_code,
+            ]
+            .into_iter()
+            .flatten()
+            .map(String::as_str)
+            .collect::<Vec<_>>();
+
+            if parts.is_empty() {
+                "residential (default country)".to_string()
+            } else {
+                format!("residential ({})", parts.join(", "))
+            }
+        }
+        Some(ProxySettings::Datacenter {}) => "datacenter".to_string(),
         None => "none".to_string(),
     };
 
@@ -220,16 +292,22 @@ fn summarize(request: &CreateBrowserTokens) -> String {
 pub enum BrowserTokensError {
     #[error("An error occurred while creating browser tokens: {0}")]
     ApiError(#[from] ApiError),
+    #[error("--exit-country, --exit-region, --exit-city and --exit-postal-code can only be used with --proxy residential")]
+    ExitLocationRequiresResidential,
 }
 
 impl CmdOutput for BrowserTokensError {
     fn exitcode(&self) -> i32 {
-        errors::SOFTWARE
+        match self {
+            BrowserTokensError::ApiError(_) => errors::SOFTWARE,
+            BrowserTokensError::ExitLocationRequiresResidential => errors::USAGE,
+        }
     }
 
     fn code(&self) -> String {
         match self {
             BrowserTokensError::ApiError(_) => "generic/api-error",
+            BrowserTokensError::ExitLocationRequiresResidential => "generic/invalid-arguments",
         }
         .to_string()
     }
@@ -269,7 +347,7 @@ pub async fn run(
     auth: BasicAuth,
 ) -> Result<BrowserTokensMessage, BrowserTokensError> {
     let api_client = EvApiClient::new(auth);
-    let request = args.into_request();
+    let request = args.into_request()?;
     log::debug!("{}", summarize(&request));
 
     let tokens = api_client.create_browser_tokens(&request).await?;
@@ -316,7 +394,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            serde_json::to_value(args.into_request()).unwrap(),
+            serde_json::to_value(args.into_request().unwrap()).unwrap(),
             json!({
                 "data": [
                     { "category": "card.number", "id": "pan", "value": "ev:encrypted:abc" },
@@ -351,7 +429,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            serde_json::to_value(args.into_request()).unwrap(),
+            serde_json::to_value(args.into_request().unwrap()).unwrap(),
             json!({
                 "data": [{ "category": "credential.password", "id": "login", "value": "secret" }],
                 "permissions": [{ "action": "decrypt", "target": "*" }]
@@ -456,7 +534,7 @@ mod tests {
         ])
         .unwrap();
 
-        let summary = summarize(&args.into_request());
+        let summary = summarize(&args.into_request().unwrap());
 
         assert_eq!(
             summary,
@@ -538,7 +616,7 @@ mod tests {
             "decrypt:api.stripe.com",
         ])
         .unwrap();
-        let request = args.into_request();
+        let request = args.into_request().unwrap();
 
         assert_eq!(
             serde_json::to_value(&request).unwrap()["permissions"],
@@ -550,5 +628,169 @@ mod tests {
         assert!(
             summarize(&request).contains("permissions: decrypt:ev:psps@1, decrypt:api.stripe.com;")
         );
+    }
+
+    fn parse_args(extra: &[&str]) -> Result<BrowserTokensArgs, clap::Error> {
+        let base = [
+            "browser-tokens",
+            "-d",
+            "card.cvv:cvv:123",
+            "-p",
+            "decrypt:*",
+        ];
+        BrowserTokensArgs::try_parse_from(base.iter().chain(extra))
+    }
+
+    fn proxy_settings(extra: &[&str]) -> serde_json::Value {
+        let request = parse_args(extra).unwrap().into_request().unwrap();
+        serde_json::to_value(request).unwrap()["proxySettings"].clone()
+    }
+
+    #[test]
+    fn test_datacenter_proxy() {
+        assert_eq!(
+            proxy_settings(&["--proxy", "datacenter"]),
+            json!({ "type": "datacenter" })
+        );
+    }
+
+    #[test]
+    fn test_proxy_keywords_ignore_case() {
+        assert_eq!(
+            proxy_settings(&["--proxy", "Residential"]),
+            json!({ "type": "residential" })
+        );
+    }
+
+    #[test]
+    fn test_residential_proxy_without_location_omits_it() {
+        assert_eq!(
+            proxy_settings(&["--proxy", "residential"]),
+            json!({ "type": "residential" })
+        );
+    }
+
+    #[test]
+    fn test_residential_proxy_with_location() {
+        assert_eq!(
+            proxy_settings(&["--proxy", "residential", "--exit-country", "GB"]),
+            json!({ "type": "residential", "country": "GB" })
+        );
+        assert_eq!(
+            proxy_settings(&[
+                "--proxy",
+                "residential",
+                "--exit-country",
+                "US",
+                "--exit-region",
+                "US-CA"
+            ]),
+            json!({ "type": "residential", "country": "US", "region": "US-CA" })
+        );
+        assert_eq!(
+            proxy_settings(&[
+                "--proxy",
+                "residential",
+                "--exit-country",
+                "GB",
+                "--exit-city",
+                "London"
+            ]),
+            json!({ "type": "residential", "country": "GB", "city": "London" })
+        );
+        assert_eq!(
+            proxy_settings(&[
+                "--proxy",
+                "residential",
+                "--exit-country",
+                "US",
+                "--exit-postal-code",
+                "90210"
+            ]),
+            json!({ "type": "residential", "country": "US", "postalCode": "90210" })
+        );
+    }
+
+    #[test]
+    fn test_exit_area_requires_country() {
+        for area in ["--exit-region", "--exit-city", "--exit-postal-code"] {
+            assert!(
+                parse_args(&["--proxy", "residential", area, "x"]).is_err(),
+                "{area} was accepted without --exit-country"
+            );
+        }
+    }
+
+    #[test]
+    fn test_only_one_exit_area() {
+        for (first, second) in [
+            ("--exit-region", "--exit-city"),
+            ("--exit-region", "--exit-postal-code"),
+            ("--exit-city", "--exit-postal-code"),
+        ] {
+            assert!(
+                parse_args(&[
+                    "--proxy",
+                    "residential",
+                    "--exit-country",
+                    "US",
+                    first,
+                    "x",
+                    second,
+                    "y"
+                ])
+                .is_err(),
+                "{first} and {second} were both accepted"
+            );
+        }
+    }
+
+    #[test]
+    fn test_exit_location_requires_residential() {
+        for proxy in [
+            &[][..],
+            &["--proxy", "datacenter"][..],
+            &["--proxy", "https://user:pass@proxy.example.com:443"][..],
+        ] {
+            let args = parse_args(&[proxy, &["--exit-country", "GB"][..]].concat()).unwrap();
+            assert!(
+                matches!(
+                    args.into_request(),
+                    Err(BrowserTokensError::ExitLocationRequiresResidential)
+                ),
+                "{proxy:?} was accepted with --exit-country"
+            );
+        }
+    }
+
+    #[test]
+    fn test_unknown_proxy_keyword_names_the_options() {
+        let error = parse_args(&["--proxy", "residental"])
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("expected residential, datacenter or"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn test_summary_describes_managed_proxies() {
+        let summary =
+            |extra: &[&str]| summarize(&parse_args(extra).unwrap().into_request().unwrap());
+
+        assert!(summary(&["--proxy", "datacenter"]).ends_with("proxy: datacenter"));
+        assert!(
+            summary(&["--proxy", "residential"]).ends_with("proxy: residential (default country)")
+        );
+        assert!(summary(&[
+            "--proxy",
+            "residential",
+            "--exit-country",
+            "GB",
+            "--exit-city",
+            "London"
+        ])
+        .ends_with("proxy: residential (GB, London)"));
     }
 }
