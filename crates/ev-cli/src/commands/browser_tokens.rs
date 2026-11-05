@@ -34,7 +34,7 @@ pub struct BrowserTokensArgs {
     ///
     /// TARGET is the hostname that receives the plaintext: an exact hostname, a subdomain wildcard like `*.shopify.com`, or `*` for any host.
     ///
-    /// TARGET can instead be an Evervault-managed allow list in braces, e.g. decrypt:{ev:psps@1}.
+    /// A TARGET starting with `ev:` is an Evervault-managed allow list instead, e.g. decrypt:ev:psps@1.
     #[arg(
         short,
         long = "permission",
@@ -103,21 +103,17 @@ fn parse_data(s: &str) -> Result<BrowserTokenData, String> {
 fn parse_permission(s: &str) -> Result<BrowserTokenPermission, String> {
     match s.split_once(':') {
         Some((action, target)) if !action.is_empty() && !target.is_empty() => {
-            let resource = match target.strip_prefix('{') {
-                Some(rest) => match rest.strip_suffix('}') {
-                    Some(list) if !list.is_empty() && !list.contains(['{', '}']) => {
-                        Resource::AllowList(list.to_string())
-                    }
-                    _ => return Err("expected an allow list in the form {<LIST>}".to_string()),
-                },
-                None => Resource::Target(target.to_string()),
+            let resource = if target.starts_with("ev:") {
+                Resource::AllowList(target.to_string())
+            } else {
+                Resource::Target(target.to_string())
             };
             Ok(BrowserTokenPermission {
                 action: action.to_string(),
                 resource,
             })
         }
-        _ => Err("expected the form <ACTION>:<TARGET> or <ACTION>:{<LIST>}".to_string()),
+        _ => Err("expected the form <ACTION>:<TARGET>".to_string()),
     }
 }
 
@@ -195,9 +191,9 @@ fn summarize(request: &CreateBrowserTokens) -> String {
     let permissions = request
         .permissions
         .iter()
-        .map(|permission| match &permission.resource {
-            Resource::Target(target) => format!("{}:{target}", permission.action),
-            Resource::AllowList(list) => format!("{}:{{{list}}}", permission.action),
+        .map(|permission| {
+            let (Resource::Target(target) | Resource::AllowList(target)) = &permission.resource;
+            format!("{}:{target}", permission.action)
         })
         .collect::<Vec<_>>()
         .join(", ");
@@ -517,21 +513,17 @@ mod tests {
 
     #[test]
     fn test_parse_permission_allow_list() {
-        let permission = parse_permission("decrypt:{ev:psps@1}").unwrap();
+        let permission = parse_permission("decrypt:ev:psps@1").unwrap();
         assert_eq!(permission.action, "decrypt");
         assert_eq!(
             permission.resource,
             Resource::AllowList("ev:psps@1".to_string())
         );
 
-        for invalid in [
-            "decrypt:{}",
-            "decrypt:{ev:psps@1",
-            "decrypt:{{ev:psps@1}}",
-            "decrypt:{ev:psps@1}}",
-        ] {
-            assert!(parse_permission(invalid).is_err(), "{invalid} was accepted");
-        }
+        assert_eq!(
+            parse_permission("decrypt:ev.example.com").unwrap().resource,
+            Resource::Target("ev.example.com".to_string())
+        );
     }
 
     #[test]
@@ -541,7 +533,7 @@ mod tests {
             "-d",
             "card.cvv:cvv:123",
             "-p",
-            "decrypt:{ev:psps@1}",
+            "decrypt:ev:psps@1",
             "-p",
             "decrypt:api.stripe.com",
         ])
@@ -555,7 +547,8 @@ mod tests {
                 { "action": "decrypt", "target": "api.stripe.com" }
             ])
         );
-        assert!(summarize(&request)
-            .contains("permissions: decrypt:{ev:psps@1}, decrypt:api.stripe.com;"));
+        assert!(
+            summarize(&request).contains("permissions: decrypt:ev:psps@1, decrypt:api.stripe.com;")
+        );
     }
 }
