@@ -145,7 +145,9 @@ fn parse_permission(s: &str) -> Result<BrowserTokenPermission, String> {
 fn parse_proxy(s: &str) -> Result<ProxySettings, String> {
     match s.to_lowercase().as_str() {
         "datacenter" => Ok(ProxySettings::Datacenter {}),
-        "residential" => Ok(ProxySettings::Residential(ExitLocation::default())),
+        "residential" => Ok(ProxySettings::Residential {
+            exit_location: None,
+        }),
         _ => parse_custom_proxy(s)
             .map(ProxySettings::Custom)
             .map_err(|reason| {
@@ -212,15 +214,26 @@ fn has_explicit_port(s: &str) -> bool {
 
 impl BrowserTokensArgs {
     fn into_request(self) -> Result<CreateBrowserTokens, BrowserTokensError> {
-        let location = ExitLocation {
-            country: self.exit_country,
-            region: self.exit_region,
-            city: self.exit_city,
-            postal_code: self.exit_postal_code,
+        let exit_location = match (
+            self.exit_country,
+            self.exit_region,
+            self.exit_city,
+            self.exit_postal_code,
+        ) {
+            (None, ..) => None,
+            (Some(country), Some(region), ..) => Some(ExitLocation::Region { country, region }),
+            (Some(country), _, Some(city), _) => Some(ExitLocation::City { country, city }),
+            (Some(country), _, _, Some(postal_code)) => Some(ExitLocation::PostalCode {
+                country,
+                postal_code,
+            }),
+            (Some(country), None, None, None) => Some(ExitLocation::Country { country }),
         };
         let proxy_settings = match self.proxy {
-            Some(ProxySettings::Residential(_)) => Some(ProxySettings::Residential(location)),
-            proxy if location == ExitLocation::default() => proxy,
+            Some(ProxySettings::Residential { .. }) => {
+                Some(ProxySettings::Residential { exit_location })
+            }
+            proxy if exit_location.is_none() => proxy,
             _ => return Err(BrowserTokensError::ExitLocationRequiresResidential),
         };
 
@@ -261,24 +274,24 @@ fn summarize(request: &CreateBrowserTokens) -> String {
             };
             format!("{scheme}://{}:{}", proxy.hostname, proxy.port)
         }
-        Some(ProxySettings::Residential(location)) => {
-            let parts = [
-                &location.country,
-                &location.region,
-                &location.city,
-                &location.postal_code,
-            ]
-            .into_iter()
-            .flatten()
-            .map(String::as_str)
-            .collect::<Vec<_>>();
-
-            if parts.is_empty() {
-                "residential (default country)".to_string()
-            } else {
-                format!("residential ({})", parts.join(", "))
-            }
-        }
+        Some(ProxySettings::Residential { exit_location }) => match exit_location {
+            None => "residential (default country)".to_string(),
+            Some(ExitLocation::Country { country }) => format!("residential ({country})"),
+            Some(
+                ExitLocation::Region {
+                    country,
+                    region: area,
+                }
+                | ExitLocation::City {
+                    country,
+                    city: area,
+                }
+                | ExitLocation::PostalCode {
+                    country,
+                    postal_code: area,
+                },
+            ) => format!("residential ({country}, {area})"),
+        },
         Some(ProxySettings::Datacenter {}) => "datacenter".to_string(),
         None => "none".to_string(),
     };
