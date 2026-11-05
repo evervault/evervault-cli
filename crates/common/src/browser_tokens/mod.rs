@@ -34,6 +34,31 @@ pub enum ProxyScheme {
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum ProxySettings {
     Custom(CustomProxy),
+    Residential {
+        #[serde(flatten)]
+        exit_location: Option<ExitLocation>,
+    },
+    Datacenter {},
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged, rename_all_fields = "camelCase")]
+pub enum ExitLocation {
+    Region {
+        country: String,
+        region: String,
+    },
+    City {
+        country: String,
+        city: String,
+    },
+    PostalCode {
+        country: String,
+        postal_code: String,
+    },
+    Country {
+        country: String,
+    },
 }
 
 /// A proxy run by the customer
