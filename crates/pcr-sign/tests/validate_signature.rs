@@ -1,6 +1,6 @@
+use p384::elliptic_curve::rand_core::OsRng;
 use p384::pkcs8::DecodePublicKey;
 use pcr_sign::{PCRProvider, SignatureVerificationError, SigningKey, Verifier, VerifyingKey};
-use rand_core::OsRng;
 
 const DEBUG_PCR_VALUE: &'static str = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
 
