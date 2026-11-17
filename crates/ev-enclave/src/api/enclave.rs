@@ -424,7 +424,6 @@ impl UpdateLockedEnclaveSigningCertRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CreateEnclaveRequest {
     name: String,
-    is_time_bound: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -453,11 +452,8 @@ pub struct Secret {
 }
 
 impl CreateEnclaveRequest {
-    pub fn new(enclave_name: String, is_time_bound: bool) -> Self {
-        Self {
-            name: enclave_name,
-            is_time_bound,
-        }
+    pub fn new(enclave_name: String) -> Self {
+        Self { name: enclave_name }
     }
 }
 

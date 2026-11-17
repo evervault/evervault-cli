@@ -64,10 +64,6 @@ pub struct InitArgs {
     #[arg(long = "disable-trx-logging")]
     pub trx_logging_disabled: bool,
 
-    /// Flag to make your Enclave delete after 6 hours
-    #[arg(long = "self-destruct")]
-    pub is_time_bound: bool,
-
     /// Comma separated list of destinations to allow traffic to from the Enclave e.g api.evervault.com, default is allow all
     #[arg(long = "egress-destinations")]
     pub egress_destinations: Option<String>,
@@ -178,10 +174,8 @@ pub async fn run(init_args: InitArgs, (_, api_key): BasicAuth) -> exitcode::Exit
     let enclave_client =
         ev_enclave::api::enclave::EnclaveClient::new(AuthMode::ApiKey(api_key.clone()));
 
-    let create_enclave_request = ev_enclave::api::enclave::CreateEnclaveRequest::new(
-        init_args.enclave_name.clone(),
-        init_args.is_time_bound,
-    );
+    let create_enclave_request =
+        ev_enclave::api::enclave::CreateEnclaveRequest::new(init_args.enclave_name.clone());
     let created_enclave = match enclave_client.create_enclave(create_enclave_request).await {
         Ok(enclave_ref) => enclave_ref,
         Err(e) => {
@@ -264,7 +258,6 @@ mod init_tests {
             disable_tls_termination: false,
             cert_path: Some("./cert.pem".to_string()),
             key_path: Some("./key.pem".to_string()),
-            is_time_bound: false,
             disable_api_key_auth: false,
             trx_logging_disabled: false,
             egress_destinations: Some("evervault.com".to_string()),
