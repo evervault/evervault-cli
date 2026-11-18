@@ -18,7 +18,7 @@ use x509_parser::{certificate::X509Certificate, prelude::FromDer};
 
 /**
  * Adapted from code written by chinaza-evervault
-**/
+ **/
 
 struct SubjectAltNameAttestationValidator {
     context_sender: mpsc::Sender<Result<(), AttestationError>>,
