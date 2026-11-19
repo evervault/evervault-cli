@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify() {
-        let signing_key = SigningKey::random(&mut rand_core::OsRng);
+        let signing_key = SigningKey::random(&mut p384::elliptic_curve::rand_core::OsRng);
         let debug_pcrs = TestPCRs::from("0".repeat(96));
         let verifier = VerifyingKey::from(signing_key.clone());
         let signature = Signature::new(SignatureVersion::V1, &debug_pcrs, signing_key);
@@ -318,7 +318,7 @@ mod tests {
 
     #[test]
     fn test_verify_with_invalid_signature() {
-        let signing_key = SigningKey::random(&mut rand_core::OsRng);
+        let signing_key = SigningKey::random(&mut p384::elliptic_curve::rand_core::OsRng);
         let debug_pcrs = TestPCRs::from("0".repeat(96));
         let verifier = VerifyingKey::from(signing_key);
         let sig = "thisisnothex";
@@ -335,11 +335,11 @@ mod tests {
 
     #[test]
     fn test_verify_with_incorrect_verifying_key() {
-        let signing_key = SigningKey::random(&mut rand_core::OsRng);
+        let signing_key = SigningKey::random(&mut p384::elliptic_curve::rand_core::OsRng);
         let debug_pcrs = TestPCRs::from("0".repeat(96));
         let signer = Signature::new(SignatureVersion::V1, &debug_pcrs, signing_key);
         let signature = signer.sign();
-        let incorrect_key = SigningKey::random(&mut rand_core::OsRng);
+        let incorrect_key = SigningKey::random(&mut p384::elliptic_curve::rand_core::OsRng);
         let incorrect_verifier = VerifyingKey::from(incorrect_key);
 
         let verifier = Verifier::new(&signature, &debug_pcrs, incorrect_verifier);
@@ -354,7 +354,7 @@ mod tests {
 
     #[test]
     fn test_verify_with_unsupported_signature_version() {
-        let signing_key = SigningKey::random(&mut rand_core::OsRng);
+        let signing_key = SigningKey::random(&mut p384::elliptic_curve::rand_core::OsRng);
         let debug_pcrs = TestPCRs::from("0".repeat(96));
         let signer = Signature::new(SignatureVersion::V1, &debug_pcrs, signing_key.clone());
         let signature = signer.sign();
